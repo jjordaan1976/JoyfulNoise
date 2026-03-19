@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using MusicSchool.Api.TransferModels;
 using MusicSchool.Data.Interfaces;
 using MusicSchool.Data.Models;
+using MusicSchool.Models.TransferModels;
 
 namespace MusicSchool.Api
 {

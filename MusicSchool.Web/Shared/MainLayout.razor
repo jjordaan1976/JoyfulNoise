@@ -1,0 +1,54 @@
+@inherits LayoutComponentBase
+
+@namespace MusicSchool.Web.Shared
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@ToggleDrawer" />
+        <MudIcon Icon="@Icons.Material.Filled.MusicNote" Class="mr-2" />
+        <MudText Typo="Typo.h6" Style="font-weight:600;">Music School</MudText>
+        <MudSpacer />
+        <MudText Typo="Typo.body2">Management Portal</MudText>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" Variant="DrawerVariant.Responsive"
+               ClipMode="DrawerClipMode.Always">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:#3A3A3A;">Navigation</MudText>
+        </MudDrawerHeader>
+        <MudNavMenu>
+            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+                Dashboard
+            </MudNavLink>
+            <MudNavGroup Title="Administration" Icon="@Icons.Material.Filled.Settings" Expanded="true">
+                <MudNavLink Href="/teachers" Icon="@Icons.Material.Filled.Person">Teachers</MudNavLink>
+                <MudNavLink Href="/lesson-types" Icon="@Icons.Material.Filled.Timer">Lesson Types</MudNavLink>
+            </MudNavGroup>
+            <MudNavGroup Title="Accounts" Icon="@Icons.Material.Filled.AccountCircle" Expanded="true">
+                <MudNavLink Href="/account-holders" Icon="@Icons.Material.Filled.People">Account Holders</MudNavLink>
+                <MudNavLink Href="/students" Icon="@Icons.Material.Filled.School">Students</MudNavLink>
+            </MudNavGroup>
+            <MudNavGroup Title="Lessons" Icon="@Icons.Material.Filled.LibraryMusic" Expanded="true">
+                <MudNavLink Href="/lesson-bundles" Icon="@Icons.Material.Filled.Inventory">Bundles</MudNavLink>
+                <MudNavLink Href="/schedule" Icon="@Icons.Material.Filled.CalendarMonth">Schedule</MudNavLink>
+                <MudNavLink Href="/extra-lessons" Icon="@Icons.Material.Filled.AddCircle">Extra Lessons</MudNavLink>
+            </MudNavGroup>
+            <MudNavGroup Title="Finance" Icon="@Icons.Material.Filled.Payment" Expanded="true">
+                <MudNavLink Href="/invoices" Icon="@Icons.Material.Filled.Receipt">Invoices</MudNavLink>
+            </MudNavGroup>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4 pa-md-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+}

@@ -1,5 +1,3 @@
-using System;
-
 namespace MusicSchool.Data.Models
 {
     /// <summary>
@@ -13,11 +11,10 @@ namespace MusicSchool.Data.Models
         public int      StudentID      { get; set; }
         public int      TeacherID      { get; set; }
         public int      LessonTypeID   { get; set; }
-        public short    AcademicYear   { get; set; }
         public int      TotalLessons   { get; set; }
         public decimal  PricePerLesson { get; set; }
-        public DateOnly StartDate      { get; set; }
-        public DateOnly EndDate        { get; set; }
+        public DateTime StartDate      { get; set; }
+        public DateTime EndDate        { get; set; }
 
         /// <summary>
         /// Computed by the database as TotalLessons / 4. Read-only.

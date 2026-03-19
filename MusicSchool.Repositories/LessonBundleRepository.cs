@@ -24,14 +24,14 @@ namespace MusicSchool.Data.Implementations
         /// <summary>
         /// Returns the bundle with all four quarters as flat detail rows.
         /// </summary>
-        public async Task<IEnumerable<LessonBundleDetail>> GetBundleAsync(int bundleId)
+        public async Task<IEnumerable<LessonBundleWithQuarterDetail>> GetBundleAsync(int bundleId)
         {
             return await _aggregateService.GetBundleByIdAsync(bundleId);
         }
 
-        public async Task<IEnumerable<LessonBundle>> GetByStudentAsync(int studentId)
+        public async Task<IEnumerable<LessonBundleDetail>> GetByStudentAsync(int studentId)
         {
-            return await _lessonBundleService.GetByStudentAsync(studentId);
+            return await _aggregateService.GetBundleByStudentIdAsync(studentId);
         }
 
         /// <summary>
@@ -48,8 +48,8 @@ namespace MusicSchool.Data.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "Failed to save LessonBundle for StudentID {StudentID}, AcademicYear {AcademicYear}",
-                    bundle.StudentID, bundle.AcademicYear);
+                    "Failed to save LessonBundle for StudentID {StudentID}",
+                    bundle.StudentID);
                 return null;
             }
         }

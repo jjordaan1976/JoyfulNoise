@@ -1,0 +1,218 @@
+@page "/account-holders"
+@using MusicSchool.Data.Models
+@inject TeacherService TeacherSvc
+@inject AccountHolderService AccountHolderSvc
+@inject StudentService StudentSvc
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Account Holders — Music School</PageTitle>
+
+<div class="page-header d-flex justify-space-between align-center">
+    <div>
+        <MudText Typo="Typo.h5">Account Holders</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage account holders and their enrolled students</MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenAddDialog" Disabled="_teachers.Count == 0">Add Account Holder</MudButton>
+</div>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect @bind-Value="_selectedTeacherId" Label="Filter by Teacher"
+                       @bind-Value:after="OnTeacherChanged" Clearable="true">
+                @foreach (var t in _teachers)
+                {
+                    <MudSelectItem Value="t.TeacherID">@t.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField @bind-Value="_searchString" Label="Search" Immediate="true"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+
+<MudPaper Elevation="1">
+    <MudTable Items="FilteredAccountHolders" Hover="true" Dense="false" Loading="_loading"
+              MultiSelection="false" @bind-SelectedItem="_selected">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Phone</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudButton Variant="Variant.Text" Color="Color.Primary"
+                           OnClick="@(() => Nav.NavigateTo($"/account-holders/{context.AccountHolderID}"))">
+                    @context.FullName
+                </MudButton>
+            </MudTd>
+            <MudTd>@context.Email</MudTd>
+            <MudTd>@(context.Phone ?? "—")</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                               OnClick="@(() => OpenEditDialog(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" Color="Color.Secondary"
+                               OnClick="@(() => Nav.NavigateTo($"/account-holders/{context.AccountHolderID}"))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>No account holders found. Select a teacher to load account holders.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<!-- Add Dialog -->
+<MudDialog @ref="_addDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Add Account Holder</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_addForm">
+            <MudSelect @bind-Value="_newAH.TeacherID" Label="Teacher" Required="true"
+                       RequiredError="Teacher is required" Class="mb-3">
+                @foreach (var t in _teachers)
+                {
+                    <MudSelectItem Value="t.TeacherID">@t.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_newAH.FirstName" Label="First Name" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="_newAH.LastName" Label="Last Name" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="_newAH.Email" Label="Email" Required="true"
+                          InputType="InputType.Email" Class="mb-3" />
+            <MudTextField @bind-Value="_newAH.Phone" Label="Phone" Class="mb-3" />
+            <MudTextField @bind-Value="_newAH.BillingAddress" Label="Billing Address" Lines="3" Class="mb-3" />
+            <MudSwitch @bind-Value="_newAH.IsActive" Label="Active" Color="Color.Primary" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _addDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveNew">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Edit Dialog -->
+<MudDialog @ref="_editDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Edit Account Holder</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_editForm">
+            <MudSelect @bind-Value="_editAH.TeacherID" Label="Teacher" Required="true" Class="mb-3">
+                @foreach (var t in _teachers)
+                {
+                    <MudSelectItem Value="t.TeacherID">@t.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_editAH.FirstName" Label="First Name" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="_editAH.LastName" Label="Last Name" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="_editAH.Email" Label="Email" Required="true"
+                          InputType="InputType.Email" Class="mb-3" />
+            <MudTextField @bind-Value="_editAH.Phone" Label="Phone" Class="mb-3" />
+            <MudTextField @bind-Value="_editAH.BillingAddress" Label="Billing Address" Lines="3" Class="mb-3" />
+            <MudSwitch @bind-Value="_editAH.IsActive" Label="Active" Color="Color.Primary" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _editDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveEdit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading;
+    private List<Teacher> _teachers = [];
+    private List<AccountHolder> _accountHolders = [];
+    private AccountHolder? _selected;
+    private int _selectedTeacherId;
+    private string _searchString = string.Empty;
+
+    private MudDialog? _addDialog, _editDialog;
+    private MudForm? _addForm, _editForm;
+    private AccountHolder _newAH = new();
+    private AccountHolder _editAH = new();
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private IEnumerable<AccountHolder> FilteredAccountHolders =>
+        _accountHolders.Where(a =>
+            string.IsNullOrWhiteSpace(_searchString) ||
+            a.FullName.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+            a.Email.Contains(_searchString, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _teachers = await TeacherSvc.GetAllActiveAsync();
+    }
+
+    private async Task OnTeacherChanged()
+    {
+        if (_selectedTeacherId > 0)
+        {
+            _loading = true;
+            _accountHolders = await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId);
+            _loading = false;
+        }
+        else
+        {
+            _accountHolders = [];
+        }
+    }
+
+    private async Task OpenAddDialog()
+    {
+        _newAH = new AccountHolder { IsActive = true, TeacherID = _selectedTeacherId };
+        await _addDialog!.ShowAsync();
+    }
+
+    private async Task OpenEditDialog(AccountHolder ah)
+    {
+        _editAH = new AccountHolder
+        {
+            AccountHolderID = ah.AccountHolderID, TeacherID = ah.TeacherID,
+            FirstName = ah.FirstName, LastName = ah.LastName,
+            Email = ah.Email, Phone = ah.Phone,
+            BillingAddress = ah.BillingAddress, IsActive = ah.IsActive,
+            CreatedAt = ah.CreatedAt
+        };
+        await _editDialog!.ShowAsync();
+    }
+
+    private async Task SaveNew()
+    {
+        await _addForm!.Validate();
+        if (!_addForm.IsValid) return;
+        var result = await AccountHolderSvc.AddAccountHolderAsync(_newAH);
+        if (result.HasValue)
+        {
+            Snackbar.Add("Account holder added.", Severity.Success);
+            await _addDialog!.CloseAsync(DialogResult.Ok(true));
+            await OnTeacherChanged();
+        }
+        else Snackbar.Add("Failed to add account holder.", Severity.Error);
+    }
+
+    private async Task SaveEdit()
+    {
+        await _editForm!.Validate();
+        if (!_editForm.IsValid) return;
+        var result = await AccountHolderSvc.UpdateAccountHolderAsync(_editAH);
+        if (result)
+        {
+            Snackbar.Add("Account holder updated.", Severity.Success);
+            await _editDialog!.CloseAsync(DialogResult.Ok(true));
+            await OnTeacherChanged();
+        }
+        else Snackbar.Add("Failed to update account holder.", Severity.Error);
+    }
+}

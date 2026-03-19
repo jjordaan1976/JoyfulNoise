@@ -53,7 +53,7 @@ namespace MusicSchool.Data.Models
         public int       SlotID             { get; set; }
         public int       BundleID           { get; set; }
         public int       QuarterID          { get; set; }
-        public DateOnly  ScheduledDate      { get; set; }
+        public DateTime  ScheduledDate      { get; set; }
         public TimeOnly  ScheduledTime      { get; set; }
 
         /// <summary>

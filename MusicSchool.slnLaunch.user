@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "MusicSchool.Api\\MusicSchool.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "MusicSchool.Web\\MusicSchool.Web.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

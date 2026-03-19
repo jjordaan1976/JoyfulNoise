@@ -5,7 +5,7 @@
     public int SlotID { get; set; }
     public int BundleID { get; set; }
     public int QuarterID { get; set; }
-    public DateOnly ScheduledDate { get; set; }
+    public DateTime ScheduledDate { get; set; }
     public TimeOnly ScheduledTime { get; set; }
     public string Status { get; set; } = string.Empty;
     public bool CreditForfeited { get; set; }
@@ -18,6 +18,8 @@
     public int StudentID { get; set; }
     public string StudentFirstName { get; set; } = string.Empty;
     public string StudentLastName { get; set; } = string.Empty;
+
+    public string StudentFullName { get { return $"{StudentFirstName} {StudentLastName}"; } }
 
     // Teacher fields
     public int TeacherID { get; set; }

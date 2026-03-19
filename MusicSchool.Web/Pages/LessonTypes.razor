@@ -1,0 +1,160 @@
+@page "/lesson-types"
+@using MusicSchool.Data.Models
+@inject LessonTypeService LessonTypeSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Lesson Types — Music School</PageTitle>
+
+<div class="page-header d-flex justify-space-between align-center">
+    <div>
+        <MudText Typo="Typo.h5">Lesson Types</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Configure lesson durations and base prices</MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenAddDialog">Add Lesson Type</MudButton>
+</div>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+
+<MudPaper Elevation="1">
+    <MudTable Items="_lessonTypes" Hover="true" Dense="false" Loading="_loading">
+        <HeaderContent>
+            <MudTh>Duration (minutes)</MudTh>
+            <MudTh>Base Price / Lesson</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Style="font-weight:600;">@context.DurationMinutes min</MudText>
+            </MudTd>
+            <MudTd>R @context.BasePricePerLesson.ToString("N2")</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                               OnClick="@(() => OpenEditDialog(context))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>No lesson types found.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<!-- Add Dialog -->
+<MudDialog @ref="_addDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Add Lesson Type</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_addForm">
+            <MudSelect @bind-Value="_newType.DurationMinutes" Label="Duration (minutes)" Required="true"
+                       RequiredError="Duration is required" Class="mb-3">
+                <MudSelectItem Value="30">30 minutes</MudSelectItem>
+                <MudSelectItem Value="45">45 minutes</MudSelectItem>
+                <MudSelectItem Value="60">60 minutes</MudSelectItem>
+            </MudSelect>
+            <MudNumericField @bind-Value="_newType.BasePricePerLesson" Label="Base Price per Lesson"
+                             Required="true" Min="0m" Format="N2" Adornment="Adornment.Start"
+                             AdornmentText="R" Class="mb-3" />
+            <MudSwitch @bind-Value="_newType.IsActive" Label="Active" Color="Color.Primary" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _addDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveNew">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Edit Dialog -->
+<MudDialog @ref="_editDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Edit Lesson Type</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_editForm">
+            <MudSelect @bind-Value="_editType.DurationMinutes" Label="Duration (minutes)" Required="true"
+                       RequiredError="Duration is required" Class="mb-3">
+                <MudSelectItem Value="30">30 minutes</MudSelectItem>
+                <MudSelectItem Value="45">45 minutes</MudSelectItem>
+                <MudSelectItem Value="60">60 minutes</MudSelectItem>
+            </MudSelect>
+            <MudNumericField @bind-Value="_editType.BasePricePerLesson" Label="Base Price per Lesson"
+                             Required="true" Min="0m" Format="N2" Adornment="Adornment.Start"
+                             AdornmentText="R" Class="mb-3" />
+            <MudSwitch @bind-Value="_editType.IsActive" Label="Active" Color="Color.Primary" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _editDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveEdit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading = true;
+    private List<LessonType> _lessonTypes = [];
+    private MudDialog? _addDialog, _editDialog;
+    private MudForm? _addForm, _editForm;
+    private LessonType _newType = new();
+    private LessonType _editType = new();
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
+        _loading = false;
+    }
+
+    private async Task OpenAddDialog()
+    {
+        _newType = new LessonType { IsActive = true, DurationMinutes = 30 };
+        await _addDialog!.ShowAsync();
+    }
+
+    private async Task OpenEditDialog(LessonType lt)
+    {
+        _editType = new LessonType
+        {
+            LessonTypeID = lt.LessonTypeID,
+            DurationMinutes = lt.DurationMinutes,
+            BasePricePerLesson = lt.BasePricePerLesson,
+            IsActive = lt.IsActive
+        };
+        await _editDialog!.ShowAsync();
+    }
+
+    private async Task SaveNew()
+    {
+        await _addForm!.Validate();
+        if (!_addForm.IsValid) return;
+        var result = await LessonTypeSvc.AddLessonTypeAsync(_newType);
+        if (result.HasValue)
+        {
+            Snackbar.Add("Lesson type added.", Severity.Success);
+            await _addDialog!.CloseAsync(DialogResult.Ok(true));
+            await Load();
+        }
+        else Snackbar.Add("Failed to add lesson type.", Severity.Error);
+    }
+
+    private async Task SaveEdit()
+    {
+        await _editForm!.Validate();
+        if (!_editForm.IsValid) return;
+        var result = await LessonTypeSvc.UpdateLessonTypeAsync(_editType);
+        if (result)
+        {
+            Snackbar.Add("Lesson type updated.", Severity.Success);
+            await _editDialog!.CloseAsync(DialogResult.Ok(true));
+            await Load();
+        }
+        else Snackbar.Add("Failed to update lesson type.", Severity.Error);
+    }
+}

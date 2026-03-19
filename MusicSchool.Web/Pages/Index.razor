@@ -1,0 +1,132 @@
+@page "/"
+@using MusicSchool.Data.Models
+@inject TeacherService TeacherSvc
+@inject AccountHolderService AccountHolderSvc
+@inject LessonTypeService LessonTypeSvc
+
+<PageTitle>Dashboard — Music School</PageTitle>
+
+<div class="page-header">
+    <MudText Typo="Typo.h5">Dashboard</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">Welcome to the Music School Management Portal</MudText>
+</div>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+}
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 stats-card" Elevation="1">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Primary" Size="Size.Large" />
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_teacherCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Active Teachers</MudText>
+                </div>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 stats-card" Elevation="1">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.People" Color="Color.Primary" Size="Size.Large" />
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_accountHolderCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Account Holders</MudText>
+                </div>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 stats-card" Elevation="1">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Primary" Size="Size.Large" />
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_lessonTypeCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Lesson Types</MudText>
+                </div>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 stats-card" Elevation="1">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Today" Color="Color.Primary" Size="Size.Large" />
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;">@DateTime.Today.ToString("dd MMM")</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Today</MudText>
+                </div>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-3">Quick Navigation</MudText>
+            <MudStack Spacing="2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.People"
+                           Href="/account-holders" FullWidth="true">Manage Account Holders</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Inventory"
+                           Href="/lesson-bundles" FullWidth="true">View Lesson Bundles</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CalendarMonth"
+                           Href="/schedule" FullWidth="true">Today's Schedule</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Receipt"
+                           Href="/invoices" FullWidth="true">Manage Invoices</MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-3">Active Lesson Types</MudText>
+            @if (_lessonTypes.Any())
+            {
+                <MudTable Items="_lessonTypes" Dense="true" Hover="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Duration</MudTh>
+                        <MudTh>Base Price / Lesson</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.DurationMinutes minutes</MudTd>
+                        <MudTd>R @context.BasePricePerLesson.ToString("N2")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+            else if (!_loading)
+            {
+                <MudText Color="Color.Secondary">No lesson types configured.</MudText>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private bool _loading = true;
+    private int _teacherCount;
+    private int _accountHolderCount;
+    private int _lessonTypeCount;
+    private List<LessonType> _lessonTypes = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var teachers = await TeacherSvc.GetAllActiveAsync();
+        _teacherCount = teachers.Count;
+
+        _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
+        _lessonTypeCount = _lessonTypes.Count;
+
+        // Account holder count: sum across all teachers
+        int ahCount = 0;
+        foreach (var t in teachers)
+        {
+            var ahs = await AccountHolderSvc.GetByTeacherAsync(t.TeacherID);
+            ahCount += ahs.Count(a => a.IsActive);
+        }
+        _accountHolderCount = ahCount;
+
+        _loading = false;
+    }
+}

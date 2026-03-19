@@ -1,0 +1,124 @@
+@page "/students"
+@using MusicSchool.Data.Models
+@inject TeacherService TeacherSvc
+@inject AccountHolderService AccountHolderSvc
+@inject StudentService StudentSvc
+@inject NavigationManager Nav
+
+<PageTitle>Students — Music School</PageTitle>
+
+<div class="page-header">
+    <MudText Typo="Typo.h5">Students</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">Browse all enrolled students</MudText>
+</div>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect @bind-Value="_selectedTeacherId" Label="Teacher"
+                       @bind-Value:after="OnTeacherChanged" Clearable="true">
+                @foreach (var t in _teachers)
+                {
+                    <MudSelectItem Value="t.TeacherID">@t.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect @bind-Value="_selectedAccountHolderId" Label="Account Holder"
+                       @bind-Value:after="OnAccountHolderChanged" Disabled="_accountHolders.Count == 0" Clearable="true">
+                @foreach (var ah in _accountHolders)
+                {
+                    <MudSelectItem Value="ah.AccountHolderID">@ah.FullName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField @bind-Value="_searchString" Label="Search" Immediate="true"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+
+<MudPaper Elevation="1">
+
+    <MudTable Items="FilteredStudents" Hover="true" Dense="false" Loading="_loading">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Date of Birth</MudTh>
+            <MudTh>Account Holder</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.FullName</MudTd>
+            <MudTd>@(context.DateOfBirth?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+            <MudTd>
+                @if (context.IsAccountHolder)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Size="Size.Small" />
+                    <MudText Typo="Typo.caption"> Self</MudText>
+                }
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                           OnClick="@(() => Nav.NavigateTo($"/students/{context.StudentID}"))">
+                    View
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>Select a teacher and account holder to view students.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+
+@code {
+    
+    private bool _loading;
+    private List<Teacher> _teachers = [];
+    private List<AccountHolder> _accountHolders = [];
+    private List<Student> _students = [];
+    private int _selectedTeacherId;
+    private int _selectedAccountHolderId;
+    private string _searchString = string.Empty;    
+
+    private IEnumerable<Student> FilteredStudents =>
+        _students.Where(s => string.IsNullOrWhiteSpace(_searchString) ||
+            s.FullName.Contains(_searchString, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _teachers = await TeacherSvc.GetAllActiveAsync();
+    }
+
+    private async Task OnTeacherChanged()
+    {
+        _accountHolders = _selectedTeacherId > 0
+            ? await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId)
+            : [];
+        _students = [];
+        _selectedAccountHolderId = 0;
+    }
+
+    private async Task OnAccountHolderChanged()
+    {
+        if (_selectedAccountHolderId > 0)
+        {
+            _loading = true;
+            _students = await StudentSvc.GetByAccountHolderAsync(_selectedAccountHolderId);
+            _loading = false;
+        }
+        else _students = [];
+    }
+}

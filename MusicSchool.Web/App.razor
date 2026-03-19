@@ -1,0 +1,45 @@
+@using MudBlazor
+@namespace MusicSchool.Web
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<Router AppAssembly="typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Shared.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="typeof(Shared.MainLayout)">
+            <MudText Typo="Typo.h5" Class="pa-4">Sorry, there's nothing at this address.</MudText>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private MudTheme _theme = new MudTheme
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#F3D395",
+            PrimaryContrastText = "#3A3A3A",
+            Secondary = "#78797A",
+            SecondaryContrastText = "#FFFFFF",
+            Background = "#F0F2F5",
+            Surface = "#FFFFFF",
+            AppbarBackground = "#F3D395",
+            AppbarText = "#3A3A3A",
+            DrawerBackground = "#FFFFFF",
+            DrawerText = "#3A3A3A",
+            TextPrimary = "#3A3A3A",
+            TextSecondary = "#78797A",
+            ActionDefault = "#78797A",
+            Divider = "#DFE1E3",
+            TableLines = "#DFE1E3",
+            LinesDefault = "#DFE1E3",
+        }
+    };
+}

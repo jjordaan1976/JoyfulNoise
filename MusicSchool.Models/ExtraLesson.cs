@@ -1,5 +1,3 @@
-using System;
-
 namespace MusicSchool.Data.Models
 {
     /// <summary>
@@ -23,8 +21,8 @@ namespace MusicSchool.Data.Models
         public int      StudentID     { get; set; }
         public int      TeacherID     { get; set; }
         public int      LessonTypeID  { get; set; }
-        public DateOnly ScheduledDate { get; set; }
-        public TimeOnly ScheduledTime { get; set; }
+        public DateTime ScheduledDate { get; set; }
+        public DateTime ScheduledTime { get; set; }
         public decimal  PriceCharged  { get; set; }
 
         /// <summary>

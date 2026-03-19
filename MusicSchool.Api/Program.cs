@@ -16,6 +16,7 @@ namespace MusicSchool.Api
             try
             {
                 var builder = WebApplication.CreateBuilder(args);
+                
 
                 builder.Host.UseSerilog((context, services, configuration) =>
                     configuration
@@ -23,12 +24,24 @@ namespace MusicSchool.Api
                         .ReadFrom.Services(services)
                         .Enrich.FromLogContext());
 
+                var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+                builder.Services.AddCors(options =>
+                {
+                    options.AddPolicy(name: MyAllowSpecificOrigins,
+                        policy =>
+                        {
+                            policy.WithOrigins("https://localhost:64314") // Blazor WASM origin
+                                  .AllowAnyHeader()
+                                  .AllowAnyMethod();
+                        });
+                });
+
                 var startup = new Startup(builder.Configuration);
                 startup.ConfigureServices(builder.Services);
 
                 var app = builder.Build();
                 startup.Configure(app, app.Environment);
-
+                app.UseCors(MyAllowSpecificOrigins);
                 app.Run();
                 return 0;
             }

@@ -1,0 +1,244 @@
+@page "/invoices"
+
+@using MusicSchool.Data.Models
+@using MusicSchool.Web.Shared
+
+@inject TeacherService TeacherSvc
+@inject AccountHolderService AccountHolderSvc
+@inject InvoiceService InvoiceSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Invoices — Music School</PageTitle>
+
+<div class="page-header">
+    <MudText Typo="Typo.h5">Invoices</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">Manage monthly instalments for lesson bundles</MudText>
+</div>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="_selectedTeacherId" Label="Teacher"
+                       @bind-Value:after="OnTeacherChanged" Clearable="true">
+                @foreach (var t in _teachers)
+                {
+                    <MudSelectItem Value="t.TeacherID">@t.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="_selectedAccountHolderId" Label="Account Holder"
+                       @bind-Value:after="LoadInvoices"
+                       Disabled="_accountHolders.Count == 0" Clearable="true">
+                @foreach (var ah in _accountHolders)
+                {
+                    <MudSelectItem Value="ah.AccountHolderID">@ah.FullName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="_statusFilter" Label="Status Filter"
+                       @bind-Value:after="ApplyFilter" Clearable="true">
+                <MudSelectItem Value="@("Pending")">Pending</MudSelectItem>
+                <MudSelectItem Value="@("Paid")">Paid</MudSelectItem>
+                <MudSelectItem Value="@("Overdue")">Overdue</MudSelectItem>
+                <MudSelectItem Value="@("Void")">Void</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+
+@if (_filteredInvoices.Any())
+{
+    <!-- Summary cards -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-3 stats-card" Elevation="1">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Total</MudText>
+                <MudText Typo="Typo.h6">R @_filteredInvoices.Sum(i => i.Amount).ToString("N2")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-3 stats-card" Elevation="1">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Paid</MudText>
+                <MudText Typo="Typo.h6" Style="color:#2E7D32;">
+                    R @_filteredInvoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.Amount).ToString("N2")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-3 stats-card" Elevation="1">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Outstanding</MudText>
+                <MudText Typo="Typo.h6" Style="color:#F57F17;">
+                    R @_filteredInvoices.Where(i => i.Status == InvoiceStatus.Pending || i.Status == InvoiceStatus.Overdue).Sum(i => i.Amount).ToString("N2")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-3 stats-card" Elevation="1">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Overdue</MudText>
+                <MudText Typo="Typo.h6" Style="color:#C62828;">
+                    R @_filteredInvoices.Where(i => i.Status == InvoiceStatus.Overdue).Sum(i => i.Amount).ToString("N2")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+<MudPaper Elevation="1">
+    <MudTable Items="_filteredInvoices" Hover="true" Dense="false" Loading="_loading"
+              GroupBy="_groupByBundle">
+        <HeaderContent>
+            <MudTh>Instalment #</MudTh>
+            <MudTh>Amount</MudTh>
+            <MudTh>Due Date</MudTh>
+            <MudTh>Paid Date</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <GroupHeaderTemplate>
+            <MudTh colspan="6" Style="padding:8px 16px; background:#F0F2F5;">
+                <MudText Typo="Typo.subtitle2">Bundle #@context.Key</MudText>
+            </MudTh>
+        </GroupHeaderTemplate>
+        <RowTemplate>
+            <MudTd>Instalment @context.InstallmentNumber of 12</MudTd>
+            <MudTd>R @context.Amount.ToString("N2")</MudTd>
+            <MudTd>@context.DueDate.ToString("dd MMM yyyy")</MudTd>
+            <MudTd>@(context.PaidDate?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+            <MudTd><StatusChip Status="@context.Status" /></MudTd>
+            <MudTd>
+                @if (context.Status == InvoiceStatus.Pending || context.Status == InvoiceStatus.Overdue)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
+                                   Color="Color.Success" Title="Mark Paid"
+                                   OnClick="@(() => OpenMarkPaidDialog(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Warning" Size="Size.Small"
+                                   Color="Color.Warning" Title="Mark Overdue"
+                                   OnClick="@(() => QuickUpdateStatus(context, InvoiceStatus.Overdue))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small"
+                                   Color="Color.Error" Title="Void"
+                                   OnClick="@(() => QuickUpdateStatus(context, InvoiceStatus.Void))" />
+                }
+                else if (context.Status == InvoiceStatus.Paid)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Undo" Size="Size.Small"
+                                   Color="Color.Default" Title="Revert to Pending"
+                                   OnClick="@(() => QuickUpdateStatus(context, InvoiceStatus.Pending))" />
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>@(_selectedAccountHolderId == 0 ? "Select an account holder to view invoices." : "No invoices found.")</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<!-- Mark Paid Dialog -->
+<MudDialog @ref="_markPaidDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Mark Invoice as Paid</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-3">
+            Instalment #@_invoiceToPay?.InstallmentNumber — R@_invoiceToPay?.Amount.ToString("N2")
+        </MudText>
+        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _markPaidDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmMarkPaid">Mark Paid</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading;
+    private List<Teacher> _teachers = [];
+    private List<AccountHolder> _accountHolders = [];
+    private List<Invoice> _allInvoices = [];
+    private List<Invoice> _filteredInvoices = [];
+    private int _selectedTeacherId, _selectedAccountHolderId;
+    private string? _statusFilter;
+
+    private MudDialog? _markPaidDialog;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    private Invoice? _invoiceToPay;
+    private DateTime? _paidDate;
+
+    private TableGroupDefinition<Invoice> _groupByBundle = new()
+    {
+        GroupName = "Bundle",
+        Indentation = false,
+        Expandable = true,
+        IsInitiallyExpanded = true,
+        Selector = i => i.BundleID
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _teachers = await TeacherSvc.GetAllActiveAsync();
+    }
+
+    private async Task OnTeacherChanged()
+    {
+        _accountHolders = _selectedTeacherId > 0
+            ? await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId) : [];
+        _allInvoices = [];
+        _filteredInvoices = [];
+        _selectedAccountHolderId = 0;
+    }
+
+    private async Task LoadInvoices()
+    {
+        if (_selectedAccountHolderId > 0)
+        {
+            _loading = true;
+            _allInvoices = await InvoiceSvc.GetByAccountHolderAsync(_selectedAccountHolderId);
+            ApplyFilter();
+            _loading = false;
+        }
+        else
+        {
+            _allInvoices = [];
+            _filteredInvoices = [];
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        _filteredInvoices = string.IsNullOrEmpty(_statusFilter)
+            ? [.. _allInvoices]
+            : [.. _allInvoices.Where(i => i.Status == _statusFilter)];
+    }
+
+    private async Task QuickUpdateStatus(Invoice invoice, string status)
+    {
+        var result = await InvoiceSvc.UpdateInvoiceStatusAsync(invoice.InvoiceID, status, null);
+        if (result) { Snackbar.Add("Invoice updated.", Severity.Success); await LoadInvoices(); }
+        else Snackbar.Add("Failed.", Severity.Error);
+    }
+
+    private async Task OpenMarkPaidDialog(Invoice invoice)
+    {
+        _invoiceToPay = invoice;
+        _paidDate = DateTime.Today;
+        await _markPaidDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmMarkPaid()
+    {
+        if (_invoiceToPay is null || _paidDate is null) return;
+        var paidDate = DateOnly.FromDateTime(_paidDate.Value);
+        var result = await InvoiceSvc.UpdateInvoiceStatusAsync(_invoiceToPay.InvoiceID, InvoiceStatus.Paid, paidDate);
+        if (result)
+        {
+            Snackbar.Add("Marked as paid.", Severity.Success);
+            await _markPaidDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadInvoices();
+        }
+        else Snackbar.Add("Failed.", Severity.Error);
+    }
+}

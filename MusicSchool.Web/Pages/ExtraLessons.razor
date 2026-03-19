@@ -1,0 +1,218 @@
+@page "/extra-lessons"
+@using MusicSchool.Data.Models
+@inject TeacherService TeacherSvc
+@inject AccountHolderService AccountHolderSvc
+@inject StudentService StudentSvc
+@inject ExtraLessonService ExtraLessonSvc
+@inject LessonTypeService LessonTypeSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Extra Lessons — Music School</PageTitle>
+
+<div class="page-header d-flex justify-space-between align-center">
+    <div>
+        <MudText Typo="Typo.h5">Extra Lessons</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Ad-hoc lessons purchased outside of a bundle</MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenAddDialog" Disabled="_selectedStudentId == 0">Add Extra Lesson</MudButton>
+</div>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="_selectedTeacherId" Label="Teacher"
+                       @bind-Value:after="OnTeacherChanged" Clearable="true">
+                @foreach (var t in _teachers)
+                {
+                    <MudSelectItem Value="t.TeacherID">@t.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="_selectedAccountHolderId" Label="Account Holder"
+                       @bind-Value:after="OnAccountHolderChanged"
+                       Disabled="_accountHolders.Count == 0" Clearable="true">
+                @foreach (var ah in _accountHolders)
+                {
+                    <MudSelectItem Value="ah.AccountHolderID">@ah.FullName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="_selectedStudentId" Label="Student"
+                       @bind-Value:after="OnStudentChanged"
+                       Disabled="_students.Count == 0" Clearable="true">
+                @foreach (var s in _students)
+                {
+                    <MudSelectItem Value="s.StudentID">@s.FullName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+
+<MudPaper Elevation="1">
+    <MudTable Items="_extraLessons" Hover="true" Dense="false" Loading="_loading">
+        <HeaderContent>
+            <MudTh>Date</MudTh>
+            <MudTh>Time</MudTh>
+            <MudTh>Duration</MudTh>
+            <MudTh>Price Charged</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Notes</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.ScheduledDate.ToString("dd MMM yyyy")</MudTd>
+            <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
+            <MudTd>@(_lessonTypes.FirstOrDefault(lt => lt.LessonTypeID == context.LessonTypeID)?.DurationMinutes ?? 0) min</MudTd>
+            <MudTd>R @context.PriceCharged.ToString("N2")</MudTd>
+            <MudTd><StatusChip Status="@context.Status" /></MudTd>
+            <MudTd>@(context.Notes ?? "—")</MudTd>
+            <MudTd>
+                @if (context.Status == ExtraLessonStatus.Scheduled)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success"
+                                   Title="Complete" OnClick="@(() => UpdateStatus(context, ExtraLessonStatus.Completed))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" Color="Color.Warning"
+                                   Title="Cancel" OnClick="@(() => UpdateStatus(context, ExtraLessonStatus.Cancelled))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Error"
+                                   Title="Forfeit" OnClick="@(() => UpdateStatus(context, ExtraLessonStatus.Forfeited))" />
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>@(_selectedStudentId == 0 ? "Select a student to view extra lessons." : "No extra lessons found.")</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<!-- Add Extra Lesson Dialog -->
+<MudDialog @ref="_addDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Add Extra Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_addForm">
+            <MudSelect @bind-Value="_newExtra.LessonTypeID" Label="Lesson Type" Required="true" Class="mb-3"
+                       @bind-Value:after="SetBasePrice">
+                @foreach (var lt in _lessonTypes)
+                {
+                    <MudSelectItem Value="lt.LessonTypeID">@lt.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+            <MudDatePicker @bind-Date="_extraDate" Label="Date" Required="true" Class="mb-3" />
+            <MudTimePicker @bind-Time="_extraTime" Label="Time" Required="true" AmPm="false" Class="mb-3" />
+            <MudNumericField @bind-Value="_newExtra.PriceCharged" Label="Price Charged"
+                             Required="true" Min="0m" Format="N2"
+                             Adornment="Adornment.Start" AdornmentText="R" Class="mb-3"
+                             HelperText="Base price auto-filled; teacher may override" />
+            <MudTextField @bind-Value="_newExtra.Notes" Label="Notes" Lines="2" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _addDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveExtra">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading;
+    private List<Teacher> _teachers = [];
+    private List<AccountHolder> _accountHolders = [];
+    private List<Student> _students = [];
+    private List<ExtraLesson> _extraLessons = [];
+    private List<LessonType> _lessonTypes = [];
+    private int _selectedTeacherId, _selectedAccountHolderId, _selectedStudentId;
+
+    private MudDialog? _addDialog;
+    private MudForm? _addForm;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private ExtraLesson _newExtra = new();
+    private DateTime? _extraDate;
+    private TimeSpan? _extraTime;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _teachers = await TeacherSvc.GetAllActiveAsync();
+        _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
+    }
+
+    private async Task OnTeacherChanged()
+    {
+        _accountHolders = _selectedTeacherId > 0
+            ? await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId) : [];
+        _students = [];
+        _extraLessons = [];
+        _selectedAccountHolderId = 0;
+        _selectedStudentId = 0;
+    }
+
+    private async Task OnAccountHolderChanged()
+    {
+        _students = _selectedAccountHolderId > 0
+            ? await StudentSvc.GetByAccountHolderAsync(_selectedAccountHolderId) : [];
+        _extraLessons = [];
+        _selectedStudentId = 0;
+    }
+
+    private async Task OnStudentChanged()
+    {
+        if (_selectedStudentId > 0)
+        {
+            _loading = true;
+            _extraLessons = await ExtraLessonSvc.GetByStudentAsync(_selectedStudentId);
+            _loading = false;
+        }
+        else _extraLessons = [];
+    }
+
+    private async Task UpdateStatus(ExtraLesson extra, string status)
+    {
+        var result = await ExtraLessonSvc.UpdateExtraLessonStatusAsync(extra.ExtraLessonID, status);
+        if (result) { Snackbar.Add("Updated.", Severity.Success); await OnStudentChanged(); }
+        else Snackbar.Add("Failed.", Severity.Error);
+    }
+
+    private async Task OpenAddDialog()
+    {
+        _newExtra = new ExtraLesson
+        {
+            StudentID = _selectedStudentId,
+            TeacherID = _selectedTeacherId,
+            Status = ExtraLessonStatus.Scheduled
+        };
+        _extraDate = DateTime.Today;
+        _extraTime = TimeSpan.FromHours(9);
+        await _addDialog!.ShowAsync();
+    }
+
+    private void SetBasePrice()
+    {
+        var lt = _lessonTypes.FirstOrDefault(l => l.LessonTypeID == _newExtra.LessonTypeID);
+        if (lt is not null) _newExtra.PriceCharged = lt.BasePricePerLesson;
+    }
+
+    private async Task SaveExtra()
+    {
+        await _addForm!.Validate();
+        if (!_addForm.IsValid) return;
+        if (_extraDate is null || _extraTime is null) { Snackbar.Add("Date and time required.", Severity.Warning); return; }
+        _newExtra.ScheduledDate = _extraDate.Value.Date;
+        _newExtra.ScheduledTime = _extraDate.Value.Date.AddHours(_extraTime.Value.Hours);
+
+        var result = await ExtraLessonSvc.AddExtraLessonAsync(_newExtra);
+        if (result.HasValue)
+        {
+            Snackbar.Add("Extra lesson added.", Severity.Success);
+            await _addDialog!.CloseAsync(DialogResult.Ok(true));
+            await OnStudentChanged();
+        }
+        else Snackbar.Add("Failed to add extra lesson.", Severity.Error);
+    }
+}

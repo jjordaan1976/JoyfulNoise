@@ -16,5 +16,7 @@ namespace MusicSchool.Data.Models
         public string?  BillingAddress  { get; set; }
         public bool     IsActive        { get; set; } = true;
         public DateTime CreatedAt       { get; set; }
+
+        public string FullName { get { return $"{FirstName} {LastName}"; } }
     }
 }

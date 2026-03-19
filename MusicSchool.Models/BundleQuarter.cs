@@ -19,7 +19,7 @@ namespace MusicSchool.Data.Models
 
         public int      LessonsAllocated { get; set; }
         public int      LessonsUsed      { get; set; } = 0;
-        public DateOnly QuarterStartDate { get; set; }
-        public DateOnly QuarterEndDate   { get; set; }
+        public DateTime QuarterStartDate { get; set; }
+        public DateTime QuarterEndDate   { get; set; }
     }
 }

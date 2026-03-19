@@ -5,8 +5,8 @@ namespace MusicSchool.Data.Interfaces
 {
     public interface ILessonBundleRepository
     {
-        Task<IEnumerable<LessonBundleDetail>> GetBundleAsync(int bundleId);
-        Task<IEnumerable<LessonBundle>> GetByStudentAsync(int studentId);
+        Task<IEnumerable<LessonBundleWithQuarterDetail>> GetBundleAsync(int bundleId);
+        Task<IEnumerable<LessonBundleDetail>> GetByStudentAsync(int studentId);
         Task<int?> AddBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters);
         Task<bool> UpdateBundleAsync(LessonBundle bundle);
     }

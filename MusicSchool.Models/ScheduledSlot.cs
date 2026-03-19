@@ -1,4 +1,5 @@
 using System;
+using System.Security.Cryptography;
 
 namespace MusicSchool.Data.Models
 {
@@ -18,15 +19,31 @@ namespace MusicSchool.Data.Models
         /// ISO 8601 day of week: 1 = Monday … 7 = Sunday.
         /// </summary>
         public byte      DayOfWeek     { get; set; }
+        public string DayName { get { return GetDayName(); } }
 
-        public TimeOnly  SlotTime      { get; set; }
-        public DateOnly  EffectiveFrom { get; set; }
+        public DateTime SlotTime      { get; set; }
+        public DateTime EffectiveFrom { get; set; }
 
         /// <summary>
         /// Null indicates the slot is still active.
         /// </summary>
-        public DateOnly? EffectiveTo   { get; set; }
+        public DateTime? EffectiveTo   { get; set; }
 
         public bool      IsActive      { get; set; } = true;
+
+        public string GetDayName() 
+        {
+            return DayOfWeek switch
+            {
+                1 => "Monday",
+                2 => "Tuesday",
+                3 => "Wednesday",
+                4 => "Thursday",
+                5 => "Friday",
+                6 => "Saturday",
+                7 => "Sunday",
+                _ => throw new ArgumentOutOfRangeException(nameof(DayOfWeek), "Value must be between 1 and 7")
+            };
+        }
     }
 }

@@ -31,8 +31,8 @@ namespace MusicSchool.Data.Models
         public byte      InstallmentNumber { get; set; }
 
         public decimal   Amount            { get; set; }
-        public DateOnly  DueDate           { get; set; }
-        public DateOnly? PaidDate          { get; set; }
+        public DateTime  DueDate           { get; set; }
+        public DateTime? PaidDate          { get; set; }
 
         /// <summary>
         /// See <see cref="InvoiceStatus"/> for valid values.

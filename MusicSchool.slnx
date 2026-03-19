@@ -3,4 +3,5 @@
   <Project Path="MusicSchool.Interfaces/MusicSchool.Interfaces.csproj" Id="c24cd138-4512-451b-8000-81fc32f0792b" />
   <Project Path="MusicSchool.Models/MusicSchool.Models.csproj" />
   <Project Path="MusicSchool.Repositories/MusicSchool.Repositories.csproj" />
+  <Project Path="MusicSchool.Web/MusicSchool.Web.csproj" />
 </Solution>

@@ -21,7 +21,6 @@ namespace MusicSchool.Data.Implementations
                        StudentID,
                        TeacherID,
                        LessonTypeID,
-                       AcademicYear,
                        TotalLessons,
                        PricePerLesson,
                        StartDate,
@@ -43,7 +42,6 @@ namespace MusicSchool.Data.Implementations
                        StudentID,
                        TeacherID,
                        LessonTypeID,
-                       AcademicYear,
                        TotalLessons,
                        PricePerLesson,
                        StartDate,
@@ -54,7 +52,7 @@ namespace MusicSchool.Data.Implementations
                        CreatedAt
                 FROM LessonBundle
                 WHERE StudentID = @StudentID
-                ORDER BY AcademicYear DESC;";
+ORDER BY StudentID";
 
             return await _connection.QueryAsync<LessonBundle>(sql, new { StudentID = studentId });
         }
@@ -63,10 +61,10 @@ namespace MusicSchool.Data.Implementations
         {
             const string sql = @"
                 INSERT INTO LessonBundle
-                    (StudentID, TeacherID, LessonTypeID, AcademicYear,
+                    (StudentID, TeacherID, LessonTypeID, 
                      TotalLessons, PricePerLesson, StartDate, EndDate, IsActive, Notes)
                 VALUES
-                    (@StudentID, @TeacherID, @LessonTypeID, @AcademicYear,
+                    (@StudentID, @TeacherID, @LessonTypeID, 
                      @TotalLessons, @PricePerLesson, @StartDate, @EndDate, @IsActive, @Notes);
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";

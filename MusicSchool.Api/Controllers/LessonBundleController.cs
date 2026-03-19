@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using MusicSchool.Api;
-using MusicSchool.Api.TransferModels;
 using MusicSchool.Data.Interfaces;
 using MusicSchool.Data.Models;
 using MusicSchool.Models;
+using MusicSchool.Models.TransferModels;
 
 namespace MusicSchool.Controllers
 {
@@ -20,9 +20,9 @@ namespace MusicSchool.Controllers
         }
 
         [HttpGet("GetBundle")]
-        public async Task<ResponseBase<IEnumerable<LessonBundleDetail>>> GetBundle([FromQuery] int bundleId)
+        public async Task<ResponseBase<IEnumerable<LessonBundleWithQuarterDetail>>> GetBundle([FromQuery] int bundleId)
         {
-            ResponseBase<IEnumerable<LessonBundleDetail>> response = new ResponseBase<IEnumerable<LessonBundleDetail>>() { ReturnCode = -1 };
+            ResponseBase<IEnumerable<LessonBundleWithQuarterDetail>> response = new ResponseBase<IEnumerable<LessonBundleWithQuarterDetail>>() { ReturnCode = -1 };
             var result = await _lessonBundleRepository.GetBundleAsync(bundleId);
             response.Data = result;
             response.ReturnCode = 0;
@@ -31,9 +31,9 @@ namespace MusicSchool.Controllers
         }
 
         [HttpGet("GetByStudent")]
-        public async Task<ResponseBase<IEnumerable<LessonBundle>>> GetByStudent([FromQuery] int studentId)
+        public async Task<ResponseBase<IEnumerable<LessonBundleDetail>>> GetByStudent([FromQuery] int studentId)
         {
-            ResponseBase<IEnumerable<LessonBundle>> response = new ResponseBase<IEnumerable<LessonBundle>>() { ReturnCode = -1 };
+            ResponseBase<IEnumerable<LessonBundleDetail>> response = new ResponseBase<IEnumerable<LessonBundleDetail>>() { ReturnCode = -1 };
             var result = await _lessonBundleRepository.GetByStudentAsync(studentId);
             response.Data = result;
             response.ReturnCode = 0;

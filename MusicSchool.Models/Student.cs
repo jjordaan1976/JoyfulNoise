@@ -12,9 +12,10 @@ namespace MusicSchool.Data.Models
         public int       AccountHolderID { get; set; }
         public string    FirstName       { get; set; } = string.Empty;
         public string    LastName        { get; set; } = string.Empty;
-        public DateOnly? DateOfBirth     { get; set; }
+        public DateTime? DateOfBirth     { get; set; }
         public bool      IsAccountHolder { get; set; } = false;
         public bool      IsActive        { get; set; } = true;
         public DateTime  CreatedAt       { get; set; }
+        public string FullName { get { return $"{FirstName} {LastName}"; } }
     }
 }

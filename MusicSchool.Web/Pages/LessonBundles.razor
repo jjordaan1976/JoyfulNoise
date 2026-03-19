@@ -1,0 +1,128 @@
+@page "/lesson-bundles"
+@using MusicSchool.Data.Models
+@inject TeacherService TeacherSvc
+@inject AccountHolderService AccountHolderSvc
+@inject StudentService StudentSvc
+@inject LessonBundleService BundleSvc
+@inject NavigationManager Nav
+
+<PageTitle>Lesson Bundles — Music School</PageTitle>
+
+<div class="page-header">
+    <MudText Typo="Typo.h5">Lesson Bundles</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">View and manage annual lesson bundles</MudText>
+</div>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="_selectedTeacherId" Label="Teacher"
+                       @bind-Value:after="OnTeacherChanged" Clearable="true">
+                @foreach (var t in _teachers)
+                {
+                    <MudSelectItem Value="t.TeacherID">@t.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="_selectedAccountHolderId" Label="Account Holder"
+                       @bind-Value:after="OnAccountHolderChanged"
+                       Disabled="_accountHolders.Count == 0" Clearable="true">
+                @foreach (var ah in _accountHolders)
+                {
+                    <MudSelectItem Value="ah.AccountHolderID">@ah.FullName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect @bind-Value="_selectedStudentId" Label="Student"
+                       @bind-Value:after="OnStudentChanged"
+                       Disabled="_students.Count == 0" Clearable="true">
+                @foreach (var s in _students)
+                {
+                    <MudSelectItem Value="s.StudentID">@s.FullName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+
+@if (_bundles.Any())
+{
+    @foreach (var b in _bundles)
+    {
+        <MudPaper Class="pa-4 mb-3" Elevation="1">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                <div>
+                    <MudText Style="font-weight:600;">
+                        @b.DurationMinutes min lessons
+                    </MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @b.StudentFirstName @b.StudentLastName ·
+                        @b.TotalLessons lessons · R@b.PricePerLesson.ToString("N2")/lesson ·
+                        Total: R@((b.TotalLessons * b.PricePerLesson).ToString("N2"))
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @b.StartDate.ToString("dd MMM yyyy") – @b.EndDate.ToString("dd MMM yyyy")
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                           OnClick="@(() => Nav.NavigateTo($"/lesson-bundles/{b.BundleID}"))">
+                    View Detail
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    }
+}
+else if (!_loading)
+{
+    <MudText Color="Color.Secondary">Select a student to view their bundles.</MudText>
+}
+
+@code {
+    private bool _loading;
+    private List<Teacher> _teachers = [];
+    private List<AccountHolder> _accountHolders = [];
+    private List<Student> _students = [];
+    private List<LessonBundleDetail> _bundles = [];
+    private int _selectedTeacherId, _selectedAccountHolderId, _selectedStudentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _teachers = await TeacherSvc.GetAllActiveAsync();
+    }
+
+    private async Task OnTeacherChanged()
+    {
+        _accountHolders = _selectedTeacherId > 0
+            ? await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId) : [];
+        _students = [];
+        _bundles = [];
+        _selectedAccountHolderId = 0;
+        _selectedStudentId = 0;
+    }
+
+    private async Task OnAccountHolderChanged()
+    {
+        _students = _selectedAccountHolderId > 0
+            ? await StudentSvc.GetByAccountHolderAsync(_selectedAccountHolderId) : [];
+        _bundles = [];
+        _selectedStudentId = 0;
+    }
+
+    private async Task OnStudentChanged()
+    {
+        if (_selectedStudentId > 0)
+        {
+            _loading = true;
+            _bundles = await BundleSvc.GetByStudentAsync(_selectedStudentId);
+            _loading = false;
+        }
+        else _bundles = [];
+    }
+}

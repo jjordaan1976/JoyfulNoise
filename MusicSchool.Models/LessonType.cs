@@ -10,5 +10,7 @@ namespace MusicSchool.Data.Models
         public int     DurationMinutes    { get; set; }   // 30, 45, or 60
         public decimal BasePricePerLesson { get; set; }
         public bool    IsActive           { get; set; } = true;
+
+        public string DisplayName { get { return $"{DurationMinutes} min"; } }
     }
 }

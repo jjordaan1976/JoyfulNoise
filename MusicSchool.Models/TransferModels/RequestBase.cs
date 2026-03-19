@@ -1,4 +1,4 @@
-﻿namespace MusicSchool.Api.TransferModels
+﻿namespace MusicSchool.Models.TransferModels
 {
     public class RequestBase<T>
     {

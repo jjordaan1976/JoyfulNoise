@@ -1,0 +1,454 @@
+@page "/students/{StudentID:int}"
+@using MusicSchool.Data.Models
+@using MusicSchool.Models.TransferModels
+@inject StudentService StudentSvc
+@inject AccountHolderService AccountHolderSvc
+@inject LessonBundleService BundleSvc
+@inject ScheduledSlotService SlotSvc
+@inject LessonTypeService LessonTypeSvc
+@inject TeacherService TeacherSvc
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Student — Music School</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_student is null)
+{
+    <MudText>Student not found.</MudText>
+}
+else
+{
+    <div class="page-header d-flex justify-space-between align-center">
+        <div>
+            <MudBreadcrumbs Items="_breadcrumbs" />
+            <MudText Typo="Typo.h5">@_student.FullName</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @(_student.IsAccountHolder ? "Account Holder & Student" : "Student")
+            </MudText>
+        </div>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Inventory"
+                       OnClick="OpenAddBundleDialog">New Bundle</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.Schedule"
+                       OnClick="OpenAddSlotDialog">Add Slot</MudButton>
+        </MudStack>
+    </div>
+
+    <MudTabs Elevation="1" Rounded="false" ApplyEffectsToContainer="true" PanelClass="pa-4">
+
+        <!-- BUNDLES TAB -->
+        <MudTabPanel Text="Lesson Bundles" Icon="@Icons.Material.Filled.Inventory">
+            @if (_bundles.Count == 0)
+            {
+                <MudText Color="Color.Secondary">No lesson bundles purchased yet.</MudText>
+            }
+            else
+            {
+                @* @foreach (var bundleGroup in _bundles.GroupBy(b => b.BundleID))
+                {
+                    var first = bundleGroup.First();
+                    var quarters = bundleGroup.ToList();
+                    <MudExpansionPanel Class="mb-3">
+                        <TitleContent>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Inventory" Color="Color.Primary" />
+                                    <div>                                        
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @first.TotalLessons lessons · R@first.PricePerLesson.ToString("N2")/lesson
+                                            · @first.StartDate.ToString("dd MMM yyyy") – @first.EndDate.ToString("dd MMM yyyy")
+                                        </MudText>
+                                    </div>
+                                </MudStack>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                           OnClick="@(() => Nav.NavigateTo($"/lesson-bundles/{first.BundleID}"))">
+                                    Full Detail
+                                </MudButton>
+                            </MudStack>
+                        </TitleContent>
+                        <ChildContent>
+                            <MudGrid>
+                                @foreach (var q in quarters)
+                                {
+                                    var pct = q.LessonsAllocated > 0 ? (double)q.LessonsUsed / q.LessonsAllocated * 100 : 0;
+                                    <MudItem xs="12" sm="6" md="3">
+                                        <MudPaper Class="pa-3 quarter-card" Elevation="0" Style="background:#F0F2F5;">
+                                            <MudText Typo="Typo.subtitle2">Quarter @q.QuarterNumber</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("dd MMM yyyy")
+                                            </MudText>
+                                            <MudProgressLinear Color="Color.Primary" Value="pct" Class="my-2" />
+                                            <MudText Typo="Typo.body2">@q.LessonsUsed / @q.LessonsAllocated used</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@q.LessonsRemaining remaining</MudText>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                } *@
+            }
+        </MudTabPanel>
+
+        <!-- SCHEDULED SLOTS TAB -->
+        <MudTabPanel Text="Scheduled Slots" Icon="@Icons.Material.Filled.Schedule">
+            @if (_slots.Count == 0)
+            {
+                <MudText Color="Color.Secondary">No scheduled slots.</MudText>
+            }
+            else
+            {
+                <MudTable Items="_slots" Hover="true" Dense="false" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Day</MudTh>
+                        <MudTh>Time</MudTh>
+                        <MudTh>Duration</MudTh>
+                        <MudTh>Effective From</MudTh>
+                        <MudTh>Effective To</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.DayName</MudTd>
+                        <MudTd>@context.SlotTime.ToString("HH:mm")</MudTd>
+                        <MudTd>@(_lessonTypes.FirstOrDefault(lt => lt.LessonTypeID == context.LessonTypeID)?.DurationMinutes ?? 0) min</MudTd>
+                        <MudTd>@context.EffectiveFrom.ToString("dd MMM yyyy")</MudTd>
+                        <MudTd>@(context.EffectiveTo?.ToString("dd MMM yyyy") ?? "Active")</MudTd>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                                @(context.IsActive ? "Active" : "Closed")
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>
+                            @if (context.IsActive)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.EventBusy" Size="Size.Small"
+                                               Color="Color.Warning" Title="Close Slot"
+                                               OnClick="@(() => OpenCloseSlotDialog(context))" />
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudTabPanel>
+
+    </MudTabs>
+}
+
+<!-- Add Bundle Dialog -->
+<MudDialog @ref="_addBundleDialog" Options="_wideDialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">New Lesson Bundle</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_bundleForm">
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="_newBundle.LessonTypeID" Label="Lesson Type" Required="true"
+                               RequiredError="Required" Class="mb-3">
+                        @foreach (var lt in _lessonTypes)
+                        {
+                            <MudSelectItem Value="lt.LessonTypeID">@lt.DisplayName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>                
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_newBundle.TotalLessons" Label="Total Lessons"
+                                     Required="true" Min="4" Step="4" Class="mb-3"
+                                     @bind-Value:after="RecalcBundle"
+                                     HelperText="Must be divisible by 4" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_newBundle.PricePerLesson" Label="Price per Lesson"
+                                     Required="true" Min="0m" Format="N2"
+                                     Adornment="Adornment.Start" AdornmentText="R" Class="mb-3"
+                                     @bind-Value:after="RecalcBundle" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_bundleStartDate" Label="Start Date" Required="true"
+                                   Class="mb-3" @bind-Date:after="RecalcBundle" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_bundleEndDate" Label="End Date" Required="true" Class="mb-3" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_newBundle.Notes" Label="Notes" Lines="2" Class="mb-3" />
+                </MudItem>
+            </MudGrid>
+
+            @if (_newBundle.TotalLessons > 0 && _newBundle.TotalLessons % 4 == 0)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Quarter Summary</MudText>
+                <MudGrid>
+                    @for (int i = 0; i < _quarters.Count; i++)
+                    {
+                        var q = _quarters[i];
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudPaper Class="pa-2" Elevation="0" Style="background:#F0F2F5;border-top:3px solid #F3D395;">
+                                <MudText Typo="Typo.subtitle2">Q@(q.QuarterNumber)</MudText>
+                                <MudText Typo="Typo.caption">@q.LessonsAllocated lessons</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("dd MMM yyyy")
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+                <MudText Typo="Typo.body2" Class="mt-3">
+                    Total: R@((_newBundle.TotalLessons * _newBundle.PricePerLesson).ToString("N2"))
+                    · Monthly: R@((_newBundle.TotalLessons * _newBundle.PricePerLesson / 12).ToString("N2"))
+                </MudText>
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _addBundleDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveBundle">Save Bundle</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Add Slot Dialog -->
+<MudDialog @ref="_addSlotDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Add Scheduled Slot</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_slotForm">
+            <MudSelect @bind-Value="_newSlot.LessonTypeID" Label="Lesson Type" Required="true" Class="mb-3">
+                @foreach (var lt in _lessonTypes)
+                {
+                    <MudSelectItem Value="lt.LessonTypeID">@lt.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect @bind-Value="_newSlot.DayOfWeek" Label="Day of Week" Required="true" Class="mb-3">
+                <MudSelectItem Value="(byte)1">Monday</MudSelectItem>
+                <MudSelectItem Value="(byte)2">Tuesday</MudSelectItem>
+                <MudSelectItem Value="(byte)3">Wednesday</MudSelectItem>
+                <MudSelectItem Value="(byte)4">Thursday</MudSelectItem>
+                <MudSelectItem Value="(byte)5">Friday</MudSelectItem>
+                <MudSelectItem Value="(byte)6">Saturday</MudSelectItem>
+                <MudSelectItem Value="(byte)7">Sunday</MudSelectItem>
+            </MudSelect>
+            <MudTimePicker @bind-Time="_slotTime" Label="Slot Time" Required="true" Class="mb-3" AmPm="false" />
+            <MudDatePicker @bind-Date="_slotEffectiveFrom" Label="Effective From" Required="true" Class="mb-3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _addSlotDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSlot">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Close Slot Dialog -->
+<MudDialog @ref="_closeSlotDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Close Scheduled Slot</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-3">
+            Close the <strong>@_slotToClose?.DayName @_slotToClose?.SlotTime.ToString("HH:mm")</strong> slot?
+        </MudText>
+        <MudDatePicker @bind-Date="_closeSlotDate" Label="Effective To (last date)" Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _closeSlotDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="ConfirmCloseSlot">Close Slot</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int StudentID { get; set; }
+
+    private bool _loading = true;
+    private Student? _student;
+    private AccountHolder? _accountHolder;
+
+    private List<LessonBundleDetail> _bundles = [];
+
+    private List<ScheduledSlot> _slots = [];
+    private List<LessonType> _lessonTypes = [];
+
+    private MudDialog? _addBundleDialog, _addSlotDialog, _closeSlotDialog;
+    private MudForm? _bundleForm, _slotForm;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    private DialogOptions _wideDialogOptions = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+    private LessonBundle _newBundle = new();
+    private List<BundleQuarter> _quarters = [];
+    private DateTime? _bundleStartDate;
+    private DateTime? _bundleEndDate;
+
+    private ScheduledSlot _newSlot = new();
+    private TimeSpan? _slotTime;
+    private DateTime? _slotEffectiveFrom;
+
+    private ScheduledSlot? _slotToClose;
+    private DateTime? _closeSlotDate;
+
+    private List<BreadcrumbItem> _breadcrumbs = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _student = await StudentSvc.GetStudentAsync(StudentID);
+        _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
+        _accountHolder = await AccountHolderSvc.GetAccountHolderAsync(_student.AccountHolderID);
+
+        if (_student is not null)
+        {
+            _breadcrumbs =
+            [
+                new BreadcrumbItem("Account Holders", href: "/account-holders"),
+                new BreadcrumbItem("Account Holder", href: $"/account-holders/{_student.AccountHolderID}"),
+                new BreadcrumbItem(_student.FullName, href: null, disabled: true)
+            ];
+
+            var bundleList = await BundleSvc.GetByStudentAsync(StudentID);
+            foreach (var b in bundleList)
+            {
+                var details = await BundleSvc.GetBundleAsync(b.BundleID);
+                _bundles = bundleList.Where(s=>s.BundleID==b.BundleID).ToList();
+            }
+            _slots = await SlotSvc.GetActiveByStudentAsync(StudentID);
+        }
+
+        _loading = false;
+    }
+
+    private void RecalcBundle()
+    {
+        _quarters = [];
+        if (_newBundle.TotalLessons <= 0 || _newBundle.TotalLessons % 4 != 0 || _bundleStartDate is null)
+            return;
+
+        var startDate = _bundleStartDate.Value;
+        var quarterSize = _newBundle.TotalLessons / 4;
+        var totalDays = _bundleEndDate.HasValue
+            ? _bundleEndDate.Value.DayOfYear - startDate.DayOfYear
+            : 365;
+        var daysPerQ = totalDays / 4;
+
+        for (byte i = 1; i <= 4; i++)
+        {
+            var qStart = startDate.AddDays((i - 1) * daysPerQ);
+            var qEnd = i < 4 ? qStart.AddDays(daysPerQ - 1) : (
+                _bundleEndDate.HasValue ? _bundleEndDate.Value : qStart.AddDays(daysPerQ - 1));
+            _quarters.Add(new BundleQuarter
+            {
+                QuarterNumber = i,
+                LessonsAllocated = quarterSize,
+                QuarterStartDate = qStart,
+                QuarterEndDate = qEnd
+            });
+        }
+    }
+
+    private async Task OpenAddBundleDialog()
+    {
+        _newBundle = new LessonBundle
+        {
+            StudentID = StudentID,
+            TotalLessons = 32,
+            IsActive = true
+        };
+        _bundleStartDate = new DateTime(DateTime.Today.Year, 1, 1);
+        _bundleEndDate = new DateTime(DateTime.Today.Year, 12, 31);
+        _quarters = [];
+        RecalcBundle();
+        await _addBundleDialog!.ShowAsync();
+    }
+
+    private async Task SaveBundle()
+    {
+        await _bundleForm!.Validate();
+        if (!_bundleForm.IsValid) return;
+        if (_newBundle.TotalLessons % 4 != 0)
+        {
+            Snackbar.Add("Total lessons must be divisible by 4.", Severity.Warning);
+            return;
+        }
+        if (_bundleStartDate is null || _bundleEndDate is null)
+        {
+            Snackbar.Add("Start and end dates are required.", Severity.Warning);
+            return;
+        }
+
+        // Get teacherID from active slot or first bundle
+        var existingSlots = await SlotSvc.GetActiveByStudentAsync(StudentID);
+
+        _newBundle.StartDate = _bundleStartDate.Value.Date;
+        _newBundle.EndDate = _bundleEndDate.Value.Date;
+        _newBundle.TeacherID = _accountHolder.TeacherID;
+
+        var req = new AddBundleRequest { Bundle = _newBundle, Quarters = _quarters };
+        var result = await BundleSvc.AddBundleAsync(req);
+        if (result.HasValue)
+        {
+            Snackbar.Add("Bundle created.", Severity.Success);
+            await _addBundleDialog!.CloseAsync(DialogResult.Ok(true));
+            var bundleList = await BundleSvc.GetByStudentAsync(StudentID);
+            _bundles = [];
+            foreach (var b in bundleList)
+            {
+                var details = await BundleSvc.GetBundleAsync(b.BundleID);
+                _bundles = await BundleSvc.GetByStudentAsync(StudentID);
+            }
+        }
+        else Snackbar.Add("Failed to create bundle.", Severity.Error);
+    }
+
+    private async Task OpenAddSlotDialog()
+    {
+        _newSlot = new ScheduledSlot { StudentID = StudentID, IsActive = true, DayOfWeek = 1 };
+        _slotTime = new TimeSpan(9, 0, 0);
+        _slotEffectiveFrom = DateTime.Today;
+
+        var existingSlots = await SlotSvc.GetActiveByStudentAsync(StudentID);
+        _newSlot.TeacherID = existingSlots.FirstOrDefault()?.TeacherID ?? 0;
+        await _addSlotDialog!.ShowAsync();
+    }
+
+    private async Task SaveSlot()
+    {
+        await _slotForm!.Validate();
+        if (!_slotForm.IsValid) return;
+        if (_slotTime is null || _slotEffectiveFrom is null)
+        {
+            Snackbar.Add("Time and effective date are required.", Severity.Warning);
+            return;
+        }
+        _newSlot.SlotTime = _newSlot.EffectiveFrom.Date.AddHours(_slotTime.Value.Hours);
+        _newSlot.EffectiveFrom = _slotEffectiveFrom.Value.Date;
+
+        var result = await SlotSvc.AddSlotAsync(_newSlot);
+        if (result.HasValue)
+        {
+            Snackbar.Add("Slot added.", Severity.Success);
+            await _addSlotDialog!.CloseAsync(DialogResult.Ok(true));
+            _slots = await SlotSvc.GetActiveByStudentAsync(StudentID);
+        }
+        else Snackbar.Add("Failed to add slot.", Severity.Error);
+    }
+
+    private async Task OpenCloseSlotDialog(ScheduledSlot slot)
+    {
+        _slotToClose = slot;
+        _closeSlotDate = DateTime.Today;
+        await _closeSlotDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmCloseSlot()
+    {
+        if (_slotToClose is null || _closeSlotDate is null) return;
+        var effectiveTo = DateOnly.FromDateTime(_closeSlotDate.Value);
+        var result = await SlotSvc.CloseSlotAsync(_slotToClose.SlotID, effectiveTo);
+        if (result)
+        {
+            Snackbar.Add("Slot closed.", Severity.Success);
+            await _closeSlotDialog!.CloseAsync(DialogResult.Ok(true));
+            _slots = await SlotSvc.GetActiveByStudentAsync(StudentID);
+        }
+        else Snackbar.Add("Failed to close slot.", Severity.Error);
+    }
+}

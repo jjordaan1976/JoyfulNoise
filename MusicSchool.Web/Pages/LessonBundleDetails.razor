@@ -206,13 +206,17 @@ else
 
     private bool _loading = true;
     private List<LessonBundleWithQuarterDetail> _bundleDetails = [];
-    private List<LessonDetail> _lessons = [];
+
+    // FIX: Changed from List<LessonDetail> to List<Lesson>.
+    // LessonService.GetByBundleAsync now calls Lesson/GetByBundle which returns Lesson objects,
+    // not LessonDetail. The table renders only the fields available on Lesson.
+    private List<Lesson> _lessons = [];
     private List<Invoice> _invoices = [];
 
     private MudDialog? _cancelDialog, _markPaidDialog;
     private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
 
-    private LessonDetail? _lessonToCancel;
+    private Lesson? _lessonToCancel;
     private string _cancelReason = string.Empty;
 
     private Invoice? _invoiceToPay;
@@ -220,7 +224,8 @@ else
 
     private List<BreadcrumbItem> _breadcrumbs = [];
 
-    private TableGroupDefinition<LessonDetail> _groupByQuarter = new()
+    // FIX: Group by QuarterID, which is available on the Lesson model.
+    private TableGroupDefinition<Lesson> _groupByQuarter = new()
     {
         GroupName = "Quarter",
         Indentation = false,
@@ -242,28 +247,29 @@ else
                 new BreadcrumbItem("Bundles", href: "/lesson-bundles"),
                 new BreadcrumbItem($"{first.StudentFullName}", href: null, disabled: true)
             ];
-            _lessons = await LessonSvc.GetByStudentAsync(first.StudentID);
-            _lessons = _lessons.Where(l => l.BundleID == BundleID).ToList();
+
+            // FIX: Call GetByBundleAsync(BundleID) directly — no student lookup needed,
+            // no client-side filtering needed, and the endpoint actually exists on the API.
+            _lessons = await LessonSvc.GetByBundleAsync(BundleID);
             _invoices = await InvoiceSvc.GetByBundleAsync(BundleID);
         }
 
         _loading = false;
     }
 
-    private async Task UpdateLessonStatus(LessonDetail lesson, string status)
+    private async Task UpdateLessonStatus(Lesson lesson, string status)
     {
         var result = await LessonSvc.UpdateLessonStatusAsync(lesson.LessonID, status);
         if (result)
         {
             Snackbar.Add("Lesson updated.", Severity.Success);
-            _lessons = await LessonSvc.GetByStudentAsync(_bundleDetails.First().StudentID);
-            _lessons = _lessons.Where(l => l.BundleID == BundleID).ToList();
+            _lessons = await LessonSvc.GetByBundleAsync(BundleID);
             _bundleDetails = await BundleSvc.GetBundleAsync(BundleID);
         }
         else Snackbar.Add("Failed to update lesson.", Severity.Error);
     }
 
-    private async Task OpenCancelDialog(LessonDetail lesson)
+    private async Task OpenCancelDialog(Lesson lesson)
     {
         _lessonToCancel = lesson;
         _cancelReason = string.Empty;
@@ -279,8 +285,7 @@ else
         {
             Snackbar.Add("Lesson cancelled.", Severity.Success);
             await _cancelDialog!.CloseAsync(DialogResult.Ok(true));
-            _lessons = await LessonSvc.GetByStudentAsync(_bundleDetails.First().StudentID);
-            _lessons = _lessons.Where(l => l.BundleID == BundleID).ToList();
+            _lessons = await LessonSvc.GetByBundleAsync(BundleID);
             _bundleDetails = await BundleSvc.GetBundleAsync(BundleID);
         }
         else Snackbar.Add("Failed.", Severity.Error);

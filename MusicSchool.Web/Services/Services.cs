@@ -187,15 +187,18 @@ namespace MusicSchool.Services
 
     public class LessonService(HttpClient http)
     {
-        public async Task<List<LessonDetail>> GetByTeacherAndDateAsync(int teacherId, DateOnly date)
+        public async Task<List<LessonDetail>> GetByTeacherAndDateAsync(int teacherId, DateTime date)
         {
             var r = await http.GetFromJsonAsync<ResponseBase<List<LessonDetail>>>($"Lesson/GetByTeacherAndDate?teacherId={teacherId}&scheduledDate={date:yyyy-MM-dd}");
             return r?.Data ?? [];
         }
 
-        public async Task<List<LessonDetail>> GetByStudentAsync(int studentId)
+        // FIX: Replaced the non-existent Lesson/GetByStudent endpoint with Lesson/GetByBundle,
+        // which is what the API actually exposes. LessonBundleDetails.razor calls this directly
+        // with the BundleID it already has, so no client-side filtering is needed.
+        public async Task<List<Lesson>> GetByBundleAsync(int bundleId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<LessonDetail>>>($"Lesson/GetByStudent?studentId={studentId}");
+            var r = await http.GetFromJsonAsync<ResponseBase<List<Lesson>>>($"Lesson/GetByBundle?bundleId={bundleId}");
             return r?.Data ?? [];
         }
 
@@ -222,7 +225,7 @@ namespace MusicSchool.Services
 
     public class ExtraLessonService(HttpClient http)
     {
-        public async Task<List<ExtraLessonDetail>> GetByTeacherAndDateAsync(int teacherId, DateOnly date)
+        public async Task<List<ExtraLessonDetail>> GetByTeacherAndDateAsync(int teacherId, DateTime date)
         {
             var r = await http.GetFromJsonAsync<ResponseBase<List<ExtraLessonDetail>>>($"ExtraLesson/GetByTeacherAndDate?teacherId={teacherId}&scheduledDate={date:yyyy-MM-dd}");
             return r?.Data ?? [];

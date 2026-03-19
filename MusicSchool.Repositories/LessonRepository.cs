@@ -32,7 +32,7 @@ namespace MusicSchool.Data.Implementations
         /// Returns all lessons for a teacher on a given date, with full context.
         /// </summary>
         public async Task<IEnumerable<LessonDetail>> GetByTeacherAndDateAsync(
-            int teacherId, DateOnly scheduledDate)
+            int teacherId, DateTime scheduledDate)
         {
             return await _aggregateService.GetLessonsByTeacherAndDateAsync(teacherId, scheduledDate);
         }

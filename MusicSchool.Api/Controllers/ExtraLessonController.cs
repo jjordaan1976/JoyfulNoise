@@ -30,7 +30,7 @@ namespace MusicSchool.Controllers
         }
 
         [HttpGet("GetByTeacherAndDate")]
-        public async Task<ResponseBase<IEnumerable<ExtraLessonDetail>>> GetByTeacherAndDate([FromQuery] int teacherId, [FromQuery] DateOnly scheduledDate)
+        public async Task<ResponseBase<IEnumerable<ExtraLessonDetail>>> GetByTeacherAndDate([FromQuery] int teacherId, [FromQuery] DateTime scheduledDate)
         {
             ResponseBase<IEnumerable<ExtraLessonDetail>> response = new ResponseBase<IEnumerable<ExtraLessonDetail>>() { ReturnCode = -1 };
             var result = await _extraLessonRepository.GetByTeacherAndDateAsync(teacherId, scheduledDate);

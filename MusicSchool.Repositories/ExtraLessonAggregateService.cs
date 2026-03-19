@@ -65,7 +65,7 @@ namespace MusicSchool.Data.Implementations
         }
 
         public async Task<IEnumerable<ExtraLessonDetail>> GetExtraLessonsByTeacherAndDateAsync(
-            int teacherId, DateOnly scheduledDate)
+            int teacherId, DateTime scheduledDate)
         {
             return await _connection.QueryAsync<ExtraLessonDetail>(
                 SELECT_EXTRA_LESSONS_BY_TEACHER_DATE_QRY,

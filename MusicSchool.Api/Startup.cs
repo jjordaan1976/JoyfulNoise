@@ -1,3 +1,4 @@
+using Dapper;
 using Microsoft.Data.SqlClient;
 using MusicSchool.Data.Implementations;
 using MusicSchool.Data.Interfaces;
@@ -18,6 +19,9 @@ namespace MusicSchool.Api
 
         public void ConfigureServices(IServiceCollection services)
         {
+            // Register Dapper type handler so TIME columns map to TimeOnly
+            SqlMapper.AddTypeHandler(new TimeOnlyTypeHandler());
+
             // Database connection
             services.AddScoped<IDbConnection>(_ =>
                 new SqlConnection(Configuration.GetConnectionString("MusicSchool")));

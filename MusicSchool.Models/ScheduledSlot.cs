@@ -1,5 +1,4 @@
 using System;
-using System.Security.Cryptography;
 
 namespace MusicSchool.Data.Models
 {
@@ -21,8 +20,8 @@ namespace MusicSchool.Data.Models
         public byte      DayOfWeek     { get; set; }
         public string DayName { get { return GetDayName(); } }
 
-        public DateTime SlotTime      { get; set; }
-        public DateTime EffectiveFrom { get; set; }
+        public TimeOnly  SlotTime      { get; set; }
+        public DateTime  EffectiveFrom { get; set; }
 
         /// <summary>
         /// Null indicates the slot is still active.
@@ -42,7 +41,7 @@ namespace MusicSchool.Data.Models
                 5 => "Friday",
                 6 => "Saturday",
                 7 => "Sunday",
-                _ => throw new ArgumentOutOfRangeException(nameof(DayOfWeek), "Value must be between 1 and 7")
+                _ => "Unknown"
             };
         }
     }

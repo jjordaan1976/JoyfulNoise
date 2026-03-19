@@ -50,7 +50,9 @@ else
             }
             else
             {
-                @* @foreach (var bundleGroup in _bundles.GroupBy(b => b.BundleID))
+                @* FIX: Uncommented this block. _bundles is now List<LessonBundleWithQuarterDetail>,
+                   so GroupBy(BundleID) correctly yields one group per bundle with 4 quarter rows each. *@
+                @foreach (var bundleGroup in _bundles.GroupBy(b => b.BundleID))
                 {
                     var first = bundleGroup.First();
                     var quarters = bundleGroup.ToList();
@@ -59,10 +61,10 @@ else
                             <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%">
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                                     <MudIcon Icon="@Icons.Material.Filled.Inventory" Color="Color.Primary" />
-                                    <div>                                        
+                                    <div>
                                         <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            @first.TotalLessons lessons · R@first.PricePerLesson.ToString("N2")/lesson
-                                            · @first.StartDate.ToString("dd MMM yyyy") – @first.EndDate.ToString("dd MMM yyyy")
+                                            @first.TotalLessons lessons · R@(first.PricePerLesson.ToString("N2"))/lesson
+                                            · @(first.StartDate.ToString("dd MMM yyyy")) – @(first.EndDate.ToString("dd MMM yyyy"))
                                         </MudText>
                                     </div>
                                 </MudStack>
@@ -92,7 +94,7 @@ else
                             </MudGrid>
                         </ChildContent>
                     </MudExpansionPanel>
-                } *@
+                }
             }
         </MudTabPanel>
 
@@ -121,7 +123,7 @@ else
                         <MudTd>@context.EffectiveFrom.ToString("dd MMM yyyy")</MudTd>
                         <MudTd>@(context.EffectiveTo?.ToString("dd MMM yyyy") ?? "Active")</MudTd>
                         <MudTd>
-                            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive? Color.Success: Color.Default)">
                                 @(context.IsActive ? "Active" : "Closed")
                             </MudChip>
                         </MudTd>
@@ -155,7 +157,7 @@ else
                             <MudSelectItem Value="lt.LessonTypeID">@lt.DisplayName</MudSelectItem>
                         }
                     </MudSelect>
-                </MudItem>                
+                </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudNumericField @bind-Value="_newBundle.TotalLessons" Label="Total Lessons"
                                      Required="true" Min="4" Step="4" Class="mb-3"
@@ -263,7 +265,9 @@ else
     private Student? _student;
     private AccountHolder? _accountHolder;
 
-    private List<LessonBundleDetail> _bundles = [];
+    // FIX: Changed from List<LessonBundleDetail> to List<LessonBundleWithQuarterDetail>
+    // so that quarter fields (QuarterNumber, LessonsAllocated, etc.) are available for rendering.
+    private List<LessonBundleWithQuarterDetail> _bundles = [];
 
     private List<ScheduledSlot> _slots = [];
     private List<LessonType> _lessonTypes = [];
@@ -304,12 +308,18 @@ else
                 new BreadcrumbItem(_student.FullName, href: null, disabled: true)
             ];
 
+            // FIX: Correctly load bundles with quarter data.
+            // GetByStudentAsync returns one LessonBundleDetail per bundle (no quarters).
+            // GetBundleAsync returns 4 LessonBundleWithQuarterDetail rows per bundle.
+            // We iterate the bundle list and AddRange the quarter rows into _bundles.
             var bundleList = await BundleSvc.GetByStudentAsync(StudentID);
+            _bundles = [];
             foreach (var b in bundleList)
             {
                 var details = await BundleSvc.GetBundleAsync(b.BundleID);
-                _bundles = bundleList.Where(s=>s.BundleID==b.BundleID).ToList();
+                _bundles.AddRange(details);
             }
+
             _slots = await SlotSvc.GetActiveByStudentAsync(StudentID);
         }
 
@@ -387,12 +397,15 @@ else
         {
             Snackbar.Add("Bundle created.", Severity.Success);
             await _addBundleDialog!.CloseAsync(DialogResult.Ok(true));
+
+            // FIX: Same corrected loading pattern as OnInitializedAsync —
+            // accumulate LessonBundleWithQuarterDetail rows across all bundles.
             var bundleList = await BundleSvc.GetByStudentAsync(StudentID);
             _bundles = [];
             foreach (var b in bundleList)
             {
                 var details = await BundleSvc.GetBundleAsync(b.BundleID);
-                _bundles = await BundleSvc.GetByStudentAsync(StudentID);
+                _bundles.AddRange(details);
             }
         }
         else Snackbar.Add("Failed to create bundle.", Severity.Error);
@@ -405,7 +418,7 @@ else
         _slotEffectiveFrom = DateTime.Today;
 
         var existingSlots = await SlotSvc.GetActiveByStudentAsync(StudentID);
-        _newSlot.TeacherID = existingSlots.FirstOrDefault()?.TeacherID ?? 0;
+        _newSlot.TeacherID = existingSlots.FirstOrDefault()?.TeacherID ?? _accountHolder!.TeacherID;
         await _addSlotDialog!.ShowAsync();
     }
 
@@ -418,7 +431,7 @@ else
             Snackbar.Add("Time and effective date are required.", Severity.Warning);
             return;
         }
-        _newSlot.SlotTime = _newSlot.EffectiveFrom.Date.AddHours(_slotTime.Value.Hours);
+        _newSlot.SlotTime = TimeOnly.FromTimeSpan(_slotTime.Value);
         _newSlot.EffectiveFrom = _slotEffectiveFrom.Value.Date;
 
         var result = await SlotSvc.AddSlotAsync(_newSlot);

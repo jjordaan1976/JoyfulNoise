@@ -220,7 +220,7 @@ else
     {
         if (_selectedTeacherId <= 0 || _selectedDate is null) return;
         _loading = true;
-        var date = DateOnly.FromDateTime(_selectedDate.Value);
+        var date = _selectedDate.Value.Date;
         _lessons = await LessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
         _extraLessons = await ExtraLessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
         _loading = false;

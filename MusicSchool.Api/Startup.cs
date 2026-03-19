@@ -42,13 +42,13 @@ namespace MusicSchool.Api
             services.AddScoped<IExtraLessonAggregateService, ExtraLessonAggregateService>();
             services.AddScoped<IInvoiceService, InvoiceService>();
             services.AddScoped<ILessonAggregateService, LessonAggregateService>();
-            services.AddScoped<ILessonBundleAggregateService, LessonBundleAggregateService>();
             services.AddScoped<ILessonBundleService, LessonBundleService>();
             services.AddScoped<ILessonService, LessonService>();
             services.AddScoped<ILessonTypeService, LessonTypeService>();
             services.AddScoped<IScheduledSlotService, ScheduledSlotService>();
             services.AddScoped<IStudentService, StudentService>();
             services.AddScoped<ITeacherService, TeacherService>();
+            services.AddScoped<ILessonBundleAggregateService, LessonBundleAggregateService>();
 
             services.AddControllers();
 

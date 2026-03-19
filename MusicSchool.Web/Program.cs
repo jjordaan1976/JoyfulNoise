@@ -22,4 +22,15 @@ builder.Services.AddScoped<LessonService>();
 builder.Services.AddScoped<ExtraLessonService>();
 builder.Services.AddScoped<InvoiceService>();
 
+// Catch any unhandled exception and write it to the browser console instead of
+// crashing the JS debug adapter with exit code 0xffffffff.
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+    Console.Error.WriteLine($"[UnhandledException] {e.ExceptionObject}");
+
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    Console.Error.WriteLine($"[UnobservedTaskException] {e.Exception}");
+    e.SetObserved();
+};
+
 await builder.Build().RunAsync();

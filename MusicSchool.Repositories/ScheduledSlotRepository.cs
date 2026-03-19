@@ -51,10 +51,9 @@ namespace MusicSchool.Data.Implementations
                 //    quarter still has lessons remaining.
                 var bundles = await _bundleService.GetByStudentAsync(slot.StudentID);
 
-                var today = DateTime.Today;
                 LessonBundle? bundle = null;
 
-                foreach (var b in bundles.Where(b => b.IsActive && b.EndDate >= today))
+                foreach (var b in bundles.Where(b => b.IsActive && b.EndDate >= DateTime.Today))
                 {
                     var quartersl = (await _quarterService.GetByBundleAsync(b.BundleID)).ToList();
                     if (quartersl.Any(q => q.LessonsUsed < q.LessonsAllocated))
@@ -78,15 +77,12 @@ namespace MusicSchool.Data.Implementations
                 await _slotService.ExecuteInTransactionAsync(async (tx, conn) =>
                 {
                     var slotId = await _slotService.InsertAsync(slot, tx);
-                    slot.SlotID = slotId ;
+                    slot.SlotID = slotId;
 
-                    // Generate one Lesson per weekly occurrence from EffectiveFrom
-                    // (or today, whichever is later) through the bundle's EndDate.
-                    var generateFrom = slot.EffectiveFrom.Date > today
-                        ? slot.EffectiveFrom.Date
-                        : today;
-
-                    var lessonDates = GetOccurrences(generateFrom, bundle.EndDate, slot.DayOfWeek);
+                    // Generate one Lesson per weekly occurrence from the slot's EffectiveFrom
+                    // through the bundle's EndDate. EffectiveFrom is authoritative — do not
+                    // clamp to today, as slots may be created retroactively or in advance.
+                    var lessonDates = GetOccurrences(slot.EffectiveFrom.Date, bundle.EndDate, slot.DayOfWeek);
 
                     foreach (var date in lessonDates)
                     {

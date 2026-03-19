@@ -117,7 +117,7 @@ namespace MusicSchool.Data.Implementations
                 WHERE InvoiceID = @InvoiceID;";
 
             var rowsAffected = await _connection.ExecuteAsync(sql,
-                new { InvoiceID = invoiceId, Status = status, PaidDate = paidDate });
+                new { InvoiceID = invoiceId, Status = status, PaidDate = paidDate.Value.ToDateTime(TimeOnly.MinValue) });
             return rowsAffected > 0;
         }
     }

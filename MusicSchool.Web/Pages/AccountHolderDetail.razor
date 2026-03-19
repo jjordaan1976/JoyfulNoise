@@ -1,5 +1,6 @@
 @page "/account-holders/{AccountHolderID:int}"
 @using MusicSchool.Data.Models
+@using MusicSchool.Web.Shared
 @inject AccountHolderService AccountHolderSvc
 @inject StudentService StudentSvc
 @inject InvoiceService InvoiceSvc
@@ -55,7 +56,7 @@ else
                     {
                         <MudPaper Class="pa-2 mb-2" Elevation="0" Style="background:#F0F2F5;">
                             <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.body2">Instalment #@inv.InstallmentNumber — R@inv.Amount.ToString("N2")</MudText>
+                                <MudText Typo="Typo.body2">Instalment #@inv.InstallmentNumber — R@(inv.Amount.ToString("N2"))</MudText>
                                 <StatusChip Status="@inv.Status" />
                             </MudStack>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Due: @inv.DueDate.ToString("dd MMM yyyy")</MudText>

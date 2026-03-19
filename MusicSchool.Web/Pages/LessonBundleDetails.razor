@@ -30,7 +30,7 @@ else
             </MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">
                 @first.DurationMinutes min · @first.TotalLessons lessons ·
-                R@first.PricePerLesson.ToString("N2")/lesson ·
+                R@(first.PricePerLesson.ToString("N2")) lesson ·
                 R@((first.TotalLessons * first.PricePerLesson).ToString("N2")) total
             </MudText>
         </div>

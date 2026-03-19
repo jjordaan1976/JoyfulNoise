@@ -83,6 +83,9 @@ namespace MusicSchool.Data.Implementations
         }
 
         public async Task<int> InsertAsync(Lesson lesson)
+            => await InsertAsync(lesson);
+
+        public async Task<int> InsertAsync(Lesson lesson, IDbTransaction tx)
         {
             const string sql = @"
                 INSERT INTO Lesson
@@ -96,7 +99,8 @@ namespace MusicSchool.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(sql, lesson);
+            return await _connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql, lesson, tx));
         }
 
         public async Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,

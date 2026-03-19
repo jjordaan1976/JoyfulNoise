@@ -30,7 +30,7 @@ else
             </MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">
                 @first.DurationMinutes min · @first.TotalLessons lessons ·
-                R@first.PricePerLesson.ToString("N2")/lesson ·
+                R@(first.PricePerLesson.ToString("N2"))/lesson ·
                 R@((first.TotalLessons * first.PricePerLesson).ToString("N2")) total
             </MudText>
         </div>
@@ -153,12 +153,12 @@ else
                     <FooterContent>
                         <MudTd colspan="2">
                             <MudText Style="font-weight:600;">
-                                Paid: R@_invoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.Amount).ToString("N2")
+                                Paid: R@(_invoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.Amount).ToString("N2"))
                             </MudText>
                         </MudTd>
                         <MudTd colspan="4">
                             <MudText Color="Color.Warning" Style="font-weight:600;">
-                                Outstanding: R@_invoices.Where(i => i.Status != InvoiceStatus.Paid && i.Status != InvoiceStatus.Void).Sum(i => i.Amount).ToString("N2")
+                                Outstanding: R@(_invoices.Where(i => i.Status != InvoiceStatus.Paid && i.Status != InvoiceStatus.Void).Sum(i => i.Amount).ToString("N2"))
                             </MudText>
                         </MudTd>
                     </FooterContent>
@@ -191,7 +191,7 @@ else
     <TitleContent><MudText Typo="Typo.h6">Mark Invoice as Paid</MudText></TitleContent>
     <DialogContent>
         <MudText Class="mb-3">
-            Mark instalment #@_invoiceToPay?.InstallmentNumber (R@_invoiceToPay?.Amount.ToString("N2")) as paid?
+            Mark instalment #@_invoiceToPay?.InstallmentNumber (R@(_invoiceToPay?.Amount.ToString("N2"))) as paid?
         </MudText>
         <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" />
     </DialogContent>

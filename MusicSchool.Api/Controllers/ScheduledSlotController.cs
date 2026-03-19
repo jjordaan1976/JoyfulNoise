@@ -56,6 +56,14 @@ namespace MusicSchool.Controllers
         {
             ResponseBase<int?> response = new ResponseBase<int?>() { ReturnCode = -1 };
             var result = await _scheduledSlotRepository.AddSlotAsync(req);
+
+            if (result is null)
+            {
+                response.ReturnCode = -1;
+                response.ReturnMessage = "Cannot add slot: the student has no active bundle with remaining credits.";
+                return response;
+            }
+
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";

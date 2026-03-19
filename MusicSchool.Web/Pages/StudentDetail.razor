@@ -34,9 +34,13 @@ else
             <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Inventory"
                        OnClick="OpenAddBundleDialog">New Bundle</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
-                       StartIcon="@Icons.Material.Filled.Schedule"
-                       OnClick="OpenAddSlotDialog">Add Slot</MudButton>
+            <MudTooltip Text="@(_bundles.Count == 0 ? "Add a lesson bundle before assigning a slot." : "")"
+                        Disabled="_bundles.Count > 0">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Schedule"
+                           OnClick="OpenAddSlotDialog"
+                           Disabled="_bundles.Count == 0">Add Slot</MudButton>
+            </MudTooltip>
         </MudStack>
     </div>
 
@@ -434,14 +438,14 @@ else
         _newSlot.SlotTime = TimeOnly.FromTimeSpan(_slotTime.Value);
         _newSlot.EffectiveFrom = _slotEffectiveFrom.Value.Date;
 
-        var result = await SlotSvc.AddSlotAsync(_newSlot);
-        if (result.HasValue)
+        var (slotId, error) = await SlotSvc.AddSlotAsync(_newSlot);
+        if (slotId.HasValue)
         {
-            Snackbar.Add("Slot added.", Severity.Success);
+            Snackbar.Add("Slot added and lessons generated.", Severity.Success);
             await _addSlotDialog!.CloseAsync(DialogResult.Ok(true));
             _slots = await SlotSvc.GetActiveByStudentAsync(StudentID);
         }
-        else Snackbar.Add("Failed to add slot.", Severity.Error);
+        else Snackbar.Add(error ?? "Failed to add slot.", Severity.Error);
     }
 
     private async Task OpenCloseSlotDialog(ScheduledSlot slot)

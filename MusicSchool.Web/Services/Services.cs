@@ -170,11 +170,17 @@ namespace MusicSchool.Services
             return r?.Data;
         }
 
-        public async Task<int?> AddSlotAsync(ScheduledSlot slot)
+        /// <summary>
+        /// Returns (newSlotId, null) on success, or (null, errorMessage) when the API
+        /// rejects the request (e.g. no active bundle with remaining credits).
+        /// </summary>
+        public async Task<(int? Id, string? Error)> AddSlotAsync(ScheduledSlot slot)
         {
             var r = await http.PostAsJsonAsync("ScheduledSlot/AddSlot", slot);
             var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
-            return result?.Data;
+            if (result is null) return (null, "Unexpected error communicating with the server.");
+            if (result.ReturnCode != 0) return (null, result.ReturnMessage);
+            return (result.Data, null);
         }
 
         public async Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo)

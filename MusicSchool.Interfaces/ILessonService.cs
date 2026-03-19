@@ -1,4 +1,5 @@
 using MusicSchool.Data.Models;
+using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
@@ -7,7 +8,13 @@ namespace MusicSchool.Data.Interfaces
         Task<Lesson?> GetLessonAsync(int id);
         Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId);
         Task<IEnumerable<Lesson>> GetByStatusAsync(string status);
+
+        /// <summary>Inserts outside of a transaction (existing callers).</summary>
         Task<int> InsertAsync(Lesson lesson);
+
+        /// <summary>Inserts within an existing transaction.</summary>
+        Task<int> InsertAsync(Lesson lesson, IDbTransaction tx);
+
         Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
             string? cancelledBy, string? cancellationReason, DateTime? completedAt);
     }

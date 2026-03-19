@@ -2,7 +2,8 @@
 @using MusicSchool.Data.Models
 @inject TeacherService TeacherSvc
 @inject AccountHolderService AccountHolderSvc
-@inject LessonTypeService LessonTypeSvc
+@inject StudentService StudentSvc
+@inject InvoiceService InvoiceSvc
 
 <PageTitle>Dashboard — Music School</PageTitle>
 
@@ -17,46 +18,65 @@
 }
 
 <MudGrid>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 stats-card" Elevation="1">
+    <!-- Tile 1: Active Students -->
+    <MudItem xs="12" sm="6" md="3" Style="display:flex;">
+        <MudPaper Class="pa-4 stats-card" Elevation="1" Style="flex:1;">
             <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Primary" Size="Size.Large" />
+                <MudIcon Icon="@Icons.Material.Filled.School" Color="Color.Primary" Size="Size.Large" />
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_teacherCount</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Active Teachers</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_studentCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Active Students</MudText>
+                    <MudText Typo="Typo.caption" Style="visibility:hidden;">—</MudText>
                 </div>
             </MudStack>
         </MudPaper>
     </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 stats-card" Elevation="1">
+
+    <!-- Tile 2: Invoices this month — count and total value -->
+    <MudItem xs="12" sm="6" md="3" Style="display:flex;">
+        <MudPaper Class="pa-4 stats-card" Elevation="1" Style="flex:1;">
             <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.People" Color="Color.Primary" Size="Size.Large" />
+                <MudIcon Icon="@Icons.Material.Filled.Receipt" Color="Color.Primary" Size="Size.Large" />
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_accountHolderCount</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Account Holders</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_monthInvoiceCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Invoices — @DateTime.Today.ToString("MMM yyyy")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        R @_monthInvoiceTotal.ToString("N2")
+                    </MudText>
                 </div>
             </MudStack>
         </MudPaper>
     </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 stats-card" Elevation="1">
+
+    <!-- Tile 3: Invoices paid this month — count and total value -->
+    <MudItem xs="12" sm="6" md="3" Style="display:flex;">
+        <MudPaper Class="pa-4 stats-card" Elevation="1" Style="flex:1;">
             <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Primary" Size="Size.Large" />
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Size="Size.Large" />
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_lessonTypeCount</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Lesson Types</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_monthPaidCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Paid — @DateTime.Today.ToString("MMM yyyy")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        R @_monthPaidTotal.ToString("N2")
+                    </MudText>
                 </div>
             </MudStack>
         </MudPaper>
     </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 stats-card" Elevation="1">
+
+    <!-- Tile 4: Today's date -->
+    <MudItem xs="12" sm="6" md="3" Style="display:flex;">
+        <MudPaper Class="pa-4 stats-card" Elevation="1" Style="flex:1;">
             <MudStack Row="true" AlignItems="AlignItems.Center">
                 <MudIcon Icon="@Icons.Material.Filled.Today" Color="Color.Primary" Size="Size.Large" />
                 <div>
                     <MudText Typo="Typo.h4" Style="font-weight:700;">@DateTime.Today.ToString("dd MMM")</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">Today</MudText>
+                    <MudText Typo="Typo.caption" Style="visibility:hidden;">—</MudText>
                 </div>
             </MudStack>
         </MudPaper>
@@ -66,66 +86,201 @@
 <MudGrid Class="mt-4">
     <MudItem xs="12" md="6">
         <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-3">Quick Navigation</MudText>
-            <MudStack Spacing="2">
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.People"
-                           Href="/account-holders" FullWidth="true">Manage Account Holders</MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Inventory"
-                           Href="/lesson-bundles" FullWidth="true">View Lesson Bundles</MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CalendarMonth"
-                           Href="/schedule" FullWidth="true">Today's Schedule</MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Receipt"
-                           Href="/invoices" FullWidth="true">Manage Invoices</MudButton>
-            </MudStack>
+            <MudText Typo="Typo.h6" Class="mb-3">
+                Year to Date — Invoices Due to @DateTime.Today.ToString("dd MMM yyyy")
+            </MudText>
+            @if (!_loading)
+            {
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Total Raised</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">R @_ytdInvoiceTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_ytdInvoiceCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Total Paid</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:#2E7D32;">R @_ytdPaidTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_ytdPaidCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Outstanding</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:#F57F17;">R @_ytdOutstandingTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_ytdOutstandingCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Collection Rate</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                @(_ytdInvoiceTotal > 0
+                                    ? $"{(_ytdPaidTotal / _ytdInvoiceTotal * 100):N0}%"
+                                    : "—")
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">paid vs raised</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
         </MudPaper>
     </MudItem>
     <MudItem xs="12" md="6">
         <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-3">Active Lesson Types</MudText>
-            @if (_lessonTypes.Any())
+            <MudText Typo="Typo.h6" Class="mb-3">
+                Invoice Summary — @DateTime.Today.ToString("MMMM yyyy")
+            </MudText>
+            @if (!_loading)
             {
-                <MudTable Items="_lessonTypes" Dense="true" Hover="true" Elevation="0">
-                    <HeaderContent>
-                        <MudTh>Duration</MudTh>
-                        <MudTh>Base Price / Lesson</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd>@context.DurationMinutes minutes</MudTd>
-                        <MudTd>R @context.BasePricePerLesson.ToString("N2")</MudTd>
-                    </RowTemplate>
-                </MudTable>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Total Raised</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">R @_monthInvoiceTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_monthInvoiceCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Total Paid</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:#2E7D32;">R @_monthPaidTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_monthPaidCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Outstanding</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:#F57F17;">R @_monthOutstandingTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_monthOutstandingCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Collection Rate</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                @(_monthInvoiceTotal > 0
+                                    ? $"{(_monthPaidTotal / _monthInvoiceTotal * 100):N0}%"
+                                    : "—")
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">paid vs raised</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
             }
-            else if (!_loading)
-            {
-                <MudText Color="Color.Secondary">No lesson types configured.</MudText>
-            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-3">Quick Navigation</MudText>
+            <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.People"
+                           Href="/account-holders">Manage Account Holders</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Inventory"
+                           Href="/lesson-bundles">View Lesson Bundles</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CalendarMonth"
+                           Href="/schedule">Today's Schedule</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Receipt"
+                           Href="/invoices">Manage Invoices</MudButton>
+            </MudStack>
         </MudPaper>
     </MudItem>
 </MudGrid>
 
 @code {
     private bool _loading = true;
-    private int _teacherCount;
-    private int _accountHolderCount;
-    private int _lessonTypeCount;
-    private List<LessonType> _lessonTypes = [];
+
+    // Tile 1
+    private int _studentCount;
+
+    // Tiles 2 & 3 + monthly summary panel
+    private int _monthInvoiceCount;
+    private decimal _monthInvoiceTotal;
+    private int _monthPaidCount;
+    private decimal _monthPaidTotal;
+    private int _monthOutstandingCount;
+    private decimal _monthOutstandingTotal;
+
+    // YTD summary panel
+    private int _ytdInvoiceCount;
+    private decimal _ytdInvoiceTotal;
+    private int _ytdPaidCount;
+    private decimal _ytdPaidTotal;
+    private int _ytdOutstandingCount;
+    private decimal _ytdOutstandingTotal;
 
     protected override async Task OnInitializedAsync()
     {
         var teachers = await TeacherSvc.GetAllActiveAsync();
-        _teacherCount = teachers.Count;
 
-        _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
-        _lessonTypeCount = _lessonTypes.Count;
+        int studentCount = 0;
+        var allMonthInvoices = new List<Invoice>();
+        var allYtdInvoices = new List<Invoice>();
 
-        // Account holder count: sum across all teachers
-        int ahCount = 0;
+        var thisMonth = DateTime.Today.Month;
+        var thisYear = DateTime.Today.Year;
+
         foreach (var t in teachers)
         {
-            var ahs = await AccountHolderSvc.GetByTeacherAsync(t.TeacherID);
-            ahCount += ahs.Count(a => a.IsActive);
+            var accountHolders = await AccountHolderSvc.GetByTeacherAsync(t.TeacherID);
+
+            foreach (var ah in accountHolders)
+            {
+                // Count active students
+                var students = await StudentSvc.GetByAccountHolderAsync(ah.AccountHolderID);
+                studentCount += students.Count(s => s.IsActive);
+
+                // Collect invoices — one fetch covers both month and YTD filters
+                var invoices = (await InvoiceSvc.GetByAccountHolderAsync(ah.AccountHolderID)).ToList();
+
+                allMonthInvoices.AddRange(
+                    invoices.Where(i =>
+                        i.DueDate.Year == thisYear &&
+                        i.DueDate.Month == thisMonth));
+
+                allYtdInvoices.AddRange(
+                    invoices.Where(i =>
+                        i.DueDate.Year == thisYear &&
+                        i.DueDate.Date <= DateTime.Today));
+            }
         }
-        _accountHolderCount = ahCount;
+
+        _studentCount = studentCount;
+
+        // Tile 2: all invoices due this month
+        _monthInvoiceCount = allMonthInvoices.Count;
+        _monthInvoiceTotal = allMonthInvoices.Sum(i => i.Amount);
+
+        // Tile 3: paid invoices due this month
+        var paid = allMonthInvoices.Where(i => i.Status == InvoiceStatus.Paid).ToList();
+        _monthPaidCount = paid.Count;
+        _monthPaidTotal = paid.Sum(i => i.Amount);
+
+        // Summary panel: outstanding (Pending + Overdue) due this month
+        var outstanding = allMonthInvoices
+            .Where(i => i.Status == InvoiceStatus.Pending || i.Status == InvoiceStatus.Overdue)
+            .ToList();
+        _monthOutstandingCount = outstanding.Count;
+        _monthOutstandingTotal = outstanding.Sum(i => i.Amount);
+
+        // YTD panel
+        _ytdInvoiceCount = allYtdInvoices.Count;
+        _ytdInvoiceTotal = allYtdInvoices.Sum(i => i.Amount);
+
+        var ytdPaid = allYtdInvoices.Where(i => i.Status == InvoiceStatus.Paid).ToList();
+        _ytdPaidCount = ytdPaid.Count;
+        _ytdPaidTotal = ytdPaid.Sum(i => i.Amount);
+
+        var ytdOutstanding = allYtdInvoices
+            .Where(i => i.Status == InvoiceStatus.Pending || i.Status == InvoiceStatus.Overdue)
+            .ToList();
+        _ytdOutstandingCount = ytdOutstanding.Count;
+        _ytdOutstandingTotal = ytdOutstanding.Sum(i => i.Amount);
 
         _loading = false;
     }

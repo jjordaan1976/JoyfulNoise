@@ -1,0 +1,70 @@
+using Microsoft.Extensions.Logging;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+using MusicSchool.Models;
+
+namespace MusicSchool.Data.Implementations
+{
+    public class LessonBundleRepository : ILessonBundleRepository
+    {
+        private readonly ILessonBundleAggregateService _aggregateService;
+        private readonly ILessonBundleService _lessonBundleService;
+        private readonly ILogger<LessonBundleRepository> _logger;
+
+        public LessonBundleRepository(
+            ILessonBundleAggregateService aggregateService,
+            ILessonBundleService lessonBundleService,
+            ILogger<LessonBundleRepository> logger)
+        {
+            _aggregateService = aggregateService;
+            _lessonBundleService = lessonBundleService;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Returns the bundle with all four quarters as flat detail rows.
+        /// </summary>
+        public async Task<IEnumerable<LessonBundleDetail>> GetBundleAsync(int bundleId)
+        {
+            return await _aggregateService.GetBundleByIdAsync(bundleId);
+        }
+
+        public async Task<IEnumerable<LessonBundle>> GetByStudentAsync(int studentId)
+        {
+            return await _lessonBundleService.GetByStudentAsync(studentId);
+        }
+
+        /// <summary>
+        /// Saves the bundle and its 4 quarters atomically.
+        /// The application layer is responsible for building the quarter list
+        /// before calling this method.
+        /// </summary>
+        public async Task<int?> AddBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters)
+        {
+            try
+            {
+                return await _aggregateService.SaveNewBundleAsync(bundle, quarters);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to save LessonBundle for StudentID {StudentID}, AcademicYear {AcademicYear}",
+                    bundle.StudentID, bundle.AcademicYear);
+                return null;
+            }
+        }
+
+        public async Task<bool> UpdateBundleAsync(LessonBundle bundle)
+        {
+            try
+            {
+                return await _lessonBundleService.UpdateAsync(bundle);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update BundleID {BundleID}", bundle.BundleID);
+                return false;
+            }
+        }
+    }
+}

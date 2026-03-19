@@ -1,0 +1,76 @@
+@page "/statement/{AccountHolderId:int}"
+@inject ApiService Api
+
+<h3>Statement</h3>
+
+@if (invoices == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h4>Aging Summary</h4>
+    <ul>
+        <li>Current: @CurrentTotal</li>
+        <li>30 Days: @Days30</li>
+        <li>60 Days: @Days60</li>
+        <li>90+ Days: @Days90</li>
+    </ul>
+
+    <h4>Invoices</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Due Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var inv in invoices)
+            {
+                <tr>
+                    <td>@inv.DueDate.ToShortDateString()</td>
+                    <td>@inv.Amount</td>
+                    <td>@inv.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public int AccountHolderId { get; set; }
+
+    List<Invoice>? invoices;
+
+    decimal CurrentTotal, Days30, Days60, Days90;
+
+    protected override async Task OnInitializedAsync()
+    {
+        invoices = (await Api.GetAsync<IEnumerable<Invoice>>(
+            $"Invoice/GetOutstandingByAccountHolder?accountHolderId={AccountHolderId}"
+        ))?.ToList();
+
+        CalculateAging();
+    }
+
+    void CalculateAging()
+    {
+        var today = DateTime.Today;
+
+        foreach (var inv in invoices!)
+        {
+            var days = (today - inv.DueDate).Days;
+
+            if (days <= 0)
+                CurrentTotal += inv.Amount;
+            else if (days <= 30)
+                Days30 += inv.Amount;
+            else if (days <= 60)
+                Days60 += inv.Amount;
+            else
+                Days90 += inv.Amount;
+        }
+    }
+}

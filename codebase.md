@@ -1,6 +1,6 @@
 # Flattened Codebase
 
-Generated: 03/20/2026 00:36:20
+Generated: 03/20/2026 01:12:50
 
 
 ## File: MusicSchool.Api\Controllers\AccountHolderController.cs
@@ -1089,7 +1089,13 @@ namespace MusicSchool.Data.Interfaces
         Task<ExtraLessonDetail?> GetExtraLessonAsync(int extraLessonId);
         Task<IEnumerable<ExtraLessonDetail>> GetByTeacherAndDateAsync(int teacherId, DateTime scheduledDate);
         Task<IEnumerable<ExtraLesson>> GetByStudentAsync(int studentId);
+
+        /// <summary>
+        /// Inserts the ExtraLesson and a corresponding Invoice atomically in a single transaction.
+        /// Returns the new ExtraLessonID, or null if the operation fails.
+        /// </summary>
         Task<int?> AddExtraLessonAsync(ExtraLesson extraLesson);
+
         Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status);
     }
 }
@@ -1100,6 +1106,7 @@ namespace MusicSchool.Data.Interfaces
 
 ```csharp
 using MusicSchool.Data.Models;
+using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
@@ -1107,7 +1114,13 @@ namespace MusicSchool.Data.Interfaces
     {
         Task<ExtraLesson?> GetExtraLessonAsync(int id);
         Task<IEnumerable<ExtraLesson>> GetByStudentAsync(int studentId);
+
+        /// <summary>Inserts outside of a transaction (existing callers).</summary>
         Task<int> InsertAsync(ExtraLesson extraLesson);
+
+        /// <summary>Inserts within an existing transaction.</summary>
+        Task<int> InsertAsync(ExtraLesson extraLesson, IDbTransaction tx, IDbConnection connection);
+
         Task<bool> UpdateStatusAsync(int extraLessonId, string status);
     }
 }
@@ -1149,7 +1162,13 @@ namespace MusicSchool.Data.Interfaces
         Task<IEnumerable<Invoice>> GetByBundleAsync(int bundleId);
         Task<IEnumerable<Invoice>> GetByAccountHolderAsync(int accountHolderId);
         Task<IEnumerable<Invoice>> GetOutstandingByAccountHolderAsync(int accountHolderId);
+
+        /// <summary>Inserts multiple invoice rows within an existing transaction (used for bundle instalments).</summary>
         Task InsertBatchAsync(IEnumerable<Invoice> invoices, IDbTransaction tx, IDbConnection connection);
+
+        /// <summary>Inserts a single invoice row within an existing transaction (used for extra-lesson invoices).</summary>
+        Task<int> InsertAsync(Invoice invoice, IDbTransaction tx, IDbConnection connection);
+
         Task<bool> UpdateStatusAsync(int invoiceId, string status, DateOnly? paidDate);
     }
 }
@@ -1588,7 +1607,7 @@ namespace MusicSchool.Data.Models
         public int      TeacherID     { get; set; }
         public int      LessonTypeID  { get; set; }
         public DateTime ScheduledDate { get; set; }
-        public DateTime ScheduledTime { get; set; }
+        public TimeOnly ScheduledTime { get; set; }
         public decimal  PriceCharged  { get; set; }
 
         /// <summary>
@@ -1652,19 +1671,29 @@ namespace MusicSchool.Data.Models
     }
 
     /// <summary>
-    /// One monthly instalment for a <see cref="LessonBundle"/>.
-    /// A bundle produces 12 Invoice rows (InstallmentNumber 1–12).
-    /// Amount = (TotalLessons * PricePerLesson) / 12,
-    /// calculated and written by the application layer.
+    /// One monthly instalment for a <see cref="LessonBundle"/>, or a one-off invoice
+    /// for an <see cref="ExtraLesson"/>.
+    ///
+    /// For bundle instalments: BundleID is set, ExtraLessonID is null,
+    ///   InstallmentNumber runs 1–12, Amount = (TotalLessons * PricePerLesson) / 12.
+    ///
+    /// For extra-lesson invoices: ExtraLessonID is set, BundleID is null,
+    ///   InstallmentNumber = 1, Amount = ExtraLesson.PriceCharged.
     /// </summary>
     public class Invoice
     {
         public int       InvoiceID         { get; set; }
-        public int       BundleID          { get; set; }
+
+        /// <summary>Populated for bundle instalments; null for extra-lesson invoices.</summary>
+        public int?      BundleID          { get; set; }
+
+        /// <summary>Populated for extra-lesson invoices; null for bundle instalments.</summary>
+        public int?      ExtraLessonID     { get; set; }
+
         public int       AccountHolderID   { get; set; }
 
         /// <summary>
-        /// Monthly instalment sequence number: 1–12.
+        /// Monthly instalment sequence number: 1–12 for bundle invoices; always 1 for extra lessons.
         /// </summary>
         public byte      InstallmentNumber { get; set; }
 
@@ -2373,9 +2402,11 @@ namespace MusicSchool.Data.Implementations
 ## File: MusicSchool.Repositories\ExtraLessonRepository.cs
 
 ```csharp
+using Dapper;
 using Microsoft.Extensions.Logging;
 using MusicSchool.Data.Interfaces;
 using MusicSchool.Data.Models;
+using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
@@ -2383,15 +2414,21 @@ namespace MusicSchool.Data.Implementations
     {
         private readonly IExtraLessonAggregateService _aggregateService;
         private readonly IExtraLessonService _extraLessonService;
+        private readonly IInvoiceService _invoiceService;
+        private readonly IDbConnection _connection;
         private readonly ILogger<ExtraLessonRepository> _logger;
 
         public ExtraLessonRepository(
             IExtraLessonAggregateService aggregateService,
             IExtraLessonService extraLessonService,
+            IInvoiceService invoiceService,
+            IDbConnection connection,
             ILogger<ExtraLessonRepository> logger)
         {
             _aggregateService = aggregateService;
             _extraLessonService = extraLessonService;
+            _invoiceService = invoiceService;
+            _connection = connection;
             _logger = logger;
         }
 
@@ -2417,16 +2454,57 @@ namespace MusicSchool.Data.Implementations
             return await _extraLessonService.GetByStudentAsync(studentId);
         }
 
+        /// <summary>
+        /// Inserts the ExtraLesson and a corresponding Invoice atomically.
+        /// The Invoice is a single one-off row (InstallmentNumber = 1) for the full
+        /// PriceCharged amount, due on the day of the lesson.
+        /// Returns the new ExtraLessonID, or null if the operation fails.
+        /// </summary>
         public async Task<int?> AddExtraLessonAsync(ExtraLesson extraLesson)
         {
+            if (_connection.State != ConnectionState.Open)
+                _connection.Open();
+
+            using var transaction = _connection.BeginTransaction();
+
             try
             {
-                return await _extraLessonService.InsertAsync(extraLesson);
+                // 1. Resolve the AccountHolderID for the student so we know who to bill.
+                var accountHolderId = await _connection.ExecuteScalarAsync<int>(
+                    "SELECT AccountHolderID FROM Student WHERE StudentID = @StudentID",
+                    new { extraLesson.StudentID },
+                    transaction);
+
+                if (accountHolderId == 0)
+                    throw new InvalidOperationException(
+                        $"Student {extraLesson.StudentID} not found when creating extra lesson.");
+
+                // 2. Insert the ExtraLesson row.
+                var extraLessonId = await _extraLessonService.InsertAsync(extraLesson, transaction, _connection);
+
+                // 3. Build and insert a single invoice for the full price, due on lesson day.
+                var invoice = new Invoice
+                {
+                    BundleID          = null,
+                    ExtraLessonID     = extraLessonId,
+                    AccountHolderID   = accountHolderId,
+                    InstallmentNumber = 1,
+                    Amount            = extraLesson.PriceCharged,
+                    DueDate           = extraLesson.ScheduledDate.Date,
+                    Status            = InvoiceStatus.Pending,
+                    Notes             = $"Extra lesson on {extraLesson.ScheduledDate:dd MMM yyyy}"
+                };
+
+                await _invoiceService.InsertAsync(invoice, transaction, _connection);
+
+                transaction.Commit();
+                return extraLessonId;
             }
             catch (Exception ex)
             {
+                transaction.Rollback();
                 _logger.LogError(ex,
-                    "Failed to insert ExtraLesson for StudentID {StudentID} on {ScheduledDate}",
+                    "Failed to insert ExtraLesson + Invoice for StudentID {StudentID} on {ScheduledDate}",
                     extraLesson.StudentID, extraLesson.ScheduledDate);
                 return null;
             }
@@ -2508,7 +2586,12 @@ namespace MusicSchool.Data.Implementations
             return await _connection.QueryAsync<ExtraLesson>(sql, new { StudentID = studentId });
         }
 
+        /// <summary>Inserts outside of a transaction (existing callers).</summary>
         public async Task<int> InsertAsync(ExtraLesson extraLesson)
+            => await InsertAsync(extraLesson, null!, _connection);
+
+        /// <summary>Inserts within an existing transaction.</summary>
+        public async Task<int> InsertAsync(ExtraLesson extraLesson, IDbTransaction tx, IDbConnection connection)
         {
             const string sql = @"
                 INSERT INTO ExtraLesson
@@ -2520,7 +2603,8 @@ namespace MusicSchool.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(sql, extraLesson);
+            return await connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql, extraLesson, tx));
         }
 
         public async Task<bool> UpdateStatusAsync(int extraLessonId, string status)
@@ -2642,6 +2726,7 @@ namespace MusicSchool.Data.Implementations
             const string sql = @"
                 SELECT InvoiceID,
                        BundleID,
+                       ExtraLessonID,
                        AccountHolderID,
                        InstallmentNumber,
                        Amount,
@@ -2661,6 +2746,7 @@ namespace MusicSchool.Data.Implementations
             const string sql = @"
                 SELECT InvoiceID,
                        BundleID,
+                       ExtraLessonID,
                        AccountHolderID,
                        InstallmentNumber,
                        Amount,
@@ -2681,6 +2767,7 @@ namespace MusicSchool.Data.Implementations
             const string sql = @"
                 SELECT InvoiceID,
                        BundleID,
+                       ExtraLessonID,
                        AccountHolderID,
                        InstallmentNumber,
                        Amount,
@@ -2701,6 +2788,7 @@ namespace MusicSchool.Data.Implementations
             const string sql = @"
                 SELECT InvoiceID,
                        BundleID,
+                       ExtraLessonID,
                        AccountHolderID,
                        InstallmentNumber,
                        Amount,
@@ -2721,14 +2809,34 @@ namespace MusicSchool.Data.Implementations
         {
             const string sql = @"
                 INSERT INTO Invoice
-                    (BundleID, AccountHolderID, InstallmentNumber,
+                    (BundleID, ExtraLessonID, AccountHolderID, InstallmentNumber,
                      Amount, DueDate, Status, Notes)
                 VALUES
-                    (@BundleID, @AccountHolderID, @InstallmentNumber,
+                    (@BundleID, @ExtraLessonID, @AccountHolderID, @InstallmentNumber,
                      @Amount, @DueDate, @Status, @Notes);";
 
             await connection.ExecuteAsync(
                 new CommandDefinition(sql, invoices, tx));
+        }
+
+        /// <summary>
+        /// Inserts a single Invoice row within an existing transaction.
+        /// Returns the new InvoiceID.
+        /// </summary>
+        public async Task<int> InsertAsync(Invoice invoice, IDbTransaction tx, IDbConnection connection)
+        {
+            const string sql = @"
+                INSERT INTO Invoice
+                    (BundleID, ExtraLessonID, AccountHolderID, InstallmentNumber,
+                     Amount, DueDate, Status, Notes)
+                VALUES
+                    (@BundleID, @ExtraLessonID, @AccountHolderID, @InstallmentNumber,
+                     @Amount, @DueDate, @Status, @Notes);
+
+                SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+            return await connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql, invoice, tx));
         }
 
         public async Task<bool> UpdateStatusAsync(int invoiceId, string status, DateOnly? paidDate)
@@ -2738,9 +2846,11 @@ namespace MusicSchool.Data.Implementations
                 SET Status   = @Status,
                     PaidDate = @PaidDate
                 WHERE InvoiceID = @InvoiceID;";
+
             DateTime? paidDateTime = paidDate.HasValue
                 ? paidDate.Value.ToDateTime(TimeOnly.MinValue)
                 : null;
+
             var rowsAffected = await _connection.ExecuteAsync(sql,
                 new { InvoiceID = invoiceId, Status = status, PaidDate = paidDateTime });
             return rowsAffected > 0;
@@ -4940,7 +5050,7 @@ else
         if (!_addForm.IsValid) return;
         if (_extraDate is null || _extraTime is null) { Snackbar.Add("Date and time required.", Severity.Warning); return; }
         _newExtra.ScheduledDate = _extraDate.Value.Date;
-        _newExtra.ScheduledTime = _extraDate.Value.Date.AddHours(_extraTime.Value.Hours);
+        _newExtra.ScheduledTime = TimeOnly.FromTimeSpan(_extraTime.Value);
 
         var result = await ExtraLessonSvc.AddExtraLessonAsync(_newExtra);
         if (result.HasValue)
@@ -4962,7 +5072,8 @@ else
 @using MusicSchool.Data.Models
 @inject TeacherService TeacherSvc
 @inject AccountHolderService AccountHolderSvc
-@inject LessonTypeService LessonTypeSvc
+@inject StudentService StudentSvc
+@inject InvoiceService InvoiceSvc
 
 <PageTitle>Dashboard — Music School</PageTitle>
 
@@ -4977,46 +5088,65 @@ else
 }
 
 <MudGrid>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 stats-card" Elevation="1">
+    <!-- Tile 1: Active Students -->
+    <MudItem xs="12" sm="6" md="3" Style="display:flex;">
+        <MudPaper Class="pa-4 stats-card" Elevation="1" Style="flex:1;">
             <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Primary" Size="Size.Large" />
+                <MudIcon Icon="@Icons.Material.Filled.School" Color="Color.Primary" Size="Size.Large" />
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_teacherCount</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Active Teachers</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_studentCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Active Students</MudText>
+                    <MudText Typo="Typo.caption" Style="visibility:hidden;">—</MudText>
                 </div>
             </MudStack>
         </MudPaper>
     </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 stats-card" Elevation="1">
+
+    <!-- Tile 2: Invoices this month — count and total value -->
+    <MudItem xs="12" sm="6" md="3" Style="display:flex;">
+        <MudPaper Class="pa-4 stats-card" Elevation="1" Style="flex:1;">
             <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.People" Color="Color.Primary" Size="Size.Large" />
+                <MudIcon Icon="@Icons.Material.Filled.Receipt" Color="Color.Primary" Size="Size.Large" />
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_accountHolderCount</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Account Holders</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_monthInvoiceCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Invoices — @DateTime.Today.ToString("MMM yyyy")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        R @_monthInvoiceTotal.ToString("N2")
+                    </MudText>
                 </div>
             </MudStack>
         </MudPaper>
     </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 stats-card" Elevation="1">
+
+    <!-- Tile 3: Invoices paid this month — count and total value -->
+    <MudItem xs="12" sm="6" md="3" Style="display:flex;">
+        <MudPaper Class="pa-4 stats-card" Elevation="1" Style="flex:1;">
             <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Primary" Size="Size.Large" />
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Size="Size.Large" />
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_lessonTypeCount</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Lesson Types</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;">@_monthPaidCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Paid — @DateTime.Today.ToString("MMM yyyy")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        R @_monthPaidTotal.ToString("N2")
+                    </MudText>
                 </div>
             </MudStack>
         </MudPaper>
     </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 stats-card" Elevation="1">
+
+    <!-- Tile 4: Today's date -->
+    <MudItem xs="12" sm="6" md="3" Style="display:flex;">
+        <MudPaper Class="pa-4 stats-card" Elevation="1" Style="flex:1;">
             <MudStack Row="true" AlignItems="AlignItems.Center">
                 <MudIcon Icon="@Icons.Material.Filled.Today" Color="Color.Primary" Size="Size.Large" />
                 <div>
                     <MudText Typo="Typo.h4" Style="font-weight:700;">@DateTime.Today.ToString("dd MMM")</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">Today</MudText>
+                    <MudText Typo="Typo.caption" Style="visibility:hidden;">—</MudText>
                 </div>
             </MudStack>
         </MudPaper>
@@ -5026,66 +5156,201 @@ else
 <MudGrid Class="mt-4">
     <MudItem xs="12" md="6">
         <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-3">Quick Navigation</MudText>
-            <MudStack Spacing="2">
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.People"
-                           Href="/account-holders" FullWidth="true">Manage Account Holders</MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Inventory"
-                           Href="/lesson-bundles" FullWidth="true">View Lesson Bundles</MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CalendarMonth"
-                           Href="/schedule" FullWidth="true">Today's Schedule</MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Receipt"
-                           Href="/invoices" FullWidth="true">Manage Invoices</MudButton>
-            </MudStack>
+            <MudText Typo="Typo.h6" Class="mb-3">
+                Year to Date — Invoices Due to @DateTime.Today.ToString("dd MMM yyyy")
+            </MudText>
+            @if (!_loading)
+            {
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Total Raised</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">R @_ytdInvoiceTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_ytdInvoiceCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Total Paid</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:#2E7D32;">R @_ytdPaidTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_ytdPaidCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Outstanding</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:#F57F17;">R @_ytdOutstandingTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_ytdOutstandingCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Collection Rate</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                @(_ytdInvoiceTotal > 0
+                                    ? $"{(_ytdPaidTotal / _ytdInvoiceTotal * 100):N0}%"
+                                    : "—")
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">paid vs raised</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
         </MudPaper>
     </MudItem>
     <MudItem xs="12" md="6">
         <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-3">Active Lesson Types</MudText>
-            @if (_lessonTypes.Any())
+            <MudText Typo="Typo.h6" Class="mb-3">
+                Invoice Summary — @DateTime.Today.ToString("MMMM yyyy")
+            </MudText>
+            @if (!_loading)
             {
-                <MudTable Items="_lessonTypes" Dense="true" Hover="true" Elevation="0">
-                    <HeaderContent>
-                        <MudTh>Duration</MudTh>
-                        <MudTh>Base Price / Lesson</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd>@context.DurationMinutes minutes</MudTd>
-                        <MudTd>R @context.BasePricePerLesson.ToString("N2")</MudTd>
-                    </RowTemplate>
-                </MudTable>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Total Raised</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">R @_monthInvoiceTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_monthInvoiceCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Total Paid</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:#2E7D32;">R @_monthPaidTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_monthPaidCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Outstanding</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:#F57F17;">R @_monthOutstandingTotal.ToString("N2")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_monthOutstandingCount invoice(s)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background:#F0F2F5;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Collection Rate</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                @(_monthInvoiceTotal > 0
+                                    ? $"{(_monthPaidTotal / _monthInvoiceTotal * 100):N0}%"
+                                    : "—")
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">paid vs raised</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
             }
-            else if (!_loading)
-            {
-                <MudText Color="Color.Secondary">No lesson types configured.</MudText>
-            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-3">Quick Navigation</MudText>
+            <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.People"
+                           Href="/account-holders">Manage Account Holders</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Inventory"
+                           Href="/lesson-bundles">View Lesson Bundles</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CalendarMonth"
+                           Href="/schedule">Today's Schedule</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Receipt"
+                           Href="/invoices">Manage Invoices</MudButton>
+            </MudStack>
         </MudPaper>
     </MudItem>
 </MudGrid>
 
 @code {
     private bool _loading = true;
-    private int _teacherCount;
-    private int _accountHolderCount;
-    private int _lessonTypeCount;
-    private List<LessonType> _lessonTypes = [];
+
+    // Tile 1
+    private int _studentCount;
+
+    // Tiles 2 & 3 + monthly summary panel
+    private int _monthInvoiceCount;
+    private decimal _monthInvoiceTotal;
+    private int _monthPaidCount;
+    private decimal _monthPaidTotal;
+    private int _monthOutstandingCount;
+    private decimal _monthOutstandingTotal;
+
+    // YTD summary panel
+    private int _ytdInvoiceCount;
+    private decimal _ytdInvoiceTotal;
+    private int _ytdPaidCount;
+    private decimal _ytdPaidTotal;
+    private int _ytdOutstandingCount;
+    private decimal _ytdOutstandingTotal;
 
     protected override async Task OnInitializedAsync()
     {
         var teachers = await TeacherSvc.GetAllActiveAsync();
-        _teacherCount = teachers.Count;
 
-        _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
-        _lessonTypeCount = _lessonTypes.Count;
+        int studentCount = 0;
+        var allMonthInvoices = new List<Invoice>();
+        var allYtdInvoices = new List<Invoice>();
 
-        // Account holder count: sum across all teachers
-        int ahCount = 0;
+        var thisMonth = DateTime.Today.Month;
+        var thisYear = DateTime.Today.Year;
+
         foreach (var t in teachers)
         {
-            var ahs = await AccountHolderSvc.GetByTeacherAsync(t.TeacherID);
-            ahCount += ahs.Count(a => a.IsActive);
+            var accountHolders = await AccountHolderSvc.GetByTeacherAsync(t.TeacherID);
+
+            foreach (var ah in accountHolders)
+            {
+                // Count active students
+                var students = await StudentSvc.GetByAccountHolderAsync(ah.AccountHolderID);
+                studentCount += students.Count(s => s.IsActive);
+
+                // Collect invoices — one fetch covers both month and YTD filters
+                var invoices = (await InvoiceSvc.GetByAccountHolderAsync(ah.AccountHolderID)).ToList();
+
+                allMonthInvoices.AddRange(
+                    invoices.Where(i =>
+                        i.DueDate.Year == thisYear &&
+                        i.DueDate.Month == thisMonth));
+
+                allYtdInvoices.AddRange(
+                    invoices.Where(i =>
+                        i.DueDate.Year == thisYear &&
+                        i.DueDate.Date <= DateTime.Today));
+            }
         }
-        _accountHolderCount = ahCount;
+
+        _studentCount = studentCount;
+
+        // Tile 2: all invoices due this month
+        _monthInvoiceCount = allMonthInvoices.Count;
+        _monthInvoiceTotal = allMonthInvoices.Sum(i => i.Amount);
+
+        // Tile 3: paid invoices due this month
+        var paid = allMonthInvoices.Where(i => i.Status == InvoiceStatus.Paid).ToList();
+        _monthPaidCount = paid.Count;
+        _monthPaidTotal = paid.Sum(i => i.Amount);
+
+        // Summary panel: outstanding (Pending + Overdue) due this month
+        var outstanding = allMonthInvoices
+            .Where(i => i.Status == InvoiceStatus.Pending || i.Status == InvoiceStatus.Overdue)
+            .ToList();
+        _monthOutstandingCount = outstanding.Count;
+        _monthOutstandingTotal = outstanding.Sum(i => i.Amount);
+
+        // YTD panel
+        _ytdInvoiceCount = allYtdInvoices.Count;
+        _ytdInvoiceTotal = allYtdInvoices.Sum(i => i.Amount);
+
+        var ytdPaid = allYtdInvoices.Where(i => i.Status == InvoiceStatus.Paid).ToList();
+        _ytdPaidCount = ytdPaid.Count;
+        _ytdPaidTotal = ytdPaid.Sum(i => i.Amount);
+
+        var ytdOutstanding = allYtdInvoices
+            .Where(i => i.Status == InvoiceStatus.Pending || i.Status == InvoiceStatus.Overdue)
+            .ToList();
+        _ytdOutstandingCount = ytdOutstanding.Count;
+        _ytdOutstandingTotal = ytdOutstanding.Sum(i => i.Amount);
 
         _loading = false;
     }
@@ -5980,6 +6245,8 @@ else if (!_loading)
 @page "/schedule"
 @using MusicSchool.Data.Models
 @inject TeacherService TeacherSvc
+@inject AccountHolderService AccountHolderSvc
+@inject StudentService StudentSvc
 @inject LessonService LessonSvc
 @inject ExtraLessonService ExtraLessonSvc
 @inject LessonTypeService LessonTypeSvc
@@ -6146,8 +6413,13 @@ else
     <TitleContent><MudText Typo="Typo.h6">Add Extra Lesson</MudText></TitleContent>
     <DialogContent>
         <MudForm @ref="_extraForm">
-            <MudNumericField @bind-Value="_newExtra.StudentID" Label="Student ID" Required="true"
-                             Min="1" Class="mb-3" HelperText="Enter the student's ID number" />
+            <MudSelect @bind-Value="_newExtra.StudentID" Label="Student" Required="true"
+                       RequiredError="Student is required" Class="mb-3">
+                @foreach (var s in _scheduleStudents)
+                {
+                    <MudSelectItem Value="s.StudentID">@s.FullName</MudSelectItem>
+                }
+            </MudSelect>
             <MudSelect @bind-Value="_newExtra.LessonTypeID" Label="Lesson Type" Required="true"
                        @bind-Value:after="SetExtraBasePrice" Class="mb-3">
                 @foreach (var lt in _lessonTypes)
@@ -6176,6 +6448,7 @@ else
     private List<LessonDetail> _lessons = [];
     private List<ExtraLessonDetail> _extraLessons = [];
     private List<LessonType> _lessonTypes = [];
+    private List<Student> _scheduleStudents = [];
     private int _selectedTeacherId;
     private DateTime? _selectedDate = DateTime.Today;
 
@@ -6202,6 +6475,16 @@ else
         var date = _selectedDate.Value.Date;
         _lessons = await LessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
         _extraLessons = await ExtraLessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
+
+        // Reload student list for the Add Extra Lesson dropdown
+        var accountHolders = await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId);
+        _scheduleStudents = [];
+        foreach (var ah in accountHolders)
+        {
+            var students = await StudentSvc.GetByAccountHolderAsync(ah.AccountHolderID);
+            _scheduleStudents.AddRange(students.Where(s => s.IsActive));
+        }
+
         _loading = false;
     }
 
@@ -6267,7 +6550,7 @@ else
         await _extraForm!.Validate();
         if (!_extraForm.IsValid) return;
         if (_extraTime is null) { Snackbar.Add("Time is required.", Severity.Warning); return; }
-        _newExtra.ScheduledTime = _newExtra.ScheduledDate.AddHours(_extraTime.Value.Hours);
+        _newExtra.ScheduledTime = TimeOnly.FromTimeSpan(_extraTime.Value);
 
         var result = await ExtraLessonSvc.AddExtraLessonAsync(_newExtra);
         if (result.HasValue)
@@ -6442,7 +6725,8 @@ else
             <MudGrid>
                 <MudItem xs="12" sm="6">
                     <MudSelect @bind-Value="_newBundle.LessonTypeID" Label="Lesson Type" Required="true"
-                               RequiredError="Required" Class="mb-3">
+                               RequiredError="Required" Class="mb-3"
+                               @bind-Value:after="SetBundleBasePrice">
                         @foreach (var lt in _lessonTypes)
                         {
                             <MudSelectItem Value="lt.LessonTypeID">@lt.DisplayName</MudSelectItem>
@@ -6459,7 +6743,8 @@ else
                     <MudNumericField @bind-Value="_newBundle.PricePerLesson" Label="Price per Lesson"
                                      Required="true" Min="0m" Format="N2"
                                      Adornment="Adornment.Start" AdornmentText="R" Class="mb-3"
-                                     @bind-Value:after="RecalcBundle" />
+                                     @bind-Value:after="RecalcBundle"
+                                     HelperText="Auto-filled from lesson type; teacher may override" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudDatePicker @bind-Date="_bundleStartDate" Label="Start Date" Required="true"
@@ -6617,6 +6902,16 @@ else
         _loading = false;
     }
 
+    private void SetBundleBasePrice()
+    {
+        var lt = _lessonTypes.FirstOrDefault(l => l.LessonTypeID == _newBundle.LessonTypeID);
+        if (lt is not null)
+        {
+            _newBundle.PricePerLesson = lt.BasePricePerLesson;
+            RecalcBundle();
+        }
+    }
+
     private void RecalcBundle()
     {
         _quarters = [];
@@ -6710,6 +7005,20 @@ else
 
         var existingSlots = await SlotSvc.GetActiveByStudentAsync(StudentID);
         _newSlot.TeacherID = existingSlots.FirstOrDefault()?.TeacherID ?? _accountHolder!.TeacherID;
+
+        // Default the lesson type from the student's most recent active bundle
+        var activeBundle = _bundles
+            .GroupBy(b => b.BundleID)
+            .Select(g => g.First())
+            .Where(b => b.EndDate >= DateTime.Today)
+            .OrderByDescending(b => b.StartDate)
+            .FirstOrDefault();
+
+        if (activeBundle is not null)
+            _newSlot.LessonTypeID = activeBundle.LessonTypeID;
+        else if (_lessonTypes.Count > 0)
+            _newSlot.LessonTypeID = _lessonTypes[0].LessonTypeID;
+
         await _addSlotDialog!.ShowAsync();
     }
 

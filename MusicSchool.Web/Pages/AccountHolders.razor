@@ -24,7 +24,7 @@
                        @bind-Value:after="OnTeacherChanged" Clearable="true">
                 @foreach (var t in _teachers)
                 {
-                    <MudSelectItem Value="t.TeacherID">@t.Name</MudSelectItem>
+                    <MudSelectItem Value="@t.TeacherID">@t.Name</MudSelectItem>
                 }
             </MudSelect>
         </MudItem>
@@ -72,7 +72,7 @@
             </MudTd>
         </RowTemplate>
         <NoRecordsContent>
-            <MudText>No account holders found. Select a teacher to load account holders.</MudText>
+            <MudText>No account holders found.</MudText>
         </NoRecordsContent>
     </MudTable>
 </MudPaper>
@@ -135,7 +135,7 @@
     private List<Teacher> _teachers = [];
     private List<AccountHolder> _accountHolders = [];
     private AccountHolder? _selected;
-    private int _selectedTeacherId;
+    private int _selectedTeacherId = 0;
     private string _searchString = string.Empty;
 
     private MudDialog? _addDialog, _editDialog;
@@ -153,13 +153,28 @@
     protected override async Task OnInitializedAsync()
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
+
+        if (_teachers.Any())
+        {
+            _selectedTeacherId = _teachers.First().TeacherID;
+
+            await OnTeacherChanged();
+
+            StateHasChanged(); 
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
     }
 
     private async Task OnTeacherChanged()
     {
         if (_selectedTeacherId > 0)
         {
-            _loading = true;
+            _loading = true;            
             _accountHolders = await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId);
             _loading = false;
         }

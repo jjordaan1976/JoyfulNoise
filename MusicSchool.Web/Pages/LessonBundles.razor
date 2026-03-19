@@ -95,6 +95,20 @@ else if (!_loading)
     protected override async Task OnInitializedAsync()
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
+        if (_teachers.Any())
+        {
+            _selectedTeacherId = _teachers.First().TeacherID;
+
+            await OnTeacherChanged();
+
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
     }
 
     private async Task OnTeacherChanged()

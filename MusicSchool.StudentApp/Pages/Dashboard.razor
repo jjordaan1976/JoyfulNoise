@@ -1,0 +1,58 @@
+@page "/student/{StudentId:int}"
+@inject ApiService Api
+
+<h3>Student Dashboard</h3>
+
+@if (nextLesson == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h4>Next Lesson</h4>
+    <p>
+        @nextLesson.ScheduledDate.ToShortDateString()
+        @nextLesson.ScheduledTime
+    </p>
+
+    <h4>Last 3 Lessons</h4>
+    <ul>
+        @foreach (var lesson in lastLessons)
+        {
+            <li>
+                @lesson.ScheduledDate.ToShortDateString() - @lesson.Status
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter] public int StudentId { get; set; }
+
+    LessonDetail? nextLesson;
+    List<LessonDetail> lastLessons = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var lessons = (await Api.GetAsync<IEnumerable<LessonDetail>>(
+            $"Lesson/GetByStudent?studentId={StudentId}"
+        ))?
+        .OrderBy(l => l.ScheduledDate)
+        .ToList();
+
+        if (lessons == null) return;
+
+        var now = DateTime.Now;
+
+        nextLesson = lessons
+            .Where(l => l.ScheduledDate >= now)
+            .OrderBy(l => l.ScheduledDate)
+            .FirstOrDefault();
+
+        lastLessons = lessons
+            .Where(l => l.ScheduledDate < now)
+            .OrderByDescending(l => l.ScheduledDate)
+            .Take(3)
+            .ToList();
+    }
+}

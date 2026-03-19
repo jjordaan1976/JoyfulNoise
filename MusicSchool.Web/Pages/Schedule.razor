@@ -222,6 +222,21 @@ else
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
         _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
+        
+        if (_teachers.Any())
+        {
+            _selectedTeacherId = _teachers.First().TeacherID;
+
+            await LoadSchedule();
+
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
     }
 
     private async Task LoadSchedule()

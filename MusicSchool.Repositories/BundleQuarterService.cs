@@ -56,5 +56,27 @@ namespace MusicSchool.Data.Implementations
                 new { QuarterID = quarterId, LessonsUsed = lessonsUsed });
             return rowsAffected > 0;
         }
+
+        /// <summary>
+        /// Atomically adjusts LessonsUsed for the quarter that owns the given lesson.
+        /// Pass +1 when a lesson is completed or forfeited, -1 when that is reversed.
+        /// Clamps to zero so LessonsUsed never goes negative.
+        /// </summary>
+        public async Task<bool> AdjustLessonsUsedAsync(int lessonId, int delta)
+        {
+            const string sql = @"
+                UPDATE BundleQuarter
+                SET LessonsUsed = CASE
+                                      WHEN LessonsUsed + @Delta < 0 THEN 0
+                                      ELSE LessonsUsed + @Delta
+                                  END
+                WHERE QuarterID = (
+                    SELECT QuarterID FROM Lesson WHERE LessonID = @LessonID
+                );";
+
+            var rowsAffected = await _connection.ExecuteAsync(sql,
+                new { LessonID = lessonId, Delta = delta });
+            return rowsAffected > 0;
+        }
     }
 }

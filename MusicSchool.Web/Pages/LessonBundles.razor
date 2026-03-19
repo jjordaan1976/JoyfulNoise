@@ -64,7 +64,7 @@
                     </MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
                         @b.StudentFirstName @b.StudentLastName ·
-                        @b.TotalLessons lessons · R@b.PricePerLesson.ToString("N2")/lesson ·
+                        @b.TotalLessons lessons · R@(b.PricePerLesson.ToString("N2")) lesson ·
                         Total: R@((b.TotalLessons * b.PricePerLesson).ToString("N2"))
                     </MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">

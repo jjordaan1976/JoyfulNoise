@@ -115,9 +115,11 @@ namespace MusicSchool.Data.Implementations
                 SET Status   = @Status,
                     PaidDate = @PaidDate
                 WHERE InvoiceID = @InvoiceID;";
-
+            DateTime? paidDateTime = paidDate.HasValue
+                ? paidDate.Value.ToDateTime(TimeOnly.MinValue)
+                : null;
             var rowsAffected = await _connection.ExecuteAsync(sql,
-                new { InvoiceID = invoiceId, Status = status, PaidDate = paidDate.Value.ToDateTime(TimeOnly.MinValue) });
+                new { InvoiceID = invoiceId, Status = status, PaidDate = paidDateTime });
             return rowsAffected > 0;
         }
     }

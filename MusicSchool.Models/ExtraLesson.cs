@@ -22,7 +22,7 @@ namespace MusicSchool.Data.Models
         public int      TeacherID     { get; set; }
         public int      LessonTypeID  { get; set; }
         public DateTime ScheduledDate { get; set; }
-        public DateTime ScheduledTime { get; set; }
+        public TimeOnly ScheduledTime { get; set; }
         public decimal  PriceCharged  { get; set; }
 
         /// <summary>

@@ -155,7 +155,8 @@ else
             <MudGrid>
                 <MudItem xs="12" sm="6">
                     <MudSelect @bind-Value="_newBundle.LessonTypeID" Label="Lesson Type" Required="true"
-                               RequiredError="Required" Class="mb-3">
+                               RequiredError="Required" Class="mb-3"
+                               @bind-Value:after="SetBundleBasePrice">
                         @foreach (var lt in _lessonTypes)
                         {
                             <MudSelectItem Value="lt.LessonTypeID">@lt.DisplayName</MudSelectItem>
@@ -172,7 +173,8 @@ else
                     <MudNumericField @bind-Value="_newBundle.PricePerLesson" Label="Price per Lesson"
                                      Required="true" Min="0m" Format="N2"
                                      Adornment="Adornment.Start" AdornmentText="R" Class="mb-3"
-                                     @bind-Value:after="RecalcBundle" />
+                                     @bind-Value:after="RecalcBundle"
+                                     HelperText="Auto-filled from lesson type; teacher may override" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudDatePicker @bind-Date="_bundleStartDate" Label="Start Date" Required="true"
@@ -330,6 +332,16 @@ else
         _loading = false;
     }
 
+    private void SetBundleBasePrice()
+    {
+        var lt = _lessonTypes.FirstOrDefault(l => l.LessonTypeID == _newBundle.LessonTypeID);
+        if (lt is not null)
+        {
+            _newBundle.PricePerLesson = lt.BasePricePerLesson;
+            RecalcBundle();
+        }
+    }
+
     private void RecalcBundle()
     {
         _quarters = [];
@@ -423,6 +435,20 @@ else
 
         var existingSlots = await SlotSvc.GetActiveByStudentAsync(StudentID);
         _newSlot.TeacherID = existingSlots.FirstOrDefault()?.TeacherID ?? _accountHolder!.TeacherID;
+
+        // Default the lesson type from the student's most recent active bundle
+        var activeBundle = _bundles
+            .GroupBy(b => b.BundleID)
+            .Select(g => g.First())
+            .Where(b => b.EndDate >= DateTime.Today)
+            .OrderByDescending(b => b.StartDate)
+            .FirstOrDefault();
+
+        if (activeBundle is not null)
+            _newSlot.LessonTypeID = activeBundle.LessonTypeID;
+        else if (_lessonTypes.Count > 0)
+            _newSlot.LessonTypeID = _lessonTypes[0].LessonTypeID;
+
         await _addSlotDialog!.ShowAsync();
     }
 

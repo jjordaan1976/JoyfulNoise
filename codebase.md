@@ -1,6 +1,6 @@
 # Flattened Codebase
 
-Generated: 03/19/2026 22:51:10
+Generated: 03/20/2026 00:36:20
 
 
 ## File: MusicSchool.Api\Controllers\AccountHolderController.cs
@@ -545,6 +545,14 @@ namespace MusicSchool.Controllers
         {
             ResponseBase<int?> response = new ResponseBase<int?>() { ReturnCode = -1 };
             var result = await _scheduledSlotRepository.AddSlotAsync(req);
+
+            if (result is null)
+            {
+                response.ReturnCode = -1;
+                response.ReturnMessage = "Cannot add slot: the student has no active bundle with remaining credits.";
+                return response;
+            }
+
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";
@@ -883,6 +891,7 @@ namespace MusicSchool.Api
 ## File: MusicSchool.Api\Startup.cs
 
 ```csharp
+using Dapper;
 using Microsoft.Data.SqlClient;
 using MusicSchool.Data.Implementations;
 using MusicSchool.Data.Interfaces;
@@ -903,6 +912,9 @@ namespace MusicSchool.Api
 
         public void ConfigureServices(IServiceCollection services)
         {
+            // Register Dapper type handler so TIME columns map to TimeOnly
+            SqlMapper.AddTypeHandler(new TimeOnlyTypeHandler());
+
             // Database connection
             services.AddScoped<IDbConnection>(_ =>
                 new SqlConnection(Configuration.GetConnectionString("MusicSchool")));
@@ -923,13 +935,13 @@ namespace MusicSchool.Api
             services.AddScoped<IExtraLessonAggregateService, ExtraLessonAggregateService>();
             services.AddScoped<IInvoiceService, InvoiceService>();
             services.AddScoped<ILessonAggregateService, LessonAggregateService>();
-            services.AddScoped<ILessonBundleAggregateService, LessonBundleAggregateService>();
             services.AddScoped<ILessonBundleService, LessonBundleService>();
             services.AddScoped<ILessonService, LessonService>();
             services.AddScoped<ILessonTypeService, LessonTypeService>();
             services.AddScoped<IScheduledSlotService, ScheduledSlotService>();
             services.AddScoped<IStudentService, StudentService>();
             services.AddScoped<ITeacherService, TeacherService>();
+            services.AddScoped<ILessonBundleAggregateService, LessonBundleAggregateService>();
 
             services.AddControllers();
 
@@ -958,6 +970,34 @@ namespace MusicSchool.Api
             app.UseAuthorization();
             app.MapControllers();
         }
+    }
+}
+
+```
+
+## File: MusicSchool.Api\TimeOnlyTypeHandler.cs
+
+```csharp
+using Dapper;
+using System.Data;
+
+namespace MusicSchool.Api
+{
+    /// <summary>
+    /// Tells Dapper how to read SQL Server TIME columns (returned as TimeSpan by ADO.NET)
+    /// into TimeOnly, and how to write TimeOnly back as a TIME parameter.
+    /// Register once at startup: SqlMapper.AddTypeHandler(new TimeOnlyTypeHandler());
+    /// </summary>
+    public class TimeOnlyTypeHandler : SqlMapper.TypeHandler<TimeOnly>
+    {
+        public override void SetValue(IDbDataParameter parameter, TimeOnly value)
+        {
+            parameter.DbType = DbType.Time;
+            parameter.Value = value.ToTimeSpan();
+        }
+
+        public override TimeOnly Parse(object value)
+            => TimeOnly.FromTimeSpan((TimeSpan)value);
     }
 }
 
@@ -1010,6 +1050,14 @@ namespace MusicSchool.Data.Interfaces
         Task<IEnumerable<BundleQuarter>> GetByBundleAsync(int bundleId);
         Task InsertBatchAsync(IEnumerable<BundleQuarter> quarters, IDbTransaction tx);
         Task<bool> UpdateLessonsUsedAsync(int quarterId, int lessonsUsed);
+
+        /// <summary>
+        /// Atomically increments or decrements LessonsUsed for the quarter that
+        /// owns <paramref name="lessonId"/> by <paramref name="delta"/> (+1 or -1).
+        /// Uses a single UPDATE … SET LessonsUsed = LessonsUsed + @Delta to avoid
+        /// read-then-write races. Clamps to zero so LessonsUsed never goes negative.
+        /// </summary>
+        Task<bool> AdjustLessonsUsedAsync(int lessonId, int delta);
     }
 }
 
@@ -1203,6 +1251,7 @@ namespace MusicSchool.Data.Interfaces
 
 ```csharp
 using MusicSchool.Data.Models;
+using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
@@ -1211,7 +1260,13 @@ namespace MusicSchool.Data.Interfaces
         Task<Lesson?> GetLessonAsync(int id);
         Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId);
         Task<IEnumerable<Lesson>> GetByStatusAsync(string status);
+
+        /// <summary>Inserts outside of a transaction (existing callers).</summary>
         Task<int> InsertAsync(Lesson lesson);
+
+        /// <summary>Inserts within an existing transaction.</summary>
+        Task<int> InsertAsync(Lesson lesson, IDbTransaction tx);
+
         Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
             string? cancelledBy, string? cancellationReason, DateTime? completedAt);
     }
@@ -1267,7 +1322,14 @@ namespace MusicSchool.Data.Interfaces
         Task<ScheduledSlot?> GetSlotAsync(int id);
         Task<IEnumerable<ScheduledSlot>> GetActiveByStudentAsync(int studentId);
         Task<IEnumerable<ScheduledSlot>> GetActiveByTeacherAsync(int teacherId);
+
+        /// <summary>
+        /// Inserts the slot and generates all future Lesson rows for the student's
+        /// active bundle. Returns null if the student has no active bundle with
+        /// remaining credits, or if the insert fails.
+        /// </summary>
         Task<int?> AddSlotAsync(ScheduledSlot slot);
+
         Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo);
     }
 }
@@ -1278,6 +1340,7 @@ namespace MusicSchool.Data.Interfaces
 
 ```csharp
 using MusicSchool.Data.Models;
+using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
@@ -1286,8 +1349,20 @@ namespace MusicSchool.Data.Interfaces
         Task<ScheduledSlot?> GetSlotAsync(int id);
         Task<IEnumerable<ScheduledSlot>> GetActiveByStudentAsync(int studentId);
         Task<IEnumerable<ScheduledSlot>> GetActiveByTeacherAsync(int teacherId);
+
+        /// <summary>Inserts outside of a transaction (existing callers).</summary>
         Task<int> InsertAsync(ScheduledSlot slot);
+
+        /// <summary>Inserts within an existing transaction.</summary>
+        Task<int> InsertAsync(ScheduledSlot slot, IDbTransaction tx);
+
         Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo);
+
+        /// <summary>
+        /// Opens a connection (if not already open), begins a transaction,
+        /// invokes <paramref name="work"/>, and commits. Rolls back on exception.
+        /// </summary>
+        Task ExecuteInTransactionAsync(Func<IDbTransaction, IDbConnection, Task> work);
     }
 }
 
@@ -1875,7 +1950,6 @@ namespace MusicSchool.Data.Models
 
 ```csharp
 using System;
-using System.Security.Cryptography;
 
 namespace MusicSchool.Data.Models
 {
@@ -1897,8 +1971,8 @@ namespace MusicSchool.Data.Models
         public byte      DayOfWeek     { get; set; }
         public string DayName { get { return GetDayName(); } }
 
-        public DateTime SlotTime      { get; set; }
-        public DateTime EffectiveFrom { get; set; }
+        public TimeOnly  SlotTime      { get; set; }
+        public DateTime  EffectiveFrom { get; set; }
 
         /// <summary>
         /// Null indicates the slot is still active.
@@ -1918,7 +1992,7 @@ namespace MusicSchool.Data.Models
                 5 => "Friday",
                 6 => "Saturday",
                 7 => "Sunday",
-                _ => throw new ArgumentOutOfRangeException(nameof(DayOfWeek), "Value must be between 1 and 7")
+                _ => "Unknown"
             };
         }
     }
@@ -2186,6 +2260,28 @@ namespace MusicSchool.Data.Implementations
 
             var rowsAffected = await _connection.ExecuteAsync(sql,
                 new { QuarterID = quarterId, LessonsUsed = lessonsUsed });
+            return rowsAffected > 0;
+        }
+
+        /// <summary>
+        /// Atomically adjusts LessonsUsed for the quarter that owns the given lesson.
+        /// Pass +1 when a lesson is completed or forfeited, -1 when that is reversed.
+        /// Clamps to zero so LessonsUsed never goes negative.
+        /// </summary>
+        public async Task<bool> AdjustLessonsUsedAsync(int lessonId, int delta)
+        {
+            const string sql = @"
+                UPDATE BundleQuarter
+                SET LessonsUsed = CASE
+                                      WHEN LessonsUsed + @Delta < 0 THEN 0
+                                      ELSE LessonsUsed + @Delta
+                                  END
+                WHERE QuarterID = (
+                    SELECT QuarterID FROM Lesson WHERE LessonID = @LessonID
+                );";
+
+            var rowsAffected = await _connection.ExecuteAsync(sql,
+                new { LessonID = lessonId, Delta = delta });
             return rowsAffected > 0;
         }
     }
@@ -2642,9 +2738,11 @@ namespace MusicSchool.Data.Implementations
                 SET Status   = @Status,
                     PaidDate = @PaidDate
                 WHERE InvoiceID = @InvoiceID;";
-
+            DateTime? paidDateTime = paidDate.HasValue
+                ? paidDate.Value.ToDateTime(TimeOnly.MinValue)
+                : null;
             var rowsAffected = await _connection.ExecuteAsync(sql,
-                new { InvoiceID = invoiceId, Status = status, PaidDate = paidDate });
+                new { InvoiceID = invoiceId, Status = status, PaidDate = paidDateTime });
             return rowsAffected > 0;
         }
     }
@@ -2755,7 +2853,6 @@ using MusicSchool.Data.Interfaces;
 using MusicSchool.Data.Models;
 using MusicSchool.Models;
 using System.Data;
-
 namespace MusicSchool.Data.Implementations
 {
     public class LessonBundleAggregateService : ILessonBundleAggregateService
@@ -2763,6 +2860,7 @@ namespace MusicSchool.Data.Implementations
         private readonly IDbConnection _connection;
         private readonly ILessonBundleService _lessonBundleService;
         private readonly IBundleQuarterService _bundleQuarterService;
+        private readonly IInvoiceService _invoiceService;
 
         public static readonly string SELECT_BUNDLE_WITH_QUARTERS_QRY = @"
             SELECT lb.BundleID,
@@ -2810,37 +2908,62 @@ namespace MusicSchool.Data.Implementations
             FROM LessonBundle lb
             JOIN Student       s  ON s.StudentID     = lb.StudentID
             JOIN LessonType    lt ON lt.LessonTypeID = lb.LessonTypeID
-            
             WHERE s.StudentID = @StudentID
             ORDER BY lb.BundleID;";
 
         public LessonBundleAggregateService(
             IDbConnection connection,
             ILessonBundleService lessonBundleService,
-            IBundleQuarterService bundleQuarterService)
+            IBundleQuarterService bundleQuarterService,
+            IInvoiceService invoiceService)
         {
             _connection = connection;
             _lessonBundleService = lessonBundleService;
             _bundleQuarterService = bundleQuarterService;
+            _invoiceService = invoiceService;
         }
 
         /// <summary>
-        /// Saves a new LessonBundle together with its 4 BundleQuarter rows
-        /// in a single transaction. Returns the new BundleID.
+        /// Saves a new LessonBundle, its 4 BundleQuarter rows, and 12 monthly Invoice
+        /// instalments — all in a single transaction. Returns the new BundleID.
+        ///
+        /// Invoice due dates are the 1st of each month starting from the month the
+        /// bundle starts, running for 12 consecutive months.
+        /// Amount per instalment = (TotalLessons × PricePerLesson) / 12, rounded to 2dp.
         /// </summary>
         public async Task<int> SaveNewBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters)
         {
-            _connection.Open();
+            if (_connection.State != ConnectionState.Open)
+                _connection.Open();
+
             using var transaction = _connection.BeginTransaction();
 
             try
             {
+                // 1. Resolve AccountHolderID inside the transaction so we don't need
+                //    a separate round-trip before opening the connection.
+                var accountHolderId = await _connection.ExecuteScalarAsync<int>(
+                    "SELECT AccountHolderID FROM Student WHERE StudentID = @StudentID",
+                    new { bundle.StudentID }, transaction);
+
+                if (accountHolderId == 0)
+                    throw new InvalidOperationException(
+                        $"Student {bundle.StudentID} not found when creating bundle.");
+
+                // 2. Insert bundle
                 var bundleId = await _lessonBundleService.InsertAsync(bundle, transaction);
 
+                // 3. Insert quarters
                 foreach (var quarter in quarters)
                     quarter.BundleID = bundleId;
 
                 await _bundleQuarterService.InsertBatchAsync(quarters, transaction);
+
+                // 4. Generate 12 monthly invoice instalments
+                var instalmentAmount = Math.Round(bundle.TotalLessons * bundle.PricePerLesson / 12, 2);
+                var invoices = BuildInstalments(bundleId, accountHolderId, instalmentAmount, bundle.StartDate);
+
+                await _invoiceService.InsertBatchAsync(invoices, transaction, _connection);
 
                 transaction.Commit();
                 return bundleId;
@@ -2853,7 +2976,7 @@ namespace MusicSchool.Data.Implementations
         }
 
         /// <summary>
-        /// Returns a flat LessonBundleDetail row per quarter (4 rows total)
+        /// Returns a flat LessonBundleWithQuarterDetail row per quarter (4 rows total)
         /// for the given bundle, joining Student and LessonType for context.
         /// </summary>
         public async Task<IEnumerable<LessonBundleWithQuarterDetail>> GetBundleByIdAsync(int bundleId)
@@ -2867,7 +2990,38 @@ namespace MusicSchool.Data.Implementations
         {
             return await _connection.QueryAsync<LessonBundleDetail>(
                 SELECT_BUNDLE_QRY_BY_STUDENT,
-                new { StudentId = studentId });
+                new { StudentID = studentId });
+        }
+
+        // -------------------------------------------------------------------------
+        // Helpers
+        // -------------------------------------------------------------------------
+
+        /// <summary>
+        /// Builds 12 Invoice rows for a bundle. DueDate is the 1st of each month,
+        /// starting from the 1st of the month in which <paramref name="bundleStartDate"/> falls.
+        /// </summary>
+        private static IEnumerable<Invoice> BuildInstalments(
+            int bundleId,
+            int accountHolderId,
+            decimal instalmentAmount,
+            DateTime bundleStartDate)
+        {
+            // Anchor to the 1st of the start month regardless of the day the bundle starts.
+            var firstDue = new DateTime(bundleStartDate.Year, bundleStartDate.Month, 1);
+
+            for (byte i = 1; i <= 12; i++)
+            {
+                yield return new Invoice
+                {
+                    BundleID          = bundleId,
+                    AccountHolderID   = accountHolderId,
+                    InstallmentNumber = i,
+                    Amount            = instalmentAmount,
+                    DueDate           = firstDue.AddMonths(i - 1),
+                    Status            = InvoiceStatus.Pending,
+                };
+            }
         }
     }
 }
@@ -3065,39 +3219,30 @@ namespace MusicSchool.Data.Implementations
     {
         private readonly ILessonAggregateService _aggregateService;
         private readonly ILessonService _lessonService;
+        private readonly IBundleQuarterService _bundleQuarterService;
         private readonly ILogger<LessonRepository> _logger;
 
         public LessonRepository(
             ILessonAggregateService aggregateService,
             ILessonService lessonService,
+            IBundleQuarterService bundleQuarterService,
             ILogger<LessonRepository> logger)
         {
             _aggregateService = aggregateService;
             _lessonService = lessonService;
+            _bundleQuarterService = bundleQuarterService;
             _logger = logger;
         }
 
-        /// <summary>
-        /// Returns a single lesson with full context (student, teacher, lesson type).
-        /// </summary>
         public async Task<LessonDetail?> GetLessonAsync(int lessonId)
-        {
-            return await _aggregateService.GetLessonByIdAsync(lessonId);
-        }
+            => await _aggregateService.GetLessonByIdAsync(lessonId);
 
-        /// <summary>
-        /// Returns all lessons for a teacher on a given date, with full context.
-        /// </summary>
         public async Task<IEnumerable<LessonDetail>> GetByTeacherAndDateAsync(
             int teacherId, DateTime scheduledDate)
-        {
-            return await _aggregateService.GetLessonsByTeacherAndDateAsync(teacherId, scheduledDate);
-        }
+            => await _aggregateService.GetLessonsByTeacherAndDateAsync(teacherId, scheduledDate);
 
         public async Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId)
-        {
-            return await _lessonService.GetByBundleAsync(bundleId);
-        }
+            => await _lessonService.GetByBundleAsync(bundleId);
 
         public async Task<int?> AddLessonAsync(Lesson lesson)
         {
@@ -3114,15 +3259,45 @@ namespace MusicSchool.Data.Implementations
             }
         }
 
+        /// <summary>
+        /// Updates the lesson status and keeps BundleQuarter.LessonsUsed in sync:
+        ///   Completed / Forfeited → +1 (credit consumed)
+        ///   CancelledTeacher / CancelledStudent → -1 only if the previous status
+        ///   had already consumed a credit (i.e. was Completed or Forfeited).
+        /// The delta approach is atomic — no separate read is needed.
+        /// </summary>
         public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status,
             bool creditForfeited, string? cancelledBy, string? cancellationReason,
             DateTime? completedAt)
         {
             try
             {
-                return await _lessonService.UpdateStatusAsync(
+                // 1. Read current status so we know whether to adjust the quarter.
+                var lesson = await _lessonService.GetLessonAsync(lessonId);
+                if (lesson is null) return false;
+
+                // 2. Update the lesson row.
+                var updated = await _lessonService.UpdateStatusAsync(
                     lessonId, status, creditForfeited,
                     cancelledBy, cancellationReason, completedAt);
+
+                if (!updated) return false;
+
+                // 3. Adjust BundleQuarter.LessonsUsed.
+                //    Credit is consumed when status moves TO Completed or Forfeited.
+                //    Credit is released when status moves FROM Completed or Forfeited
+                //    to anything that doesn't consume a credit.
+                bool previousConsumed = lesson.Status == LessonStatus.Completed
+                                     || lesson.Status == LessonStatus.Forfeited;
+                bool newConsumed = status == LessonStatus.Completed
+                                || status == LessonStatus.Forfeited;
+
+                int delta = (newConsumed ? 1 : 0) - (previousConsumed ? 1 : 0);
+
+                if (delta != 0)
+                    await _bundleQuarterService.AdjustLessonsUsedAsync(lessonId, delta);
+
+                return true;
             }
             catch (Exception ex)
             {
@@ -3223,6 +3398,9 @@ namespace MusicSchool.Data.Implementations
         }
 
         public async Task<int> InsertAsync(Lesson lesson)
+            => await InsertAsync(lesson);
+
+        public async Task<int> InsertAsync(Lesson lesson, IDbTransaction tx)
         {
             const string sql = @"
                 INSERT INTO Lesson
@@ -3236,7 +3414,8 @@ namespace MusicSchool.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(sql, lesson);
+            return await _connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql, lesson, tx));
         }
 
         public async Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
@@ -3440,34 +3619,104 @@ namespace MusicSchool.Data.Implementations
     public class ScheduledSlotRepository : IScheduledSlotRepository
     {
         private readonly IScheduledSlotService _slotService;
+        private readonly ILessonBundleService _bundleService;
+        private readonly IBundleQuarterService _quarterService;
+        private readonly ILessonService _lessonService;
         private readonly ILogger<ScheduledSlotRepository> _logger;
 
-        public ScheduledSlotRepository(IScheduledSlotService slotService, ILogger<ScheduledSlotRepository> logger)
+        public ScheduledSlotRepository(
+            IScheduledSlotService slotService,
+            ILessonBundleService bundleService,
+            IBundleQuarterService quarterService,
+            ILessonService lessonService,
+            ILogger<ScheduledSlotRepository> logger)
         {
             _slotService = slotService;
+            _bundleService = bundleService;
+            _quarterService = quarterService;
+            _lessonService = lessonService;
             _logger = logger;
         }
 
         public async Task<ScheduledSlot?> GetSlotAsync(int id)
-        {
-            return await _slotService.GetSlotAsync(id);
-        }
+            => await _slotService.GetSlotAsync(id);
 
         public async Task<IEnumerable<ScheduledSlot>> GetActiveByStudentAsync(int studentId)
-        {
-            return await _slotService.GetActiveByStudentAsync(studentId);
-        }
+            => await _slotService.GetActiveByStudentAsync(studentId);
 
         public async Task<IEnumerable<ScheduledSlot>> GetActiveByTeacherAsync(int teacherId)
-        {
-            return await _slotService.GetActiveByTeacherAsync(teacherId);
-        }
+            => await _slotService.GetActiveByTeacherAsync(teacherId);
 
+        /// <summary>
+        /// Validates that the student has an active bundle with remaining credits,
+        /// inserts the slot, then generates all future Lesson rows up to the bundle's
+        /// EndDate — one per weekly occurrence matching the slot's DayOfWeek.
+        /// Everything runs in a single transaction; nothing is committed if any step fails.
+        /// Returns null if the student has no usable bundle, or on any error.
+        /// </summary>
         public async Task<int?> AddSlotAsync(ScheduledSlot slot)
         {
             try
             {
-                return await _slotService.InsertAsync(slot);
+                // 1. Find the student's active bundle that still has remaining credits.
+                //    "Active" means IsActive = true, not yet expired, and at least one
+                //    quarter still has lessons remaining.
+                var bundles = await _bundleService.GetByStudentAsync(slot.StudentID);
+
+                LessonBundle? bundle = null;
+
+                foreach (var b in bundles.Where(b => b.IsActive && b.EndDate >= DateTime.Today))
+                {
+                    var quartersl = (await _quarterService.GetByBundleAsync(b.BundleID)).ToList();
+                    if (quartersl.Any(q => q.LessonsUsed < q.LessonsAllocated))
+                    {
+                        bundle = b;
+                        break;
+                    }
+                }
+
+                if (bundle is null)
+                {
+                    _logger.LogWarning(
+                        "AddSlotAsync rejected: StudentID {StudentID} has no active bundle with remaining credits.",
+                        slot.StudentID);
+                    return null;
+                }
+
+                var quarters = (await _quarterService.GetByBundleAsync(bundle.BundleID)).ToList();
+
+                // 2. Insert the slot and generate lessons in one transaction.
+                await _slotService.ExecuteInTransactionAsync(async (tx, conn) =>
+                {
+                    var slotId = await _slotService.InsertAsync(slot, tx);
+                    slot.SlotID = slotId;
+
+                    // Generate one Lesson per weekly occurrence from the slot's EffectiveFrom
+                    // through the bundle's EndDate. EffectiveFrom is authoritative — do not
+                    // clamp to today, as slots may be created retroactively or in advance.
+                    var lessonDates = GetOccurrences(slot.EffectiveFrom.Date, bundle.EndDate, slot.DayOfWeek);
+
+                    foreach (var date in lessonDates)
+                    {
+                        var quarter = quarters.FirstOrDefault(q =>
+                            date >= q.QuarterStartDate && date <= q.QuarterEndDate);
+
+                        if (quarter is null) continue;
+
+                        await _lessonService.InsertAsync(new Lesson
+                        {
+                            SlotID          = slotId,
+                            BundleID        = bundle.BundleID,
+                            QuarterID       = quarter.QuarterID,
+                            ScheduledDate   = date,
+                            ScheduledTime   = slot.SlotTime,
+                            Status          = LessonStatus.Scheduled,
+                            CreditForfeited = false,
+                        }, tx);
+                    }
+                });
+
+                return slot.SlotID;
             }
             catch (Exception ex)
             {
@@ -3491,6 +3740,36 @@ namespace MusicSchool.Data.Implementations
             {
                 _logger.LogError(ex, "Failed to close SlotID {SlotID}", slotId);
                 return false;
+            }
+        }
+
+        // -------------------------------------------------------------------------
+        // Helpers
+        // -------------------------------------------------------------------------
+
+        /// <summary>
+        /// Enumerates every calendar date between <paramref name="from"/> and
+        /// <paramref name="to"/> (inclusive) that falls on <paramref name="isoDayOfWeek"/>
+        /// (1 = Monday … 7 = Sunday, matching the ScheduledSlot.DayOfWeek convention).
+        /// </summary>
+        private static IEnumerable<DateTime> GetOccurrences(
+            DateTime from, DateTime to, byte isoDayOfWeek)
+        {
+            // .NET DayOfWeek: Sunday=0, Monday=1 … Saturday=6
+            // ISO DayOfWeek:  Monday=1, Tuesday=2 … Sunday=7
+            var targetDotNet = isoDayOfWeek == 7
+                ? DayOfWeek.Sunday
+                : (DayOfWeek)isoDayOfWeek;
+
+            var date = from;
+            // Advance to the first matching weekday
+            while (date.DayOfWeek != targetDotNet)
+                date = date.AddDays(1);
+
+            while (date <= to)
+            {
+                yield return date;
+                date = date.AddDays(7);
             }
         }
     }
@@ -3578,6 +3857,9 @@ namespace MusicSchool.Data.Implementations
         }
 
         public async Task<int> InsertAsync(ScheduledSlot slot)
+            => await InsertAsync(slot);
+
+        public async Task<int> InsertAsync(ScheduledSlot slot, IDbTransaction tx)
         {
             const string sql = @"
                 INSERT INTO ScheduledSlot
@@ -3589,7 +3871,8 @@ namespace MusicSchool.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(sql, slot);
+            return await _connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql, slot, tx));
         }
 
         public async Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo)
@@ -3603,6 +3886,28 @@ namespace MusicSchool.Data.Implementations
             var rowsAffected = await _connection.ExecuteAsync(sql,
                 new { SlotID = slotId, EffectiveTo = effectiveTo });
             return rowsAffected > 0;
+        }
+
+        /// <summary>
+        /// Opens the connection if needed, begins a transaction, runs <paramref name="work"/>,
+        /// and commits. Rolls back on any exception.
+        /// </summary>
+        public async Task ExecuteInTransactionAsync(Func<IDbTransaction, IDbConnection, Task> work)
+        {
+            if (_connection.State != ConnectionState.Open)
+                _connection.Open();
+
+            using var tx = _connection.BeginTransaction();
+            try
+            {
+                await work(tx, _connection);
+                tx.Commit();
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
         }
     }
 }
@@ -3902,6 +4207,7 @@ namespace MusicSchool.Data.Implementations
 ```razor
 @page "/account-holders/{AccountHolderID:int}"
 @using MusicSchool.Data.Models
+@using MusicSchool.Web.Shared
 @inject AccountHolderService AccountHolderSvc
 @inject StudentService StudentSvc
 @inject InvoiceService InvoiceSvc
@@ -3957,7 +4263,7 @@ else
                     {
                         <MudPaper Class="pa-2 mb-2" Elevation="0" Style="background:#F0F2F5;">
                             <MudStack Row="true" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.body2">Instalment #@inv.InstallmentNumber — R@inv.Amount.ToString("N2")</MudText>
+                                <MudText Typo="Typo.body2">Instalment #@inv.InstallmentNumber — R@(inv.Amount.ToString("N2"))</MudText>
                                 <StatusChip Status="@inv.Status" />
                             </MudStack>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Due: @inv.DueDate.ToString("dd MMM yyyy")</MudText>
@@ -5072,7 +5378,7 @@ else
             </MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">
                 @first.DurationMinutes min · @first.TotalLessons lessons ·
-                R@first.PricePerLesson.ToString("N2")/lesson ·
+                R@(first.PricePerLesson.ToString("N2")) lesson ·
                 R@((first.TotalLessons * first.PricePerLesson).ToString("N2")) total
             </MudText>
         </div>
@@ -5437,7 +5743,7 @@ else
                     </MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
                         @b.StudentFirstName @b.StudentLastName ·
-                        @b.TotalLessons lessons · R@b.PricePerLesson.ToString("N2")/lesson ·
+                        @b.TotalLessons lessons · R@(b.PricePerLesson.ToString("N2")) lesson ·
                         Total: R@((b.TotalLessons * b.PricePerLesson).ToString("N2"))
                     </MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
@@ -6015,9 +6321,13 @@ else
             <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Inventory"
                        OnClick="OpenAddBundleDialog">New Bundle</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
-                       StartIcon="@Icons.Material.Filled.Schedule"
-                       OnClick="OpenAddSlotDialog">Add Slot</MudButton>
+            <MudTooltip Text="@(_bundles.Count == 0 ? "Add a lesson bundle before assigning a slot." : "")"
+                        Disabled="_bundles.Count > 0">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Schedule"
+                           OnClick="OpenAddSlotDialog"
+                           Disabled="_bundles.Count == 0">Add Slot</MudButton>
+            </MudTooltip>
         </MudStack>
     </div>
 
@@ -6412,17 +6722,17 @@ else
             Snackbar.Add("Time and effective date are required.", Severity.Warning);
             return;
         }
-        _newSlot.SlotTime = _newSlot.EffectiveFrom.Date.AddHours(_slotTime.Value.Hours);
+        _newSlot.SlotTime = TimeOnly.FromTimeSpan(_slotTime.Value);
         _newSlot.EffectiveFrom = _slotEffectiveFrom.Value.Date;
 
-        var result = await SlotSvc.AddSlotAsync(_newSlot);
-        if (result.HasValue)
+        var (slotId, error) = await SlotSvc.AddSlotAsync(_newSlot);
+        if (slotId.HasValue)
         {
-            Snackbar.Add("Slot added.", Severity.Success);
+            Snackbar.Add("Slot added and lessons generated.", Severity.Success);
             await _addSlotDialog!.CloseAsync(DialogResult.Ok(true));
             _slots = await SlotSvc.GetActiveByStudentAsync(StudentID);
         }
-        else Snackbar.Add("Failed to add slot.", Severity.Error);
+        else Snackbar.Add(error ?? "Failed to add slot.", Severity.Error);
     }
 
     private async Task OpenCloseSlotDialog(ScheduledSlot slot)
@@ -6803,28 +7113,44 @@ namespace MusicSchool.Services
     {
         public async Task<List<Teacher>> GetAllActiveAsync()
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<Teacher>>>("Teacher/GetAllActive");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<Teacher>>>("Teacher/GetAllActive");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<Teacher?> GetTeacherAsync(int id)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<Teacher>>($"Teacher/GetTeacher?id={id}");
-            return r?.Data;
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<Teacher>>($"Teacher/GetTeacher?id={id}");
+                return r?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<int?> AddTeacherAsync(Teacher teacher)
         {
-            var r = await http.PostAsJsonAsync("Teacher/AddTeacher", teacher);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
-            return result?.Data;
+            try
+            {
+                var r = await http.PostAsJsonAsync("Teacher/AddTeacher", teacher);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
+                return result?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<bool> UpdateTeacherAsync(Teacher teacher)
         {
-            var r = await http.PutAsJsonAsync("Teacher/UpdateTeacher", teacher);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
-            return result?.Data ?? false;
+            try
+            {
+                var r = await http.PutAsJsonAsync("Teacher/UpdateTeacher", teacher);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
         }
     }
 
@@ -6832,28 +7158,44 @@ namespace MusicSchool.Services
     {
         public async Task<List<AccountHolder>> GetByTeacherAsync(int teacherId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<AccountHolder>>>($"AccountHolder/GetByTeacher?teacherId={teacherId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<AccountHolder>>>($"AccountHolder/GetByTeacher?teacherId={teacherId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<AccountHolder?> GetAccountHolderAsync(int id)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<AccountHolder>>($"AccountHolder/GetAccountHolder?id={id}");
-            return r?.Data;
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<AccountHolder>>($"AccountHolder/GetAccountHolder?id={id}");
+                return r?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<int?> AddAccountHolderAsync(AccountHolder accountHolder)
         {
-            var r = await http.PostAsJsonAsync("AccountHolder/AddAccountHolder", accountHolder);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
-            return result?.Data;
+            try
+            {
+                var r = await http.PostAsJsonAsync("AccountHolder/AddAccountHolder", accountHolder);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
+                return result?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<bool> UpdateAccountHolderAsync(AccountHolder accountHolder)
         {
-            var r = await http.PutAsJsonAsync("AccountHolder/UpdateAccountHolder", accountHolder);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
-            return result?.Data ?? false;
+            try
+            {
+                var r = await http.PutAsJsonAsync("AccountHolder/UpdateAccountHolder", accountHolder);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
         }
     }
 
@@ -6861,28 +7203,44 @@ namespace MusicSchool.Services
     {
         public async Task<List<Student>> GetByAccountHolderAsync(int accountHolderId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<Student>>>($"Student/GetByAccountHolder?accountHolderId={accountHolderId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<Student>>>($"Student/GetByAccountHolder?accountHolderId={accountHolderId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<Student?> GetStudentAsync(int id)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<Student>>($"Student/GetStudent?id={id}");
-            return r?.Data;
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<Student>>($"Student/GetStudent?id={id}");
+                return r?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<int?> AddStudentAsync(Student student)
         {
-            var r = await http.PostAsJsonAsync("Student/AddStudent", student);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
-            return result?.Data;
+            try
+            {
+                var r = await http.PostAsJsonAsync("Student/AddStudent", student);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
+                return result?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<bool> UpdateStudentAsync(Student student)
         {
-            var r = await http.PutAsJsonAsync("Student/UpdateStudent", student);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
-            return result?.Data ?? false;
+            try
+            {
+                var r = await http.PutAsJsonAsync("Student/UpdateStudent", student);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
         }
     }
 
@@ -6890,28 +7248,44 @@ namespace MusicSchool.Services
     {
         public async Task<List<LessonType>> GetAllActiveAsync()
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<LessonType>>>("LessonType/GetAllActive");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<LessonType>>>("LessonType/GetAllActive");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<LessonType?> GetLessonTypeAsync(int id)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<LessonType>>($"LessonType/GetLessonType?id={id}");
-            return r?.Data;
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<LessonType>>($"LessonType/GetLessonType?id={id}");
+                return r?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<int?> AddLessonTypeAsync(LessonType lessonType)
         {
-            var r = await http.PostAsJsonAsync("LessonType/AddLessonType", lessonType);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
-            return result?.Data;
+            try
+            {
+                var r = await http.PostAsJsonAsync("LessonType/AddLessonType", lessonType);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
+                return result?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<bool> UpdateLessonTypeAsync(LessonType lessonType)
         {
-            var r = await http.PutAsJsonAsync("LessonType/UpdateLessonType", lessonType);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
-            return result?.Data ?? false;
+            try
+            {
+                var r = await http.PutAsJsonAsync("LessonType/UpdateLessonType", lessonType);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
         }
     }
 
@@ -6919,28 +7293,44 @@ namespace MusicSchool.Services
     {
         public async Task<List<LessonBundleWithQuarterDetail>> GetBundleAsync(int bundleId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<LessonBundleWithQuarterDetail>>>($"LessonBundle/GetBundle?bundleId={bundleId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<LessonBundleWithQuarterDetail>>>($"LessonBundle/GetBundle?bundleId={bundleId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<List<LessonBundleDetail>> GetByStudentAsync(int studentId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<LessonBundleDetail>>>($"LessonBundle/GetByStudent?studentId={studentId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<LessonBundleDetail>>>($"LessonBundle/GetByStudent?studentId={studentId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<int?> AddBundleAsync(AddBundleRequest request)
         {
-            var r = await http.PostAsJsonAsync("LessonBundle/AddBundle", request);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
-            return result?.Data;
+            try
+            {
+                var r = await http.PostAsJsonAsync("LessonBundle/AddBundle", request);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
+                return result?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<bool> UpdateBundleAsync(LessonBundle bundle)
         {
-            var r = await http.PutAsJsonAsync("LessonBundle/UpdateBundle", bundle);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
-            return result?.Data ?? false;
+            try
+            {
+                var r = await http.PutAsJsonAsync("LessonBundle/UpdateBundle", bundle);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
         }
     }
 
@@ -6948,34 +7338,60 @@ namespace MusicSchool.Services
     {
         public async Task<List<ScheduledSlot>> GetActiveByStudentAsync(int studentId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<ScheduledSlot>>>($"ScheduledSlot/GetActiveByStudent?studentId={studentId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<ScheduledSlot>>>($"ScheduledSlot/GetActiveByStudent?studentId={studentId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<List<ScheduledSlot>> GetActiveByTeacherAsync(int teacherId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<ScheduledSlot>>>($"ScheduledSlot/GetActiveByTeacher?teacherId={teacherId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<ScheduledSlot>>>($"ScheduledSlot/GetActiveByTeacher?teacherId={teacherId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<ScheduledSlot?> GetSlotAsync(int id)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<ScheduledSlot>>($"ScheduledSlot/GetSlot?id={id}");
-            return r?.Data;
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<ScheduledSlot>>($"ScheduledSlot/GetSlot?id={id}");
+                return r?.Data;
+            }
+            catch { return null; }
         }
 
-        public async Task<int?> AddSlotAsync(ScheduledSlot slot)
+        /// <summary>
+        /// Returns (newSlotId, null) on success, or (null, errorMessage) when the API
+        /// rejects the request (e.g. no active bundle with remaining credits).
+        /// </summary>
+        public async Task<(int? Id, string? Error)> AddSlotAsync(ScheduledSlot slot)
         {
-            var r = await http.PostAsJsonAsync("ScheduledSlot/AddSlot", slot);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
-            return result?.Data;
+            try
+            {
+                var r = await http.PostAsJsonAsync("ScheduledSlot/AddSlot", slot);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
+                if (result is null) return (null, "Unexpected error communicating with the server.");
+                if (result.ReturnCode != 0) return (null, result.ReturnMessage);
+                return (result.Data, null);
+            }
+            catch (Exception ex) { return (null, ex.Message); }
         }
 
         public async Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo)
         {
-            var r = await http.PutAsync($"ScheduledSlot/CloseSlot?slotId={slotId}&effectiveTo={effectiveTo:yyyy-MM-dd}", null);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
-            return result?.Data ?? false;
+            try
+            {
+                var r = await http.PutAsync($"ScheduledSlot/CloseSlot?slotId={slotId}&effectiveTo={effectiveTo:yyyy-MM-dd}", null);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
         }
     }
 
@@ -6983,37 +7399,54 @@ namespace MusicSchool.Services
     {
         public async Task<List<LessonDetail>> GetByTeacherAndDateAsync(int teacherId, DateTime date)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<LessonDetail>>>($"Lesson/GetByTeacherAndDate?teacherId={teacherId}&scheduledDate={date:yyyy-MM-dd}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<LessonDetail>>>($"Lesson/GetByTeacherAndDate?teacherId={teacherId}&scheduledDate={date:yyyy-MM-dd}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
-        // FIX: Replaced the non-existent Lesson/GetByStudent endpoint with Lesson/GetByBundle,
-        // which is what the API actually exposes. LessonBundleDetails.razor calls this directly
-        // with the BundleID it already has, so no client-side filtering is needed.
         public async Task<List<Lesson>> GetByBundleAsync(int bundleId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<Lesson>>>($"Lesson/GetByBundle?bundleId={bundleId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<Lesson>>>($"Lesson/GetByBundle?bundleId={bundleId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<LessonDetail?> GetLessonAsync(int lessonId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<LessonDetail>>($"Lesson/GetLesson?lessonId={lessonId}");
-            return r?.Data;
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<LessonDetail>>($"Lesson/GetLesson?lessonId={lessonId}");
+                return r?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<int?> AddLessonAsync(Lesson lesson)
         {
-            var r = await http.PostAsJsonAsync("Lesson/AddLesson", lesson);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
-            return result?.Data;
+            try
+            {
+                var r = await http.PostAsJsonAsync("Lesson/AddLesson", lesson);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
+                return result?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status)
         {
-            var r = await http.PutAsync($"Lesson/UpdateLessonStatus?lessonId={lessonId}&status={status}", null);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
-            return result?.Data ?? false;
+            try
+            {
+                var r = await http.PutAsync($"Lesson/UpdateLessonStatus?lessonId={lessonId}&status={status}", null);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
         }
     }
 
@@ -7021,28 +7454,44 @@ namespace MusicSchool.Services
     {
         public async Task<List<ExtraLessonDetail>> GetByTeacherAndDateAsync(int teacherId, DateTime date)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<ExtraLessonDetail>>>($"ExtraLesson/GetByTeacherAndDate?teacherId={teacherId}&scheduledDate={date:yyyy-MM-dd}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<ExtraLessonDetail>>>($"ExtraLesson/GetByTeacherAndDate?teacherId={teacherId}&scheduledDate={date:yyyy-MM-dd}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<List<ExtraLesson>> GetByStudentAsync(int studentId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<ExtraLesson>>>($"ExtraLesson/GetByStudent?studentId={studentId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<ExtraLesson>>>($"ExtraLesson/GetByStudent?studentId={studentId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<int?> AddExtraLessonAsync(ExtraLesson lesson)
         {
-            var r = await http.PostAsJsonAsync("ExtraLesson/AddExtraLesson", lesson);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
-            return result?.Data;
+            try
+            {
+                var r = await http.PostAsJsonAsync("ExtraLesson/AddExtraLesson", lesson);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<int?>>();
+                return result?.Data;
+            }
+            catch { return null; }
         }
 
         public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status)
         {
-            var r = await http.PutAsync($"ExtraLesson/UpdateExtraLessonStatus?extraLessonId={extraLessonId}&status={status}", null);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
-            return result?.Data ?? false;
+            try
+            {
+                var r = await http.PutAsync($"ExtraLesson/UpdateExtraLessonStatus?extraLessonId={extraLessonId}&status={status}", null);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
         }
     }
 
@@ -7050,33 +7499,48 @@ namespace MusicSchool.Services
     {
         public async Task<List<Invoice>> GetByBundleAsync(int bundleId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<Invoice>>>($"Invoice/GetByBundle?bundleId={bundleId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<Invoice>>>($"Invoice/GetByBundle?bundleId={bundleId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<List<Invoice>> GetByAccountHolderAsync(int accountHolderId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<Invoice>>>($"Invoice/GetByAccountHolder?accountHolderId={accountHolderId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<Invoice>>>($"Invoice/GetByAccountHolder?accountHolderId={accountHolderId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<List<Invoice>> GetOutstandingByAccountHolderAsync(int accountHolderId)
         {
-            var r = await http.GetFromJsonAsync<ResponseBase<List<Invoice>>>($"Invoice/GetOutstandingByAccountHolder?accountHolderId={accountHolderId}");
-            return r?.Data ?? [];
+            try
+            {
+                var r = await http.GetFromJsonAsync<ResponseBase<List<Invoice>>>($"Invoice/GetOutstandingByAccountHolder?accountHolderId={accountHolderId}");
+                return r?.Data ?? [];
+            }
+            catch { return []; }
         }
 
         public async Task<bool> UpdateInvoiceStatusAsync(int invoiceId, string status, DateOnly? paidDate)
         {
-            var url = $"Invoice/UpdateInvoiceStatus?invoiceId={invoiceId}&status={status}";
-            if (paidDate.HasValue) url += $"&paidDate={paidDate.Value:yyyy-MM-dd}";
-            var r = await http.PutAsync(url, null);
-            var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
-            return result?.Data ?? false;
+            try
+            {
+                var url = $"Invoice/UpdateInvoiceStatus?invoiceId={invoiceId}&status={status}";
+                if (paidDate.HasValue) url += $"&paidDate={paidDate.Value:yyyy-MM-dd}";
+                var r = await http.PutAsync(url, null);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
         }
     }
 }
-
 ```
 
 ## File: MusicSchool.Web\Shared\MainLayout.razor
@@ -7293,8 +7757,18 @@ builder.Services.AddScoped<LessonService>();
 builder.Services.AddScoped<ExtraLessonService>();
 builder.Services.AddScoped<InvoiceService>();
 
-await builder.Build().RunAsync();
+// Catch any unhandled exception and write it to the browser console instead of
+// crashing the JS debug adapter with exit code 0xffffffff.
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+    Console.Error.WriteLine($"[UnhandledException] {e.ExceptionObject}");
 
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    Console.Error.WriteLine($"[UnobservedTaskException] {e.Exception}");
+    e.SetObserved();
+};
+
+await builder.Build().RunAsync();
 ```
 
 ## File: MusicSchool.Web\_Imports.razor
@@ -7312,5 +7786,5 @@ await builder.Build().RunAsync();
 @using MusicSchool
 @using MusicSchool.Models
 @using MusicSchool.Services
-
+@using MusicSchool.Web.Shared
 ```

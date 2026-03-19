@@ -14,19 +14,29 @@ namespace MusicSchool.Data.Models
     }
 
     /// <summary>
-    /// One monthly instalment for a <see cref="LessonBundle"/>.
-    /// A bundle produces 12 Invoice rows (InstallmentNumber 1–12).
-    /// Amount = (TotalLessons * PricePerLesson) / 12,
-    /// calculated and written by the application layer.
+    /// One monthly instalment for a <see cref="LessonBundle"/>, or a one-off invoice
+    /// for an <see cref="ExtraLesson"/>.
+    ///
+    /// For bundle instalments: BundleID is set, ExtraLessonID is null,
+    ///   InstallmentNumber runs 1–12, Amount = (TotalLessons * PricePerLesson) / 12.
+    ///
+    /// For extra-lesson invoices: ExtraLessonID is set, BundleID is null,
+    ///   InstallmentNumber = 1, Amount = ExtraLesson.PriceCharged.
     /// </summary>
     public class Invoice
     {
         public int       InvoiceID         { get; set; }
-        public int       BundleID          { get; set; }
+
+        /// <summary>Populated for bundle instalments; null for extra-lesson invoices.</summary>
+        public int?      BundleID          { get; set; }
+
+        /// <summary>Populated for extra-lesson invoices; null for bundle instalments.</summary>
+        public int?      ExtraLessonID     { get; set; }
+
         public int       AccountHolderID   { get; set; }
 
         /// <summary>
-        /// Monthly instalment sequence number: 1–12.
+        /// Monthly instalment sequence number: 1–12 for bundle invoices; always 1 for extra lessons.
         /// </summary>
         public byte      InstallmentNumber { get; set; }
 

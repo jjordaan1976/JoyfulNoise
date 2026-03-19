@@ -1,6 +1,8 @@
 @page "/schedule"
 @using MusicSchool.Data.Models
 @inject TeacherService TeacherSvc
+@inject AccountHolderService AccountHolderSvc
+@inject StudentService StudentSvc
 @inject LessonService LessonSvc
 @inject ExtraLessonService ExtraLessonSvc
 @inject LessonTypeService LessonTypeSvc
@@ -167,8 +169,13 @@ else
     <TitleContent><MudText Typo="Typo.h6">Add Extra Lesson</MudText></TitleContent>
     <DialogContent>
         <MudForm @ref="_extraForm">
-            <MudNumericField @bind-Value="_newExtra.StudentID" Label="Student ID" Required="true"
-                             Min="1" Class="mb-3" HelperText="Enter the student's ID number" />
+            <MudSelect @bind-Value="_newExtra.StudentID" Label="Student" Required="true"
+                       RequiredError="Student is required" Class="mb-3">
+                @foreach (var s in _scheduleStudents)
+                {
+                    <MudSelectItem Value="s.StudentID">@s.FullName</MudSelectItem>
+                }
+            </MudSelect>
             <MudSelect @bind-Value="_newExtra.LessonTypeID" Label="Lesson Type" Required="true"
                        @bind-Value:after="SetExtraBasePrice" Class="mb-3">
                 @foreach (var lt in _lessonTypes)
@@ -197,6 +204,7 @@ else
     private List<LessonDetail> _lessons = [];
     private List<ExtraLessonDetail> _extraLessons = [];
     private List<LessonType> _lessonTypes = [];
+    private List<Student> _scheduleStudents = [];
     private int _selectedTeacherId;
     private DateTime? _selectedDate = DateTime.Today;
 
@@ -223,6 +231,16 @@ else
         var date = _selectedDate.Value.Date;
         _lessons = await LessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
         _extraLessons = await ExtraLessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
+
+        // Reload student list for the Add Extra Lesson dropdown
+        var accountHolders = await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId);
+        _scheduleStudents = [];
+        foreach (var ah in accountHolders)
+        {
+            var students = await StudentSvc.GetByAccountHolderAsync(ah.AccountHolderID);
+            _scheduleStudents.AddRange(students.Where(s => s.IsActive));
+        }
+
         _loading = false;
     }
 
@@ -288,7 +306,7 @@ else
         await _extraForm!.Validate();
         if (!_extraForm.IsValid) return;
         if (_extraTime is null) { Snackbar.Add("Time is required.", Severity.Warning); return; }
-        _newExtra.ScheduledTime = _newExtra.ScheduledDate.AddHours(_extraTime.Value.Hours);
+        _newExtra.ScheduledTime = TimeOnly.FromTimeSpan(_extraTime.Value);
 
         var result = await ExtraLessonSvc.AddExtraLessonAsync(_newExtra);
         if (result.HasValue)

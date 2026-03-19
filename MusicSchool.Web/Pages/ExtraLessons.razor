@@ -204,7 +204,7 @@
         if (!_addForm.IsValid) return;
         if (_extraDate is null || _extraTime is null) { Snackbar.Add("Date and time required.", Severity.Warning); return; }
         _newExtra.ScheduledDate = _extraDate.Value.Date;
-        _newExtra.ScheduledTime = _extraDate.Value.Date.AddHours(_extraTime.Value.Hours);
+        _newExtra.ScheduledTime = TimeOnly.FromTimeSpan(_extraTime.Value);
 
         var result = await ExtraLessonSvc.AddExtraLessonAsync(_newExtra);
         if (result.HasValue)

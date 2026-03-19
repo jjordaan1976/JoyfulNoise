@@ -53,7 +53,12 @@ namespace MusicSchool.Data.Implementations
             return await _connection.QueryAsync<ExtraLesson>(sql, new { StudentID = studentId });
         }
 
+        /// <summary>Inserts outside of a transaction (existing callers).</summary>
         public async Task<int> InsertAsync(ExtraLesson extraLesson)
+            => await InsertAsync(extraLesson, null!, _connection);
+
+        /// <summary>Inserts within an existing transaction.</summary>
+        public async Task<int> InsertAsync(ExtraLesson extraLesson, IDbTransaction tx, IDbConnection connection)
         {
             const string sql = @"
                 INSERT INTO ExtraLesson
@@ -65,7 +70,8 @@ namespace MusicSchool.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(sql, extraLesson);
+            return await connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql, extraLesson, tx));
         }
 
         public async Task<bool> UpdateStatusAsync(int extraLessonId, string status)

@@ -19,6 +19,7 @@ namespace MusicSchool.Data.Implementations
             const string sql = @"
                 SELECT InvoiceID,
                        BundleID,
+                       ExtraLessonID,
                        AccountHolderID,
                        InstallmentNumber,
                        Amount,
@@ -38,6 +39,7 @@ namespace MusicSchool.Data.Implementations
             const string sql = @"
                 SELECT InvoiceID,
                        BundleID,
+                       ExtraLessonID,
                        AccountHolderID,
                        InstallmentNumber,
                        Amount,
@@ -58,6 +60,7 @@ namespace MusicSchool.Data.Implementations
             const string sql = @"
                 SELECT InvoiceID,
                        BundleID,
+                       ExtraLessonID,
                        AccountHolderID,
                        InstallmentNumber,
                        Amount,
@@ -78,6 +81,7 @@ namespace MusicSchool.Data.Implementations
             const string sql = @"
                 SELECT InvoiceID,
                        BundleID,
+                       ExtraLessonID,
                        AccountHolderID,
                        InstallmentNumber,
                        Amount,
@@ -98,14 +102,34 @@ namespace MusicSchool.Data.Implementations
         {
             const string sql = @"
                 INSERT INTO Invoice
-                    (BundleID, AccountHolderID, InstallmentNumber,
+                    (BundleID, ExtraLessonID, AccountHolderID, InstallmentNumber,
                      Amount, DueDate, Status, Notes)
                 VALUES
-                    (@BundleID, @AccountHolderID, @InstallmentNumber,
+                    (@BundleID, @ExtraLessonID, @AccountHolderID, @InstallmentNumber,
                      @Amount, @DueDate, @Status, @Notes);";
 
             await connection.ExecuteAsync(
                 new CommandDefinition(sql, invoices, tx));
+        }
+
+        /// <summary>
+        /// Inserts a single Invoice row within an existing transaction.
+        /// Returns the new InvoiceID.
+        /// </summary>
+        public async Task<int> InsertAsync(Invoice invoice, IDbTransaction tx, IDbConnection connection)
+        {
+            const string sql = @"
+                INSERT INTO Invoice
+                    (BundleID, ExtraLessonID, AccountHolderID, InstallmentNumber,
+                     Amount, DueDate, Status, Notes)
+                VALUES
+                    (@BundleID, @ExtraLessonID, @AccountHolderID, @InstallmentNumber,
+                     @Amount, @DueDate, @Status, @Notes);
+
+                SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+            return await connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql, invoice, tx));
         }
 
         public async Task<bool> UpdateStatusAsync(int invoiceId, string status, DateOnly? paidDate)
@@ -115,9 +139,11 @@ namespace MusicSchool.Data.Implementations
                 SET Status   = @Status,
                     PaidDate = @PaidDate
                 WHERE InvoiceID = @InvoiceID;";
+
             DateTime? paidDateTime = paidDate.HasValue
                 ? paidDate.Value.ToDateTime(TimeOnly.MinValue)
                 : null;
+
             var rowsAffected = await _connection.ExecuteAsync(sql,
                 new { InvoiceID = invoiceId, Status = status, PaidDate = paidDateTime });
             return rowsAffected > 0;

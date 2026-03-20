@@ -92,6 +92,13 @@
                                                Color="Color.Error" Title="Student Cancelled / Forfeit"
                                                OnClick="@(() => OpenForfeitDialog(context))" />
                             }
+                            @if (context.Status == LessonStatus.CancelledTeacher
+                              || context.Status == LessonStatus.CancelledStudent)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.EventRepeat" Size="Size.Small"
+                                               Color="Color.Primary" Title="Reschedule"
+                                               OnClick="@(() => OpenRescheduleDialog(context))" />
+                            }
                         </MudTd>
                     </RowTemplate>
                     <NoRecordsContent>
@@ -160,6 +167,29 @@ else
         Select a teacher and date to view the schedule.
     </MudAlert>
 }
+
+<!-- Reschedule Dialog -->
+<MudDialog @ref="_rescheduleDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Reschedule Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-1">
+            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("dd MMM yyyy")</strong>
+            at <strong>@_lessonToReschedule?.ScheduledTime.ToString("HH:mm")</strong>
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+            Cancelled by @(_lessonToReschedule?.CancelledBy ?? "—")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" />
+        <MudTimePicker @bind-Time="_rescheduleTime" Label="New Time" Required="true" AmPm="false" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _rescheduleDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ConfirmReschedule">
+            Reschedule
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 <!-- Complete Lesson Dialog -->
 <MudDialog @ref="_completeLessonDialog" Options="_dialogOptions">
@@ -274,6 +304,12 @@ else
     private int _selectedTeacherId;
     private DateTime? _selectedDate = DateTime.Today;
 
+    // Reschedule dialog
+    private MudDialog? _rescheduleDialog;
+    private LessonDetail? _lessonToReschedule;
+    private DateTime? _rescheduleDate;
+    private TimeSpan? _rescheduleTime;
+
     // Complete lesson dialog
     private MudDialog? _completeLessonDialog;
     private LessonDetail? _lessonToComplete;
@@ -325,7 +361,6 @@ else
         _lessons = await LessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
         _extraLessons = await ExtraLessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
 
-        // Reload student list for the Add Extra Lesson dropdown
         var accountHolders = await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId);
         _scheduleStudents = [];
         foreach (var ah in accountHolders)
@@ -340,6 +375,34 @@ else
     private void GoToToday() { _selectedDate = DateTime.Today; _ = LoadSchedule(); }
     private void PreviousDay() { _selectedDate = (_selectedDate ?? DateTime.Today).AddDays(-1); _ = LoadSchedule(); }
     private void NextDay() { _selectedDate = (_selectedDate ?? DateTime.Today).AddDays(1); _ = LoadSchedule(); }
+
+    // ── Reschedule ────────────────────────────────────────────────
+
+    private async Task OpenRescheduleDialog(LessonDetail lesson)
+    {
+        _lessonToReschedule = lesson;
+        _rescheduleDate = lesson.ScheduledDate.Date;
+        _rescheduleTime = lesson.ScheduledTime.ToTimeSpan();
+        await _rescheduleDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmReschedule()
+    {
+        if (_lessonToReschedule is null || _rescheduleDate is null || _rescheduleTime is null)
+            return;
+
+        var newDate = _rescheduleDate.Value.Date;
+        var newTime = TimeOnly.FromTimeSpan(_rescheduleTime.Value);
+
+        var result = await LessonSvc.RescheduleLessonAsync(_lessonToReschedule.LessonID, newDate, newTime);
+        if (result)
+        {
+            Snackbar.Add("Lesson rescheduled.", Severity.Success);
+            await _rescheduleDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed to reschedule lesson.", Severity.Error);
+    }
 
     // ── Complete bundle lesson ────────────────────────────────────
 
@@ -391,7 +454,7 @@ else
         else Snackbar.Add("Failed to update extra lesson.", Severity.Error);
     }
 
-    // ── Other status updates (no note prompt) ────────────────────
+    // ── Other status updates ──────────────────────────────────────
 
     private async Task QuickUpdateLesson(LessonDetail lesson, string status)
     {
@@ -428,7 +491,7 @@ else
         else Snackbar.Add("Failed.", Severity.Error);
     }
 
-    // ── Add extra lesson ─────────────────────────────────────────
+    // ── Add extra lesson ──────────────────────────────────────────
 
     private async Task OpenAddExtraLessonDialog()
     {

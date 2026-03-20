@@ -9,13 +9,14 @@ namespace MusicSchool.Data.Interfaces
         Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId);
         Task<int?> AddLessonAsync(Lesson lesson);
 
-        /// <summary>
-        /// Updates the lesson status, keeps BundleQuarter.LessonsUsed in sync,
-        /// and optionally records a free-text <paramref name="note"/>.
-        /// When <paramref name="note"/> is null the existing Notes value is preserved.
-        /// </summary>
         Task<bool> UpdateLessonStatusAsync(int lessonId, string status, bool creditForfeited,
             string? cancelledBy, string? cancellationReason, DateTime? completedAt,
             string? note = null);
+
+        /// <summary>
+        /// Moves a cancelled lesson to a new date/time and resets it to Scheduled.
+        /// Only valid when the lesson's current status is CancelledTeacher or CancelledStudent.
+        /// </summary>
+        Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime);
     }
 }

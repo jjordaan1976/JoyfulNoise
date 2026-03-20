@@ -1,0 +1,388 @@
+@page "/lesson-bundles/{BundleID:int}"
+
+@using MusicSchool.Data.Models
+
+@inject LessonBundleService BundleSvc
+@inject LessonService LessonSvc
+@inject InvoiceService InvoiceSvc
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Bundle Detail — Music School</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_bundleDetails.Count == 0)
+{
+    <MudText>Bundle not found.</MudText>
+}
+else
+{
+    var first = _bundleDetails.First();
+
+    <div class="page-header d-flex justify-space-between align-center">
+        <div>
+            <MudBreadcrumbs Items="_breadcrumbs" />
+            <MudText Typo="Typo.h5">
+                @first.StudentFullName
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @first.DurationMinutes min · @first.TotalLessons lessons ·
+                R@(first.PricePerLesson.ToString("N2")) lesson ·
+                R@((first.TotalLessons * first.PricePerLesson).ToString("N2")) total
+            </MudText>
+        </div>
+    </div>
+
+    <!-- Quarter summary cards -->
+    <MudGrid Class="mb-4">
+        @foreach (var q in _bundleDetails.OrderBy(b => b.QuarterNumber))
+        {
+            var pct = q.LessonsAllocated > 0 ? (double)q.LessonsUsed / q.LessonsAllocated * 100 : 0;
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-3 quarter-card" Elevation="1">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Quarter @q.QuarterNumber</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("dd MMM yyyy")
+                    </MudText>
+                    <MudProgressLinear Color="Color.Primary" Value="pct" Class="my-2" Rounded="true" />
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2">@q.LessonsUsed used</MudText>
+                        <MudText Typo="Typo.body2">@q.LessonsRemaining left</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">of @q.LessonsAllocated allocated</MudText>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudTabs Elevation="1" Rounded="false" ApplyEffectsToContainer="true" PanelClass="pa-4">
+
+        <!-- LESSONS TAB -->
+        <MudTabPanel Text="Lessons" Icon="@Icons.Material.Filled.MusicNote">
+            @if (_lessons.Count == 0)
+            {
+                <MudText Color="Color.Secondary">No lessons recorded for this bundle.</MudText>
+            }
+            else
+            {
+                <MudTable Items="_lessons" Hover="true" Dense="false" Elevation="0"
+                          GroupBy="_groupByQuarter" GroupHeaderStyle="background:#F0F2F5;">
+                    <HeaderContent>
+                        <MudTh>Date</MudTh>
+                        <MudTh>Time</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Credit Forfeited</MudTh>
+                        <MudTh>Cancelled By</MudTh>
+                        <MudTh>Notes</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <GroupHeaderTemplate>
+                        <MudTh colspan="7" Style="padding:8px 16px;">
+                            <MudText Typo="Typo.subtitle2">Quarter @context.Key</MudText>
+                        </MudTh>
+                    </GroupHeaderTemplate>
+                    <RowTemplate>
+                        <MudTd>@context.ScheduledDate.ToString("dd MMM yyyy")</MudTd>
+                        <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
+                        <MudTd><StatusChip Status="@context.Status" /></MudTd>
+                        <MudTd>
+                            @if (context.CreditForfeited)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" />
+                            }
+                        </MudTd>
+                        <MudTd>@(context.CancelledBy ?? "—")</MudTd>
+                        <MudTd>@(context.Notes ?? "—")</MudTd>
+                        <MudTd>
+                            @if (context.Status == LessonStatus.Scheduled)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
+                                               Color="Color.Success" Title="Mark Completed"
+                                               OnClick="@(() => UpdateLessonStatus(context, LessonStatus.Completed))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.PersonOff" Size="Size.Small"
+                                               Color="Color.Warning" Title="Student Cancelled"
+                                               OnClick="@(() => OpenCancelDialog(context))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.EventBusy" Size="Size.Small"
+                                               Color="Color.Error" Title="Teacher Cancelled"
+                                               OnClick="@(() => UpdateLessonStatus(context, LessonStatus.CancelledTeacher))" />
+                            }
+                            @if (context.Status == LessonStatus.CancelledTeacher
+                              || context.Status == LessonStatus.CancelledStudent)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.EventRepeat" Size="Size.Small"
+                                               Color="Color.Primary" Title="Reschedule"
+                                               OnClick="@(() => OpenRescheduleDialog(context))" />
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudTabPanel>
+
+        <!-- INVOICES TAB -->
+        <MudTabPanel Text="Invoices" Icon="@Icons.Material.Filled.Receipt">
+            @if (_invoices.Count == 0)
+            {
+                <MudText Color="Color.Secondary">No invoices found for this bundle.</MudText>
+            }
+            else
+            {
+                <MudTable Items="_invoices" Hover="true" Dense="false" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Instalment #</MudTh>
+                        <MudTh>Amount</MudTh>
+                        <MudTh>Due Date</MudTh>
+                        <MudTh>Paid Date</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.InstallmentNumber</MudTd>
+                        <MudTd>R @context.Amount.ToString("N2")</MudTd>
+                        <MudTd>@context.DueDate.ToString("dd MMM yyyy")</MudTd>
+                        <MudTd>@(context.PaidDate?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+                        <MudTd><StatusChip Status="@context.Status" /></MudTd>
+                        <MudTd>
+                            @if (context.Status != InvoiceStatus.Paid && context.Status != InvoiceStatus.Void)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
+                                               Color="Color.Success" Title="Mark Paid"
+                                               OnClick="@(() => OpenMarkPaidDialog(context))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small"
+                                               Color="Color.Error" Title="Void"
+                                               OnClick="@(() => VoidInvoice(context))" />
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <FooterContent>
+                        <MudTd colspan="2">
+                            <MudText Style="font-weight:600;">
+                                Paid: R@_invoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.Amount).ToString("N2")
+                            </MudText>
+                        </MudTd>
+                        <MudTd colspan="4">
+                            <MudText Color="Color.Warning" Style="font-weight:600;">
+                                Outstanding: R@_invoices.Where(i => i.Status != InvoiceStatus.Paid && i.Status != InvoiceStatus.Void).Sum(i => i.Amount).ToString("N2")
+                            </MudText>
+                        </MudTd>
+                    </FooterContent>
+                </MudTable>
+            }
+        </MudTabPanel>
+
+    </MudTabs>
+}
+
+<!-- Reschedule Dialog -->
+<MudDialog @ref="_rescheduleDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Reschedule Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-1">
+            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("dd MMM yyyy")</strong>
+            at <strong>@_lessonToReschedule?.ScheduledTime.ToString("HH:mm")</strong>
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+            Cancelled by @(_lessonToReschedule?.CancelledBy ?? "—")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" />
+        <MudTimePicker @bind-Time="_rescheduleTime" Label="New Time" Required="true" AmPm="false" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _rescheduleDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ConfirmReschedule">
+            Reschedule
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Cancel Lesson Dialog -->
+<MudDialog @ref="_cancelDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Student Cancellation</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-3">
+            Lesson on <strong>@_lessonToCancel?.ScheduledDate.ToString("dd MMM yyyy")</strong> cancelled by student.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">Does the teacher forfeit this lesson credit?</MudText>
+        <MudTextField @bind-Value="_cancelReason" Label="Reason (optional)" Lines="2" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _cancelDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Color="Color.Warning" OnClick="@(() => ConfirmCancel(false))">Keep Credit (Reschedule)</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="@(() => ConfirmCancel(true))">Forfeit Credit</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Mark Paid Dialog -->
+<MudDialog @ref="_markPaidDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Mark Invoice as Paid</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-3">
+            Mark instalment #@_invoiceToPay?.InstallmentNumber (R@_invoiceToPay?.Amount.ToString("N2")) as paid?
+        </MudText>
+        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _markPaidDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmMarkPaid">Mark Paid</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int BundleID { get; set; }
+
+    private bool _loading = true;
+    private List<LessonBundleWithQuarterDetail> _bundleDetails = [];
+    private List<Lesson> _lessons = [];
+    private List<Invoice> _invoices = [];
+
+    private MudDialog? _rescheduleDialog, _cancelDialog, _markPaidDialog;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    // Reschedule
+    private Lesson? _lessonToReschedule;
+    private DateTime? _rescheduleDate;
+    private TimeSpan? _rescheduleTime;
+
+    // Cancel
+    private Lesson? _lessonToCancel;
+    private string _cancelReason = string.Empty;
+
+    // Mark paid
+    private Invoice? _invoiceToPay;
+    private DateTime? _paidDate;
+
+    private List<BreadcrumbItem> _breadcrumbs = [];
+
+    private TableGroupDefinition<Lesson> _groupByQuarter = new()
+    {
+        GroupName = "Quarter",
+        Indentation = false,
+        Expandable = true,
+        IsInitiallyExpanded = true,
+        Selector = l => l.QuarterID
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _bundleDetails = await BundleSvc.GetBundleAsync(BundleID);
+
+        if (_bundleDetails.Count > 0)
+        {
+            var first = _bundleDetails.First();
+            _breadcrumbs =
+            [
+                new BreadcrumbItem("Bundles", href: "/lesson-bundles"),
+                new BreadcrumbItem($"{first.StudentFullName}", href: null, disabled: true)
+            ];
+
+            _lessons = await LessonSvc.GetByBundleAsync(BundleID);
+            _invoices = await InvoiceSvc.GetByBundleAsync(BundleID);
+        }
+
+        _loading = false;
+    }
+
+    private async Task UpdateLessonStatus(Lesson lesson, string status)
+    {
+        var result = await LessonSvc.UpdateLessonStatusAsync(lesson.LessonID, status);
+        if (result)
+        {
+            Snackbar.Add("Lesson updated.", Severity.Success);
+            _lessons = await LessonSvc.GetByBundleAsync(BundleID);
+            _bundleDetails = await BundleSvc.GetBundleAsync(BundleID);
+        }
+        else Snackbar.Add("Failed to update lesson.", Severity.Error);
+    }
+
+    // ── Reschedule ────────────────────────────────────────────────
+
+    private async Task OpenRescheduleDialog(Lesson lesson)
+    {
+        _lessonToReschedule = lesson;
+        _rescheduleDate = lesson.ScheduledDate.Date;
+        _rescheduleTime = lesson.ScheduledTime.ToTimeSpan();
+        await _rescheduleDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmReschedule()
+    {
+        if (_lessonToReschedule is null || _rescheduleDate is null || _rescheduleTime is null)
+            return;
+
+        var newDate = _rescheduleDate.Value.Date;
+        var newTime = TimeOnly.FromTimeSpan(_rescheduleTime.Value);
+
+        var result = await LessonSvc.RescheduleLessonAsync(_lessonToReschedule.LessonID, newDate, newTime);
+        if (result)
+        {
+            Snackbar.Add("Lesson rescheduled.", Severity.Success);
+            await _rescheduleDialog!.CloseAsync(DialogResult.Ok(true));
+            _lessons = await LessonSvc.GetByBundleAsync(BundleID);
+            _bundleDetails = await BundleSvc.GetBundleAsync(BundleID);
+        }
+        else Snackbar.Add("Failed to reschedule lesson.", Severity.Error);
+    }
+
+    // ── Cancel ────────────────────────────────────────────────────
+
+    private async Task OpenCancelDialog(Lesson lesson)
+    {
+        _lessonToCancel = lesson;
+        _cancelReason = string.Empty;
+        await _cancelDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmCancel(bool forfeit)
+    {
+        if (_lessonToCancel is null) return;
+        var status = forfeit ? LessonStatus.Forfeited : LessonStatus.CancelledStudent;
+        var result = await LessonSvc.UpdateLessonStatusAsync(_lessonToCancel.LessonID, status);
+        if (result)
+        {
+            Snackbar.Add("Lesson cancelled.", Severity.Success);
+            await _cancelDialog!.CloseAsync(DialogResult.Ok(true));
+            _lessons = await LessonSvc.GetByBundleAsync(BundleID);
+            _bundleDetails = await BundleSvc.GetBundleAsync(BundleID);
+        }
+        else Snackbar.Add("Failed.", Severity.Error);
+    }
+
+    // ── Mark paid ─────────────────────────────────────────────────
+
+    private async Task OpenMarkPaidDialog(Invoice invoice)
+    {
+        _invoiceToPay = invoice;
+        _paidDate = DateTime.Today;
+        await _markPaidDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmMarkPaid()
+    {
+        if (_invoiceToPay is null || _paidDate is null) return;
+        var paidDate = DateOnly.FromDateTime(_paidDate.Value);
+        var result = await InvoiceSvc.UpdateInvoiceStatusAsync(_invoiceToPay.InvoiceID, InvoiceStatus.Paid, paidDate);
+        if (result)
+        {
+            Snackbar.Add("Invoice marked as paid.", Severity.Success);
+            await _markPaidDialog!.CloseAsync(DialogResult.Ok(true));
+            _invoices = await InvoiceSvc.GetByBundleAsync(BundleID);
+        }
+        else Snackbar.Add("Failed to update invoice.", Severity.Error);
+    }
+
+    private async Task VoidInvoice(Invoice invoice)
+    {
+        var result = await InvoiceSvc.UpdateInvoiceStatusAsync(invoice.InvoiceID, InvoiceStatus.Void, null);
+        if (result)
+        {
+            Snackbar.Add("Invoice voided.", Severity.Success);
+            _invoices = await InvoiceSvc.GetByBundleAsync(BundleID);
+        }
+        else Snackbar.Add("Failed to void invoice.", Severity.Error);
+    }
+}

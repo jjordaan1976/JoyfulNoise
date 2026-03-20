@@ -94,11 +94,11 @@ namespace MusicSchool.Data.Implementations
                 INSERT INTO Lesson
                     (SlotID, BundleID, QuarterID, ScheduledDate, ScheduledTime,
                      Status, CreditForfeited, CancelledBy, CancellationReason,
-                     OriginalLessonID, CompletedAt)
+                     OriginalLessonID, CompletedAt, Notes)
                 VALUES
                     (@SlotID, @BundleID, @QuarterID, @ScheduledDate, @ScheduledTime,
                      @Status, @CreditForfeited, @CancelledBy, @CancellationReason,
-                     @OriginalLessonID, @CompletedAt);
+                     @OriginalLessonID, @CompletedAt, @Notes);
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
@@ -129,6 +129,29 @@ namespace MusicSchool.Data.Implementations
                 CancellationReason = cancellationReason,
                 CompletedAt        = completedAt,
                 Notes              = note
+            });
+            return rowsAffected > 0;
+        }
+
+        public async Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime)
+        {
+            const string sql = @"
+                UPDATE Lesson
+                SET ScheduledDate      = @ScheduledDate,
+                    ScheduledTime      = @ScheduledTime,
+                    Status             = @Status,
+                    CreditForfeited    = 0,
+                    CancelledBy        = NULL,
+                    CancellationReason = NULL,
+                    CompletedAt        = NULL
+                WHERE LessonID = @LessonID;";
+
+            var rowsAffected = await _connection.ExecuteAsync(sql, new
+            {
+                LessonID      = lessonId,
+                ScheduledDate = newDate,
+                ScheduledTime = newTime,
+                Status        = LessonStatus.Scheduled
             });
             return rowsAffected > 0;
         }

@@ -83,5 +83,27 @@ namespace MusicSchool.Controllers
             response.ReturnMessage = "Success";
             return response;
         }
+
+        [HttpPut("RescheduleLesson")]
+        public async Task<ResponseBase<bool>> RescheduleLesson(
+            [FromQuery] int lessonId,
+            [FromQuery] DateTime newDate,
+            [FromQuery] TimeOnly newTime)
+        {
+            ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
+            var result = await _lessonRepository.RescheduleLessonAsync(lessonId, newDate, newTime);
+
+            if (!result)
+            {
+                response.ReturnCode = -1;
+                response.ReturnMessage = "Reschedule failed. Lesson may not be in a cancellable status.";
+                return response;
+            }
+
+            response.Data = result;
+            response.ReturnCode = 0;
+            response.ReturnMessage = "Success";
+            return response;
+        }
     }
 }

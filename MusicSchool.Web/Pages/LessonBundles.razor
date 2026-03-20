@@ -52,9 +52,11 @@
     <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
 }
 
+@* Group by BundleID so each bundle appears once even though GetBundleAsync returns
+   one LessonBundleWithQuarterDetail row per quarter (4 rows per bundle). *@
 @if (_bundles.Any())
 {
-    @foreach (var b in _bundles)
+    @foreach (var b in _bundles.GroupBy(x => x.BundleID).Select(g => g.First()))
     {
         <MudPaper Class="pa-4 mb-3" Elevation="1">
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
@@ -89,7 +91,7 @@ else if (!_loading)
     private List<Teacher> _teachers = [];
     private List<AccountHolder> _accountHolders = [];
     private List<Student> _students = [];
-    private List<LessonBundleDetail> _bundles = [];
+    private List<LessonBundleWithQuarterDetail> _bundles = [];
     private int _selectedTeacherId, _selectedAccountHolderId, _selectedStudentId;
 
     protected override async Task OnInitializedAsync()
@@ -98,9 +100,7 @@ else if (!_loading)
         if (_teachers.Any())
         {
             _selectedTeacherId = _teachers.First().TeacherID;
-
             await OnTeacherChanged();
-
             StateHasChanged();
         }
     }
@@ -134,7 +134,16 @@ else if (!_loading)
         if (_selectedStudentId > 0)
         {
             _loading = true;
-            _bundles = await BundleSvc.GetByStudentAsync(_selectedStudentId);
+            // GetByStudentAsync returns LessonBundleDetail (no quarter fields).
+            // We load each bundle via GetBundleAsync to get LessonBundleWithQuarterDetail,
+            // which carries DurationMinutes, StartDate, EndDate, StudentFirstName, etc.
+            var bundleList = await BundleSvc.GetByStudentAsync(_selectedStudentId);
+            _bundles = [];
+            foreach (var b in bundleList)
+            {
+                var details = await BundleSvc.GetBundleAsync(b.BundleID);
+                _bundles.AddRange(details);
+            }
             _loading = false;
         }
         else _bundles = [];

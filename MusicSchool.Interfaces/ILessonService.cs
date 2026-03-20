@@ -15,12 +15,14 @@ namespace MusicSchool.Data.Interfaces
         /// <summary>Inserts within an existing transaction.</summary>
         Task<int> InsertAsync(Lesson lesson, IDbTransaction tx);
 
-        /// <summary>
-        /// Updates the status fields on a lesson row.
-        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
-        /// </summary>
         Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
             string? cancelledBy, string? cancellationReason, DateTime? completedAt,
             string? note = null);
+
+        /// <summary>
+        /// Moves a cancelled lesson to a new date/time and resets it to Scheduled,
+        /// clearing CancelledBy, CancellationReason and CreditForfeited.
+        /// </summary>
+        Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime);
     }
 }

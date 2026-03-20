@@ -1,6 +1,6 @@
 # Flattened Codebase
 
-Generated: 03/20/2026 07:09:12
+Generated: 03/20/2026 07:41:20
 
 
 ## File: MusicSchool.AccountHolderPortal\Pages\Index.razor
@@ -126,7 +126,7 @@ else
                 <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
                     R @_current.ToString("N2")
                 </MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Not yet due</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Due today</MudText>
             </MudPaper>
         </MudItem>
 
@@ -282,10 +282,11 @@ else
         {
             var days = (today - inv.DueDate).Days;
 
-            if      (days <= 0)  _current += inv.Amount;
-            else if (days <= 30) _days30  += inv.Amount;
-            else if (days <= 60) _days60  += inv.Amount;
-            else                 _days90  += inv.Amount;
+            if (days < 0) continue;          // future — excluded from summary
+            else if (days == 0) _current += inv.Amount;
+            else if (days <= 30) _days30 += inv.Amount;
+            else if (days <= 60) _days60 += inv.Amount;
+            else _days90 += inv.Amount;
         }
     }
 
@@ -295,10 +296,11 @@ else
             return "—";
 
         var days = (DateTime.Today - inv.DueDate).Days;
-        if      (days <= 0)  return "Current";
+        if (days < 0) return "Not yet due";
+        else if (days == 0) return "Due today";
         else if (days <= 30) return $"{days}d overdue";
         else if (days <= 60) return $"{days}d overdue";
-        else                 return $"{days}d overdue";
+        else return $"{days}d overdue";
     }
 }
 
@@ -992,6 +994,28 @@ namespace MusicSchool.Controllers
                 cancellationReason: null,
                 completedAt: status == LessonStatus.Completed ? DateTime.UtcNow : null,
                 note: note);
+            response.Data = result;
+            response.ReturnCode = 0;
+            response.ReturnMessage = "Success";
+            return response;
+        }
+
+        [HttpPut("RescheduleLesson")]
+        public async Task<ResponseBase<bool>> RescheduleLesson(
+            [FromQuery] int lessonId,
+            [FromQuery] DateTime newDate,
+            [FromQuery] TimeOnly newTime)
+        {
+            ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
+            var result = await _lessonRepository.RescheduleLessonAsync(lessonId, newDate, newTime);
+
+            if (!result)
+            {
+                response.ReturnCode = -1;
+                response.ReturnMessage = "Reschedule failed. Lesson may not be in a cancellable status.";
+                return response;
+            }
+
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";
@@ -1856,14 +1880,15 @@ namespace MusicSchool.Data.Interfaces
         Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId);
         Task<int?> AddLessonAsync(Lesson lesson);
 
-        /// <summary>
-        /// Updates the lesson status, keeps BundleQuarter.LessonsUsed in sync,
-        /// and optionally records a free-text <paramref name="note"/>.
-        /// When <paramref name="note"/> is null the existing Notes value is preserved.
-        /// </summary>
         Task<bool> UpdateLessonStatusAsync(int lessonId, string status, bool creditForfeited,
             string? cancelledBy, string? cancellationReason, DateTime? completedAt,
             string? note = null);
+
+        /// <summary>
+        /// Moves a cancelled lesson to a new date/time and resets it to Scheduled.
+        /// Only valid when the lesson's current status is CancelledTeacher or CancelledStudent.
+        /// </summary>
+        Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime);
     }
 }
 
@@ -1889,13 +1914,15 @@ namespace MusicSchool.Data.Interfaces
         /// <summary>Inserts within an existing transaction.</summary>
         Task<int> InsertAsync(Lesson lesson, IDbTransaction tx);
 
-        /// <summary>
-        /// Updates the status fields on a lesson row.
-        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
-        /// </summary>
         Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
             string? cancelledBy, string? cancellationReason, DateTime? completedAt,
             string? note = null);
+
+        /// <summary>
+        /// Moves a cancelled lesson to a new date/time and resets it to Scheduled,
+        /// clearing CancelledBy, CancellationReason and CreditForfeited.
+        /// </summary>
+        Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime);
     }
 }
 
@@ -4000,7 +4027,6 @@ namespace MusicSchool.Data.Implementations
         ///   CancelledTeacher / CancelledStudent → -1 only if the previous status
         ///   had already consumed a credit (i.e. was Completed or Forfeited).
         /// The delta approach is atomic — no separate read is needed.
-        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
         /// </summary>
         public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status,
             bool creditForfeited, string? cancelledBy, string? cancellationReason,
@@ -4038,6 +4064,36 @@ namespace MusicSchool.Data.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to update status for LessonID {LessonID}", lessonId);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Moves a cancelled lesson to a new date/time and resets it to Scheduled.
+        /// No credit adjustment is needed — cancelled lessons never consumed a credit.
+        /// </summary>
+        public async Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime)
+        {
+            try
+            {
+                // Guard: only allow rescheduling of cancelled lessons.
+                var lesson = await _lessonService.GetLessonAsync(lessonId);
+                if (lesson is null) return false;
+
+                if (lesson.Status != LessonStatus.CancelledTeacher
+                    && lesson.Status != LessonStatus.CancelledStudent)
+                {
+                    _logger.LogWarning(
+                        "RescheduleLessonAsync rejected: LessonID {LessonID} has status {Status}.",
+                        lessonId, lesson.Status);
+                    return false;
+                }
+
+                return await _lessonService.RescheduleLessonAsync(lessonId, newDate, newTime);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to reschedule LessonID {LessonID}", lessonId);
                 return false;
             }
         }
@@ -4145,11 +4201,11 @@ namespace MusicSchool.Data.Implementations
                 INSERT INTO Lesson
                     (SlotID, BundleID, QuarterID, ScheduledDate, ScheduledTime,
                      Status, CreditForfeited, CancelledBy, CancellationReason,
-                     OriginalLessonID, CompletedAt)
+                     OriginalLessonID, CompletedAt, Notes)
                 VALUES
                     (@SlotID, @BundleID, @QuarterID, @ScheduledDate, @ScheduledTime,
                      @Status, @CreditForfeited, @CancelledBy, @CancellationReason,
-                     @OriginalLessonID, @CompletedAt);
+                     @OriginalLessonID, @CompletedAt, @Notes);
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
@@ -4180,6 +4236,29 @@ namespace MusicSchool.Data.Implementations
                 CancellationReason = cancellationReason,
                 CompletedAt        = completedAt,
                 Notes              = note
+            });
+            return rowsAffected > 0;
+        }
+
+        public async Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime)
+        {
+            const string sql = @"
+                UPDATE Lesson
+                SET ScheduledDate      = @ScheduledDate,
+                    ScheduledTime      = @ScheduledTime,
+                    Status             = @Status,
+                    CreditForfeited    = 0,
+                    CancelledBy        = NULL,
+                    CancellationReason = NULL,
+                    CompletedAt        = NULL
+                WHERE LessonID = @LessonID;";
+
+            var rowsAffected = await _connection.ExecuteAsync(sql, new
+            {
+                LessonID      = lessonId,
+                ScheduledDate = newDate,
+                ScheduledTime = newTime,
+                Status        = LessonStatus.Scheduled
             });
             return rowsAffected > 0;
         }
@@ -5081,7 +5160,7 @@ else
     }
 
     <!-- ══════════════════════════════════════════════════════
-         PREVIOUS 3 LESSON NOTES
+         PREVIOUS 3 COMPLETED LESSON NOTES
     ══════════════════════════════════════════════════════ -->
     <MudText Typo="Typo.h6" Style="font-weight:600;" Class="mb-3">
         Previous Lesson Notes
@@ -5102,19 +5181,10 @@ else
     else
     {
         <MudGrid Spacing="3">
-            @foreach (var (lesson, index) in _previousLessons.Select((l, i) => (l, i)))
+            @foreach (var lesson in _previousLessons)
             {
-                var cardClass = lesson.Status.ToLower() switch
-                {
-                    "completed"        => "lesson-notes-card completed",
-                    "cancelledteacher" => "lesson-notes-card cancelled",
-                    "cancelledstudent" => "lesson-notes-card cancelled",
-                    "forfeited"        => "lesson-notes-card cancelled",
-                    _                  => "lesson-notes-card"
-                };
-
                 <MudItem xs="12" md="4">
-                    <MudPaper Class="@($"pa-4 {cardClass}")" Elevation="1" Style="height:100%;">
+                    <MudPaper Class="pa-4 lesson-notes-card completed" Elevation="1" Style="height:100%;">
                         <MudStack Spacing="2">
 
                             <!-- Lesson header -->
@@ -5149,13 +5219,10 @@ else
                                     </MudText>
                                 </MudStack>
 
-                                @{
-                                    var notes = @lesson.Notes;
-                                }
-                                @if (!string.IsNullOrWhiteSpace(notes))
+                                @if (!string.IsNullOrWhiteSpace(lesson.Notes))
                                 {
                                     <MudText Typo="Typo.body2" Style="color:#3A3A3A; white-space:pre-line;">
-                                        @notes
+                                        @lesson.Notes
                                     </MudText>
                                 }
                                 else
@@ -5178,17 +5245,17 @@ else
 @code {
     [Parameter] public int StudentId { get; set; }
 
-    private bool     _loading = true;
+    private bool _loading = true;
     private Student? _student;
 
     // Next upcoming scheduled lesson
     private Lesson? _nextLesson;
-    private int     _nextLessonDuration;
-    private string  _nextLessonTeacher = string.Empty;
+    private int _nextLessonDuration;
+    private string _nextLessonTeacher = string.Empty;
 
-    // Last 3 completed / past lessons
-    private List<Lesson>          _previousLessons  = [];
-    private Dictionary<int, int>  _lessonDurationMap = [];   // BundleID → DurationMinutes
+    // Last 3 completed lessons
+    private List<Lesson> _previousLessons = [];
+    private Dictionary<int, int> _lessonDurationMap = [];   // BundleID → DurationMinutes
 
     protected override async Task OnInitializedAsync()
     {
@@ -5234,17 +5301,11 @@ else
         // Derive teacher name from bundle detail when available
         var nextBundle = bundles.FirstOrDefault(b =>
             _nextLesson is not null && b.BundleID == _nextLesson.BundleID);
-        // TeacherName is not on LessonBundleDetail — it surfaces on LessonDetail.
-        // We surface the BundleID as a fallback; extend ApiService to fetch
-        // LessonDetail if you want teacher name on this card.
-        _nextLessonTeacher = string.Empty;   // See note above
+        _nextLessonTeacher = string.Empty;
 
-        // 5. Previous 3 lessons = most-recent lessons that are past today
-        //    (Completed, Forfeited, or either Cancelled variant)
+        // 5. Previous 3 lessons = most-recent Completed lessons only
         _previousLessons = allLessons
-            .Where(l => l.ScheduledDate.Date < today
-                        || (l.ScheduledDate.Date == today
-                            && l.Status != LessonStatus.Scheduled))
+            .Where(l => l.Status == LessonStatus.Completed)
             .OrderByDescending(l => l.ScheduledDate)
             .ThenByDescending(l => l.ScheduledTime)
             .Take(3)
@@ -6949,7 +7010,7 @@ else
 
 ```
 
-## File: MusicSchool.Web\Pages\LessonBundleDetails.razor
+## File: MusicSchool.Web\Pages\LessonBundleDetail.razor
 
 ```razor
 @page "/lesson-bundles/{BundleID:int}"
@@ -7049,7 +7110,7 @@ else
                             }
                         </MudTd>
                         <MudTd>@(context.CancelledBy ?? "—")</MudTd>
-                        <MudTd>@(context.CancellationReason ?? "—")</MudTd>
+                        <MudTd>@(context.Notes ?? "—")</MudTd>
                         <MudTd>
                             @if (context.Status == LessonStatus.Scheduled)
                             {
@@ -7062,6 +7123,13 @@ else
                                 <MudIconButton Icon="@Icons.Material.Filled.EventBusy" Size="Size.Small"
                                                Color="Color.Error" Title="Teacher Cancelled"
                                                OnClick="@(() => UpdateLessonStatus(context, LessonStatus.CancelledTeacher))" />
+                            }
+                            @if (context.Status == LessonStatus.CancelledTeacher
+                              || context.Status == LessonStatus.CancelledStudent)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.EventRepeat" Size="Size.Small"
+                                               Color="Color.Primary" Title="Reschedule"
+                                               OnClick="@(() => OpenRescheduleDialog(context))" />
                             }
                         </MudTd>
                     </RowTemplate>
@@ -7123,6 +7191,29 @@ else
     </MudTabs>
 }
 
+<!-- Reschedule Dialog -->
+<MudDialog @ref="_rescheduleDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Reschedule Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-1">
+            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("dd MMM yyyy")</strong>
+            at <strong>@_lessonToReschedule?.ScheduledTime.ToString("HH:mm")</strong>
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+            Cancelled by @(_lessonToReschedule?.CancelledBy ?? "—")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" />
+        <MudTimePicker @bind-Time="_rescheduleTime" Label="New Time" Required="true" AmPm="false" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _rescheduleDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ConfirmReschedule">
+            Reschedule
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 <!-- Cancel Lesson Dialog -->
 <MudDialog @ref="_cancelDialog" Options="_dialogOptions">
     <TitleContent><MudText Typo="Typo.h6">Student Cancellation</MudText></TitleContent>
@@ -7160,25 +7251,27 @@ else
 
     private bool _loading = true;
     private List<LessonBundleWithQuarterDetail> _bundleDetails = [];
-
-    // FIX: Changed from List<LessonDetail> to List<Lesson>.
-    // LessonService.GetByBundleAsync now calls Lesson/GetByBundle which returns Lesson objects,
-    // not LessonDetail. The table renders only the fields available on Lesson.
     private List<Lesson> _lessons = [];
     private List<Invoice> _invoices = [];
 
-    private MudDialog? _cancelDialog, _markPaidDialog;
+    private MudDialog? _rescheduleDialog, _cancelDialog, _markPaidDialog;
     private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
 
+    // Reschedule
+    private Lesson? _lessonToReschedule;
+    private DateTime? _rescheduleDate;
+    private TimeSpan? _rescheduleTime;
+
+    // Cancel
     private Lesson? _lessonToCancel;
     private string _cancelReason = string.Empty;
 
+    // Mark paid
     private Invoice? _invoiceToPay;
     private DateTime? _paidDate;
 
     private List<BreadcrumbItem> _breadcrumbs = [];
 
-    // FIX: Group by QuarterID, which is available on the Lesson model.
     private TableGroupDefinition<Lesson> _groupByQuarter = new()
     {
         GroupName = "Quarter",
@@ -7202,8 +7295,6 @@ else
                 new BreadcrumbItem($"{first.StudentFullName}", href: null, disabled: true)
             ];
 
-            // FIX: Call GetByBundleAsync(BundleID) directly — no student lookup needed,
-            // no client-side filtering needed, and the endpoint actually exists on the API.
             _lessons = await LessonSvc.GetByBundleAsync(BundleID);
             _invoices = await InvoiceSvc.GetByBundleAsync(BundleID);
         }
@@ -7222,6 +7313,37 @@ else
         }
         else Snackbar.Add("Failed to update lesson.", Severity.Error);
     }
+
+    // ── Reschedule ────────────────────────────────────────────────
+
+    private async Task OpenRescheduleDialog(Lesson lesson)
+    {
+        _lessonToReschedule = lesson;
+        _rescheduleDate = lesson.ScheduledDate.Date;
+        _rescheduleTime = lesson.ScheduledTime.ToTimeSpan();
+        await _rescheduleDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmReschedule()
+    {
+        if (_lessonToReschedule is null || _rescheduleDate is null || _rescheduleTime is null)
+            return;
+
+        var newDate = _rescheduleDate.Value.Date;
+        var newTime = TimeOnly.FromTimeSpan(_rescheduleTime.Value);
+
+        var result = await LessonSvc.RescheduleLessonAsync(_lessonToReschedule.LessonID, newDate, newTime);
+        if (result)
+        {
+            Snackbar.Add("Lesson rescheduled.", Severity.Success);
+            await _rescheduleDialog!.CloseAsync(DialogResult.Ok(true));
+            _lessons = await LessonSvc.GetByBundleAsync(BundleID);
+            _bundleDetails = await BundleSvc.GetBundleAsync(BundleID);
+        }
+        else Snackbar.Add("Failed to reschedule lesson.", Severity.Error);
+    }
+
+    // ── Cancel ────────────────────────────────────────────────────
 
     private async Task OpenCancelDialog(Lesson lesson)
     {
@@ -7244,6 +7366,8 @@ else
         }
         else Snackbar.Add("Failed.", Severity.Error);
     }
+
+    // ── Mark paid ─────────────────────────────────────────────────
 
     private async Task OpenMarkPaidDialog(Invoice invoice)
     {
@@ -7337,9 +7461,11 @@ else
     <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
 }
 
+@* Group by BundleID so each bundle appears once even though GetBundleAsync returns
+   one LessonBundleWithQuarterDetail row per quarter (4 rows per bundle). *@
 @if (_bundles.Any())
 {
-    @foreach (var b in _bundles)
+    @foreach (var b in _bundles.GroupBy(x => x.BundleID).Select(g => g.First()))
     {
         <MudPaper Class="pa-4 mb-3" Elevation="1">
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
@@ -7374,7 +7500,7 @@ else if (!_loading)
     private List<Teacher> _teachers = [];
     private List<AccountHolder> _accountHolders = [];
     private List<Student> _students = [];
-    private List<LessonBundleDetail> _bundles = [];
+    private List<LessonBundleWithQuarterDetail> _bundles = [];
     private int _selectedTeacherId, _selectedAccountHolderId, _selectedStudentId;
 
     protected override async Task OnInitializedAsync()
@@ -7383,9 +7509,7 @@ else if (!_loading)
         if (_teachers.Any())
         {
             _selectedTeacherId = _teachers.First().TeacherID;
-
             await OnTeacherChanged();
-
             StateHasChanged();
         }
     }
@@ -7419,7 +7543,16 @@ else if (!_loading)
         if (_selectedStudentId > 0)
         {
             _loading = true;
-            _bundles = await BundleSvc.GetByStudentAsync(_selectedStudentId);
+            // GetByStudentAsync returns LessonBundleDetail (no quarter fields).
+            // We load each bundle via GetBundleAsync to get LessonBundleWithQuarterDetail,
+            // which carries DurationMinutes, StartDate, EndDate, StudentFirstName, etc.
+            var bundleList = await BundleSvc.GetByStudentAsync(_selectedStudentId);
+            _bundles = [];
+            foreach (var b in bundleList)
+            {
+                var details = await BundleSvc.GetBundleAsync(b.BundleID);
+                _bundles.AddRange(details);
+            }
             _loading = false;
         }
         else _bundles = [];
@@ -7691,6 +7824,13 @@ else if (!_loading)
                                                Color="Color.Error" Title="Student Cancelled / Forfeit"
                                                OnClick="@(() => OpenForfeitDialog(context))" />
                             }
+                            @if (context.Status == LessonStatus.CancelledTeacher
+                              || context.Status == LessonStatus.CancelledStudent)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.EventRepeat" Size="Size.Small"
+                                               Color="Color.Primary" Title="Reschedule"
+                                               OnClick="@(() => OpenRescheduleDialog(context))" />
+                            }
                         </MudTd>
                     </RowTemplate>
                     <NoRecordsContent>
@@ -7759,6 +7899,29 @@ else
         Select a teacher and date to view the schedule.
     </MudAlert>
 }
+
+<!-- Reschedule Dialog -->
+<MudDialog @ref="_rescheduleDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Reschedule Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-1">
+            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("dd MMM yyyy")</strong>
+            at <strong>@_lessonToReschedule?.ScheduledTime.ToString("HH:mm")</strong>
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+            Cancelled by @(_lessonToReschedule?.CancelledBy ?? "—")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" />
+        <MudTimePicker @bind-Time="_rescheduleTime" Label="New Time" Required="true" AmPm="false" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _rescheduleDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ConfirmReschedule">
+            Reschedule
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 <!-- Complete Lesson Dialog -->
 <MudDialog @ref="_completeLessonDialog" Options="_dialogOptions">
@@ -7873,6 +8036,12 @@ else
     private int _selectedTeacherId;
     private DateTime? _selectedDate = DateTime.Today;
 
+    // Reschedule dialog
+    private MudDialog? _rescheduleDialog;
+    private LessonDetail? _lessonToReschedule;
+    private DateTime? _rescheduleDate;
+    private TimeSpan? _rescheduleTime;
+
     // Complete lesson dialog
     private MudDialog? _completeLessonDialog;
     private LessonDetail? _lessonToComplete;
@@ -7924,7 +8093,6 @@ else
         _lessons = await LessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
         _extraLessons = await ExtraLessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
 
-        // Reload student list for the Add Extra Lesson dropdown
         var accountHolders = await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId);
         _scheduleStudents = [];
         foreach (var ah in accountHolders)
@@ -7939,6 +8107,34 @@ else
     private void GoToToday() { _selectedDate = DateTime.Today; _ = LoadSchedule(); }
     private void PreviousDay() { _selectedDate = (_selectedDate ?? DateTime.Today).AddDays(-1); _ = LoadSchedule(); }
     private void NextDay() { _selectedDate = (_selectedDate ?? DateTime.Today).AddDays(1); _ = LoadSchedule(); }
+
+    // ── Reschedule ────────────────────────────────────────────────
+
+    private async Task OpenRescheduleDialog(LessonDetail lesson)
+    {
+        _lessonToReschedule = lesson;
+        _rescheduleDate = lesson.ScheduledDate.Date;
+        _rescheduleTime = lesson.ScheduledTime.ToTimeSpan();
+        await _rescheduleDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmReschedule()
+    {
+        if (_lessonToReschedule is null || _rescheduleDate is null || _rescheduleTime is null)
+            return;
+
+        var newDate = _rescheduleDate.Value.Date;
+        var newTime = TimeOnly.FromTimeSpan(_rescheduleTime.Value);
+
+        var result = await LessonSvc.RescheduleLessonAsync(_lessonToReschedule.LessonID, newDate, newTime);
+        if (result)
+        {
+            Snackbar.Add("Lesson rescheduled.", Severity.Success);
+            await _rescheduleDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed to reschedule lesson.", Severity.Error);
+    }
 
     // ── Complete bundle lesson ────────────────────────────────────
 
@@ -7990,7 +8186,7 @@ else
         else Snackbar.Add("Failed to update extra lesson.", Severity.Error);
     }
 
-    // ── Other status updates (no note prompt) ────────────────────
+    // ── Other status updates ──────────────────────────────────────
 
     private async Task QuickUpdateLesson(LessonDetail lesson, string status)
     {
@@ -8027,7 +8223,7 @@ else
         else Snackbar.Add("Failed.", Severity.Error);
     }
 
-    // ── Add extra lesson ─────────────────────────────────────────
+    // ── Add extra lesson ──────────────────────────────────────────
 
     private async Task OpenAddExtraLessonDialog()
     {
@@ -9267,6 +9463,20 @@ namespace MusicSchool.Services
                 var url = $"Lesson/UpdateLessonStatus?lessonId={lessonId}&status={status}";
                 if (!string.IsNullOrWhiteSpace(note))
                     url += $"&note={Uri.EscapeDataString(note)}";
+                var r = await http.PutAsync(url, null);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
+        }
+
+        public async Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime)
+        {
+            try
+            {
+                var url = $"Lesson/RescheduleLesson?lessonId={lessonId}" +
+                          $"&newDate={newDate:yyyy-MM-dd}" +
+                          $"&newTime={newTime:HH:mm:ss}";
                 var r = await http.PutAsync(url, null);
                 var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
                 return result?.Data ?? false;

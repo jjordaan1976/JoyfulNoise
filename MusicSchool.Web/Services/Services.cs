@@ -347,6 +347,20 @@ namespace MusicSchool.Services
             }
             catch { return false; }
         }
+
+        public async Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime)
+        {
+            try
+            {
+                var url = $"Lesson/RescheduleLesson?lessonId={lessonId}" +
+                          $"&newDate={newDate:yyyy-MM-dd}" +
+                          $"&newTime={newTime:HH:mm:ss}";
+                var r = await http.PutAsync(url, null);
+                var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
+                return result?.Data ?? false;
+            }
+            catch { return false; }
+        }
     }
 
     public class ExtraLessonService(HttpClient http)

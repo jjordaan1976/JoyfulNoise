@@ -54,7 +54,6 @@ namespace MusicSchool.Data.Implementations
         ///   CancelledTeacher / CancelledStudent → -1 only if the previous status
         ///   had already consumed a credit (i.e. was Completed or Forfeited).
         /// The delta approach is atomic — no separate read is needed.
-        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
         /// </summary>
         public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status,
             bool creditForfeited, string? cancelledBy, string? cancellationReason,
@@ -92,6 +91,36 @@ namespace MusicSchool.Data.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to update status for LessonID {LessonID}", lessonId);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Moves a cancelled lesson to a new date/time and resets it to Scheduled.
+        /// No credit adjustment is needed — cancelled lessons never consumed a credit.
+        /// </summary>
+        public async Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime)
+        {
+            try
+            {
+                // Guard: only allow rescheduling of cancelled lessons.
+                var lesson = await _lessonService.GetLessonAsync(lessonId);
+                if (lesson is null) return false;
+
+                if (lesson.Status != LessonStatus.CancelledTeacher
+                    && lesson.Status != LessonStatus.CancelledStudent)
+                {
+                    _logger.LogWarning(
+                        "RescheduleLessonAsync rejected: LessonID {LessonID} has status {Status}.",
+                        lessonId, lesson.Status);
+                    return false;
+                }
+
+                return await _lessonService.RescheduleLessonAsync(lessonId, newDate, newTime);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to reschedule LessonID {LessonID}", lessonId);
                 return false;
             }
         }

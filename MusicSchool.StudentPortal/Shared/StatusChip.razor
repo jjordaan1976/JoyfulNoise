@@ -1,0 +1,25 @@
+@* Shared/StatusChip.razor *@
+@namespace MusicSchool.StudentPortal.Shared
+
+<MudChip T="string"
+         Size="Size.Small"
+         Class="@($"mud-chip-filled {GetCssClass()}")"
+         Style="font-size:0.7rem;">
+    @Status
+</MudChip>
+
+@code {
+    [Parameter] public string Status { get; set; } = string.Empty;
+
+    private string GetCssClass() => Status?.ToLower() switch
+    {
+        "scheduled"        => "status-scheduled",
+        "completed"        => "status-completed",
+        "forfeited"        => "status-forfeited",
+        "cancelledteacher" => "status-cancelled",
+        "cancelledstudent" => "status-cancelled",
+        "cancelled"        => "status-cancelled",
+        "rescheduled"      => "status-rescheduled",
+        _                  => "status-scheduled"
+    };
+}

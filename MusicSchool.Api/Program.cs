@@ -1,4 +1,3 @@
-using MusicSchool.Api;
 using Serilog;
 
 namespace MusicSchool.Api
@@ -30,7 +29,7 @@ namespace MusicSchool.Api
                     options.AddPolicy(name: MyAllowSpecificOrigins,
                         policy =>
                         {
-                            policy.WithOrigins("https://localhost:64314") // Blazor WASM origin
+                            policy.WithOrigins("https://localhost:64314","https://localhost:57349", "https://localhost:51173") // Blazor WASM origin
                                   .AllowAnyHeader()
                                   .AllowAnyMethod();
                         });

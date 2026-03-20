@@ -1,0 +1,21 @@
+@* Shared/StatusChip.razor *@
+@namespace MusicSchool.AccountHolderPortal.Shared
+
+<MudChip T="string"
+         Size="Size.Small"
+         Class="@($"mud-chip-filled {GetCssClass()}")"
+         Style="font-size:0.7rem;">
+    @Status
+</MudChip>
+
+@code {
+    [Parameter] public string Status { get; set; } = string.Empty;
+
+    private string GetCssClass() => Status?.ToLower() switch
+    {
+        "paid"    => "status-paid",
+        "overdue" => "status-overdue",
+        "void"    => "status-void",
+        _         => "status-pending"     // Pending
+    };
+}

@@ -9,6 +9,14 @@
       {
         "Path": "MusicSchool.Web\\MusicSchool.Web.csproj",
         "Action": "Start"
+      },
+      {
+        "Path": "MusicSchool.AccountHolderPortal\\MusicSchool.AccountHolderPortal.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "MusicSchool.StudentPortal\\MusicSchool.StudentPortal.csproj",
+        "Action": "Start"
       }
     ]
   }

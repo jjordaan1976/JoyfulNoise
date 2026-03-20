@@ -1,0 +1,306 @@
+@page "/dashboard/{StudentId:int}"
+
+@namespace MusicSchool.StudentPortal.Pages
+
+@using MusicSchool.Data.Models
+
+@inject ApiService Api
+
+<PageTitle>My Lessons — Music School</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+    <MudText>Loading your lessons…</MudText>
+}
+else if (_student is null)
+{
+    <MudAlert Severity="Severity.Error">
+        Student not found. Please check your ID or contact your teacher.
+    </MudAlert>
+}
+else
+{
+    <!-- ── Page header ──────────────────────────────────────── -->
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-5">
+        <MudIcon Icon="@Icons.Material.Filled.LibraryMusic"
+                 Style="font-size:2rem; color:#F3D395;" />
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
+                Welcome, @_student.FirstName!
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Here's your lesson overview.
+            </MudText>
+        </div>
+    </MudStack>
+
+    <!-- ══════════════════════════════════════════════════════
+         NEXT LESSON HERO
+    ══════════════════════════════════════════════════════ -->
+    <MudText Typo="Typo.h6" Style="font-weight:600;" Class="mb-3">
+        Next Lesson
+    </MudText>
+
+    @if (_nextLesson is null)
+    {
+        <MudPaper Class="pa-5 mb-6" Elevation="1">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.EventBusy"
+                         Style="font-size:2.5rem; color:#78797A;" />
+                <MudText Color="Color.Secondary">
+                    No upcoming lessons scheduled. Contact your teacher to book.
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-5 mb-6 next-lesson-card" Elevation="2">
+            <MudGrid AlignItems="AlignItems.Center">
+
+                <!-- Date / time block -->
+                <MudItem xs="12" sm="6" md="4">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.caption" Style="color:#78797A; text-transform:uppercase; letter-spacing:.05em;">
+                            Date &amp; Time
+                        </MudText>
+                        <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
+                            @_nextLesson.ScheduledDate.ToString("dddd, dd MMMM")
+                        </MudText>
+                        <MudText Typo="Typo.h6" Style="color:#3A3A3A;">
+                            @_nextLesson.ScheduledTime.ToString("HH:mm")
+                            @if (_nextLessonDuration > 0)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                         Style="margin-left:6px;">
+                                    (@_nextLessonDuration min)
+                                </MudText>
+                            }
+                        </MudText>
+                    </MudStack>
+                </MudItem>
+
+                <!-- Countdown block -->
+                <MudItem xs="12" sm="6" md="4"
+                         Class="d-flex justify-center align-center">
+                    @{
+                        var daysUntil = (_nextLesson.ScheduledDate.Date - DateTime.Today).Days;
+                    }
+                    @if (daysUntil == 0)
+                    {
+                        <span class="countdown-badge" style="font-size:1rem; padding:8px 20px;">
+                            🎵 Today!
+                        </span>
+                    }
+                    else if (daysUntil == 1)
+                    {
+                        <span class="countdown-badge">Tomorrow</span>
+                    }
+                    else
+                    {
+                        <span class="countdown-badge">In @daysUntil days</span>
+                    }
+                </MudItem>
+
+                <!-- Bundle / teacher info -->
+                <MudItem xs="12" md="4">
+                    <MudStack Spacing="1">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.Inventory2"
+                                     Size="Size.Small" Style="color:#78797A;" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Bundle #@_nextLesson.BundleID
+                            </MudText>
+                        </MudStack>
+                        @if (!string.IsNullOrEmpty(_nextLessonTeacher))
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Person"
+                                         Size="Size.Small" Style="color:#78797A;" />
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    @_nextLessonTeacher
+                                </MudText>
+                            </MudStack>
+                        }
+                        <StatusChip Status="@_nextLesson.Status" />
+                    </MudStack>
+                </MudItem>
+
+            </MudGrid>
+        </MudPaper>
+    }
+
+    <!-- ══════════════════════════════════════════════════════
+         PREVIOUS 3 LESSON NOTES
+    ══════════════════════════════════════════════════════ -->
+    <MudText Typo="Typo.h6" Style="font-weight:600;" Class="mb-3">
+        Previous Lesson Notes
+    </MudText>
+
+    @if (_previousLessons.Count == 0)
+    {
+        <MudPaper Class="pa-5" Elevation="1">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.StickyNote2"
+                         Style="font-size:2.5rem; color:#78797A;" />
+                <MudText Color="Color.Secondary">
+                    No completed lessons yet. Notes from your teacher will appear here.
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Spacing="3">
+            @foreach (var (lesson, index) in _previousLessons.Select((l, i) => (l, i)))
+            {
+                var cardClass = lesson.Status.ToLower() switch
+                {
+                    "completed"        => "lesson-notes-card completed",
+                    "cancelledteacher" => "lesson-notes-card cancelled",
+                    "cancelledstudent" => "lesson-notes-card cancelled",
+                    "forfeited"        => "lesson-notes-card cancelled",
+                    _                  => "lesson-notes-card"
+                };
+
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="@($"pa-4 {cardClass}")" Elevation="1" Style="height:100%;">
+                        <MudStack Spacing="2">
+
+                            <!-- Lesson header -->
+                            <MudStack Row="true"
+                                      Justify="Justify.SpaceBetween"
+                                      AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
+                                    @lesson.ScheduledDate.ToString("dd MMM yyyy")
+                                </MudText>
+                                <StatusChip Status="@lesson.Status" />
+                            </MudStack>
+
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @lesson.ScheduledTime.ToString("HH:mm")
+                                @if (_lessonDurationMap.TryGetValue(lesson.BundleID, out var dur) && dur > 0)
+                                {
+                                    <span> · @dur min</span>
+                                }
+                                · Bundle #@lesson.BundleID
+                            </MudText>
+
+                            <MudDivider />
+
+                            <!-- Notes section -->
+                            <MudStack Spacing="1">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Notes"
+                                             Size="Size.Small" Style="color:#F3D395;" />
+                                    <MudText Typo="Typo.caption"
+                                             Style="font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#78797A;">
+                                        Teacher's Notes
+                                    </MudText>
+                                </MudStack>
+
+                                @{
+                                    var notes = "lesson.Notes";
+                                }
+                                @if (!string.IsNullOrWhiteSpace(notes))
+                                {
+                                    <MudText Typo="Typo.body2" Style="color:#3A3A3A; white-space:pre-line;">
+                                        @notes
+                                    </MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary"
+                                             Style="font-style:italic;">
+                                        No notes recorded for this lesson.
+                                    </MudText>
+                                }
+                            </MudStack>
+
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+}
+
+@code {
+    [Parameter] public int StudentId { get; set; }
+
+    private bool     _loading = true;
+    private Student? _student;
+
+    // Next upcoming scheduled lesson
+    private Lesson? _nextLesson;
+    private int     _nextLessonDuration;
+    private string  _nextLessonTeacher = string.Empty;
+
+    // Last 3 completed / past lessons
+    private List<Lesson>          _previousLessons  = [];
+    private Dictionary<int, int>  _lessonDurationMap = [];   // BundleID → DurationMinutes
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+
+        // 1. Load student info
+        _student = await Api.GetStudentAsync(StudentId);
+        if (_student is null)
+        {
+            _loading = false;
+            return;
+        }
+
+        // 2. Load all bundles for this student so we can look up duration
+        var bundles = await Api.GetBundlesByStudentAsync(StudentId);
+        foreach (var b in bundles)
+            _lessonDurationMap[b.BundleID] = b.DurationMinutes;
+
+        // 3. Load all lessons across all bundles
+        var allLessons = new List<Lesson>();
+        foreach (var bundle in bundles)
+        {
+            var lessonList = await Api.GetLessonsByBundleAsync(bundle.BundleID);
+            allLessons.AddRange(lessonList);
+        }
+
+        var today = DateTime.Today;
+
+        // 4. Next lesson = earliest future Scheduled lesson
+        _nextLesson = allLessons
+            .Where(l => l.Status == LessonStatus.Scheduled
+                        && l.ScheduledDate.Date >= today)
+            .OrderBy(l => l.ScheduledDate)
+            .ThenBy(l => l.ScheduledTime)
+            .FirstOrDefault();
+
+        if (_nextLesson is not null
+            && _lessonDurationMap.TryGetValue(_nextLesson.BundleID, out var dur))
+        {
+            _nextLessonDuration = dur;
+        }
+
+        // Derive teacher name from bundle detail when available
+        var nextBundle = bundles.FirstOrDefault(b =>
+            _nextLesson is not null && b.BundleID == _nextLesson.BundleID);
+        // TeacherName is not on LessonBundleDetail — it surfaces on LessonDetail.
+        // We surface the BundleID as a fallback; extend ApiService to fetch
+        // LessonDetail if you want teacher name on this card.
+        _nextLessonTeacher = string.Empty;   // See note above
+
+        // 5. Previous 3 lessons = most-recent lessons that are past today
+        //    (Completed, Forfeited, or either Cancelled variant)
+        _previousLessons = allLessons
+            .Where(l => l.ScheduledDate.Date < today
+                        || (l.ScheduledDate.Date == today
+                            && l.Status != LessonStatus.Scheduled))
+            .OrderByDescending(l => l.ScheduledDate)
+            .ThenByDescending(l => l.ScheduledTime)
+            .Take(3)
+            .ToList();
+
+        _loading = false;
+    }
+}

@@ -1,0 +1,56 @@
+@page "/"
+@namespace MusicSchool.StudentPortal.Pages
+
+<PageTitle>Music School — Student Portal</PageTitle>
+
+<MudPaper Class="pa-6 mt-6" Elevation="1"
+          Style="max-width:480px; margin:auto; border-top:4px solid #F3D395;">
+
+    <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-5">
+        <MudIcon Icon="@Icons.Material.Filled.LibraryMusic"
+                 Style="font-size:3rem; color:#F3D395;" />
+        <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
+            Student Portal
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+            Enter your Student ID to see your upcoming lesson and recent lesson notes.
+        </MudText>
+    </MudStack>
+
+    <MudTextField @bind-Value="_studentId"
+                  Label="Student ID"
+                  Variant="Variant.Outlined"
+                  InputType="InputType.Number"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.School"
+                  Class="mb-4"
+                  OnKeyDown="@OnKeyDown" />
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               FullWidth="true"
+               Size="Size.Large"
+               StartIcon="@Icons.Material.Filled.CalendarToday"
+               OnClick="ViewDashboard"
+               Disabled="@(_studentId <= 0)">
+        View My Lessons
+    </MudButton>
+
+</MudPaper>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private int _studentId;
+
+    private void ViewDashboard()
+    {
+        if (_studentId > 0)
+            Nav.NavigateTo($"/dashboard/{_studentId}");
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") ViewDashboard();
+    }
+}

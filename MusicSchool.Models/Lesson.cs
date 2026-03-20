@@ -1,5 +1,3 @@
-using System;
-
 namespace MusicSchool.Data.Models
 {
     /// <summary>

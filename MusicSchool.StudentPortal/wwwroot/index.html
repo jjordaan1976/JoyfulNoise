@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music School — Student Portal</title>
+    <base href="/" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <style>
+        /* ── Status chip palette (mirrors MusicSchool.Web) ────── */
+        .status-scheduled  { background-color: #E3F2FD !important; color: #1565C0 !important; }
+        .status-completed  { background-color: #E8F5E9 !important; color: #2E7D32 !important; }
+        .status-forfeited  { background-color: #FFF3E0 !important; color: #BF360C !important; }
+        .status-cancelled  { background-color: #FFEBEE !important; color: #C62828 !important; }
+        .status-rescheduled{ background-color: #F3E5F5 !important; color: #6A1B9A !important; }
+
+        /* ── Next-lesson hero card ──────────────────────────────── */
+        .next-lesson-card {
+            background: linear-gradient(135deg, #F3D395 0%, #f9e8be 100%);
+            border-radius: 12px;
+        }
+
+        /* ── Previous lesson notes card ────────────────────────── */
+        .lesson-notes-card {
+            border-left: 4px solid #F3D395;
+        }
+        .lesson-notes-card.completed {
+            border-left-color: #81C784;
+        }
+        .lesson-notes-card.cancelled {
+            border-left-color: #EF9A9A;
+        }
+
+        /* ── Countdown badge ────────────────────────────────────── */
+        .countdown-badge {
+            background: #3A3A3A;
+            color: #F3D395;
+            border-radius: 20px;
+            padding: 4px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">Loading…</div>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+</html>

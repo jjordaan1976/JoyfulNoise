@@ -1,7 +1,188 @@
 # Flattened Codebase
 
-Generated: 03/20/2026 01:12:50
+Generated: 03/20/2026 01:51:27
 
+
+## File: MusicSchool.AccountHolderApp\Pages\Statement.razor
+
+```razor
+@page "/statement/{AccountHolderId:int}"
+@using MusicSchool.AccountHolderApp.Services
+@using MusicSchool.Data.Models
+@inject ApiService Api
+
+<h3>Statement</h3>
+
+@if (invoices == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h4>Aging Summary</h4>
+    <ul>
+        <li>Current: @CurrentTotal</li>
+        <li>30 Days: @Days30</li>
+        <li>60 Days: @Days60</li>
+        <li>90+ Days: @Days90</li>
+    </ul>
+
+    <h4>Invoices</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Due Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var inv in invoices)
+            {
+                <tr>
+                    <td>@inv.DueDate.ToShortDateString()</td>
+                    <td>@inv.Amount</td>
+                    <td>@inv.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public int AccountHolderId { get; set; }
+
+    List<Invoice>? invoices;
+
+    decimal CurrentTotal, Days30, Days60, Days90;
+
+    protected override async Task OnInitializedAsync()
+    {
+        invoices = (await Api.GetAsync<IEnumerable<Invoice>>(
+            $"Invoice/GetOutstandingByAccountHolder?accountHolderId={AccountHolderId}"
+        ))?.ToList();
+
+        CalculateAging();
+    }
+
+    void CalculateAging()
+    {
+        var today = DateTime.Today;
+
+        foreach (var inv in invoices!)
+        {
+            var days = (today - inv.DueDate).Days;
+
+            if (days <= 0)
+                CurrentTotal += inv.Amount;
+            else if (days <= 30)
+                Days30 += inv.Amount;
+            else if (days <= 60)
+                Days60 += inv.Amount;
+            else
+                Days90 += inv.Amount;
+        }
+    }
+}
+```
+
+## File: MusicSchool.AccountHolderApp\Properties\launchSettings.json
+
+```json
+{
+  "profiles": {
+    "MusicSchool.AccountHolderApp": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:52073;http://localhost:52074"
+    }
+  }
+}
+```
+
+## File: MusicSchool.AccountHolderApp\Services\ApiClient.cs
+
+```csharp
+using MusicSchool.Models.TransferModels;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Threading.Tasks;
+
+namespace MusicSchool.AccountHolderApp.Services;
+
+public class ApiService
+{
+    private readonly HttpClient _http;
+
+    public ApiService(HttpClient http)
+    {
+        _http = http;
+    }
+
+    public async Task<T> GetAsync<T>(string url)
+    {
+        var response = await _http.GetFromJsonAsync<ResponseBase<T>>(url);
+        return response.Data;
+    }
+}
+```
+
+## File: MusicSchool.AccountHolderApp\App.razor
+
+```razor
+@using Microsoft.AspNetCore.Components.Routing
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <p>Sorry, there's nothing here.</p>
+    </NotFound>
+</Router>
+```
+
+## File: MusicSchool.AccountHolderApp\MusicSchool.AccountHolderApp.csproj
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MusicSchool.Models\MusicSchool.Models.csproj" />
+  </ItemGroup>
+</Project>
+```
+
+## File: MusicSchool.AccountHolderApp\Program.cs
+
+```csharp
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using MusicSchool.AccountHolderApp;
+using System;
+using System.Net.Http;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri("https://localhost:64100/")
+});
+
+await builder.Build().RunAsync();
+
+```
 
 ## File: MusicSchool.Api\Controllers\AccountHolderController.cs
 
@@ -858,7 +1039,7 @@ namespace MusicSchool.Api
                     options.AddPolicy(name: MyAllowSpecificOrigins,
                         policy =>
                         {
-                            policy.WithOrigins("https://localhost:64314") // Blazor WASM origin
+                            policy.WithOrigins("https://localhost:64314;https://localhost:52073") // Blazor WASM origin
                                   .AllowAnyHeader()
                                   .AllowAnyMethod();
                         });
@@ -4312,6 +4493,108 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
+## File: MusicSchool.StudentApp\Pages\Dashboard.razor
+
+```razor
+@page "/student/{StudentId:int}"
+@inject ApiService Api
+
+<h3>Student Dashboard</h3>
+
+@if (nextLesson == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h4>Next Lesson</h4>
+    <p>
+        @nextLesson.ScheduledDate.ToShortDateString()
+        @nextLesson.ScheduledTime
+    </p>
+
+    <h4>Last 3 Lessons</h4>
+    <ul>
+        @foreach (var lesson in lastLessons)
+        {
+            <li>
+                @lesson.ScheduledDate.ToShortDateString() - @lesson.Status
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter] public int StudentId { get; set; }
+
+    LessonDetail? nextLesson;
+    List<LessonDetail> lastLessons = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var lessons = (await Api.GetAsync<IEnumerable<LessonDetail>>(
+            $"Lesson/GetByStudent?studentId={StudentId}"
+        ))?
+        .OrderBy(l => l.ScheduledDate)
+        .ToList();
+
+        if (lessons == null) return;
+
+        var now = DateTime.Now;
+
+        nextLesson = lessons
+            .Where(l => l.ScheduledDate >= now)
+            .OrderBy(l => l.ScheduledDate)
+            .FirstOrDefault();
+
+        lastLessons = lessons
+            .Where(l => l.ScheduledDate < now)
+            .OrderByDescending(l => l.ScheduledDate)
+            .Take(3)
+            .ToList();
+    }
+}
+```
+
+## File: MusicSchool.StudentApp\App.razor
+
+```razor
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" />
+    </Found>
+</Router>
+
+```
+
+## File: MusicSchool.StudentApp\MusicSchool.StudentApp.csproj
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+</Project>
+```
+
+## File: MusicSchool.StudentApp\Program.cs
+
+```csharp
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri("https://localhost:64100/")
+});
+
+await builder.Build().RunAsync();
+
+```
+
 ## File: MusicSchool.Web\Pages\AccountHolderDetail.razor
 
 ```razor
@@ -4646,7 +4929,7 @@ else
                        @bind-Value:after="OnTeacherChanged" Clearable="true">
                 @foreach (var t in _teachers)
                 {
-                    <MudSelectItem Value="t.TeacherID">@t.Name</MudSelectItem>
+                    <MudSelectItem Value="@t.TeacherID">@t.Name</MudSelectItem>
                 }
             </MudSelect>
         </MudItem>
@@ -4694,7 +4977,7 @@ else
             </MudTd>
         </RowTemplate>
         <NoRecordsContent>
-            <MudText>No account holders found. Select a teacher to load account holders.</MudText>
+            <MudText>No account holders found.</MudText>
         </NoRecordsContent>
     </MudTable>
 </MudPaper>
@@ -4757,7 +5040,7 @@ else
     private List<Teacher> _teachers = [];
     private List<AccountHolder> _accountHolders = [];
     private AccountHolder? _selected;
-    private int _selectedTeacherId;
+    private int _selectedTeacherId = 0;
     private string _searchString = string.Empty;
 
     private MudDialog? _addDialog, _editDialog;
@@ -4775,13 +5058,28 @@ else
     protected override async Task OnInitializedAsync()
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
+
+        if (_teachers.Any())
+        {
+            _selectedTeacherId = _teachers.First().TeacherID;
+
+            await OnTeacherChanged();
+
+            StateHasChanged(); 
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
     }
 
     private async Task OnTeacherChanged()
     {
         if (_selectedTeacherId > 0)
         {
-            _loading = true;
+            _loading = true;            
             _accountHolders = await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId);
             _loading = false;
         }
@@ -4987,6 +5285,20 @@ else
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
         _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
+        if (_teachers.Any())
+        {
+            _selectedTeacherId = _teachers.First().TeacherID;
+
+            await OnTeacherChanged();
+
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
     }
 
     private async Task OnTeacherChanged()
@@ -5543,6 +5855,20 @@ else
     protected override async Task OnInitializedAsync()
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
+        if (_teachers.Any())
+        {
+            _selectedTeacherId = _teachers.First().TeacherID;
+
+            await OnTeacherChanged();
+
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
     }
 
     private async Task OnTeacherChanged()
@@ -6039,6 +6365,20 @@ else if (!_loading)
     protected override async Task OnInitializedAsync()
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
+        if (_teachers.Any())
+        {
+            _selectedTeacherId = _teachers.First().TeacherID;
+
+            await OnTeacherChanged();
+
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
     }
 
     private async Task OnTeacherChanged()
@@ -6466,6 +6806,21 @@ else
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
         _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
+        
+        if (_teachers.Any())
+        {
+            _selectedTeacherId = _teachers.First().TeacherID;
+
+            await LoadSchedule();
+
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
     }
 
     private async Task LoadSchedule()
@@ -7118,7 +7473,6 @@ else
 }
 
 <MudPaper Elevation="1">
-
     <MudTable Items="FilteredStudents" Hover="true" Dense="false" Loading="_loading">
         <HeaderContent>
             <MudTh>Name</MudTh>
@@ -7150,21 +7504,19 @@ else
             </MudTd>
         </RowTemplate>
         <NoRecordsContent>
-            <MudText>Select a teacher and account holder to view students.</MudText>
+            <MudText>Select an account holder to view students.</MudText>
         </NoRecordsContent>
     </MudTable>
 </MudPaper>
 
-
 @code {
-    
     private bool _loading;
     private List<Teacher> _teachers = [];
     private List<AccountHolder> _accountHolders = [];
     private List<Student> _students = [];
     private int _selectedTeacherId;
     private int _selectedAccountHolderId;
-    private string _searchString = string.Empty;    
+    private string _searchString = string.Empty;
 
     private IEnumerable<Student> FilteredStudents =>
         _students.Where(s => string.IsNullOrWhiteSpace(_searchString) ||
@@ -7173,6 +7525,20 @@ else
     protected override async Task OnInitializedAsync()
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
+        if (_teachers.Any())
+        {
+            _selectedTeacherId = _teachers.First().TeacherID;
+
+            await OnTeacherChanged();
+
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
     }
 
     private async Task OnTeacherChanged()

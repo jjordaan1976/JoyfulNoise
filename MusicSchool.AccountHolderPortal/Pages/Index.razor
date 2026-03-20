@@ -1,0 +1,55 @@
+@page "/"
+@namespace MusicSchool.AccountHolderPortal.Pages
+
+<PageTitle>Music School — Account Portal</PageTitle>
+
+<MudPaper Class="pa-6 mt-6" Elevation="1" Style="max-width:480px; margin:auto; border-top:4px solid #F3D395;">
+
+    <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-5">
+        <MudIcon Icon="@Icons.Material.Filled.MusicNote"
+                 Style="font-size:3rem; color:#F3D395;" />
+        <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
+            Account Portal
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+            Enter your Account Holder ID to view your statement and invoices.
+        </MudText>
+    </MudStack>
+
+    <MudTextField @bind-Value="_accountHolderId"
+                  Label="Account Holder ID"
+                  Variant="Variant.Outlined"
+                  InputType="InputType.Number"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.AccountCircle"
+                  Class="mb-4"
+                  OnKeyDown="@OnKeyDown" />
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               FullWidth="true"
+               Size="Size.Large"
+               StartIcon="@Icons.Material.Filled.Receipt"
+               OnClick="ViewStatement"
+               Disabled="@(_accountHolderId <= 0)">
+        View My Statement
+    </MudButton>
+
+</MudPaper>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private int _accountHolderId;
+
+    private void ViewStatement()
+    {
+        if (_accountHolderId > 0)
+            Nav.NavigateTo($"/statement/{_accountHolderId}");
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") ViewStatement();
+    }
+}

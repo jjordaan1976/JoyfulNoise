@@ -6,7 +6,14 @@ namespace MusicSchool.Data.Interfaces
     public interface IBundleQuarterService
     {
         Task<IEnumerable<BundleQuarter>> GetByBundleAsync(int bundleId);
-        Task InsertBatchAsync(IEnumerable<BundleQuarter> quarters, IDbTransaction tx);
+
+        /// <summary>
+        /// Inserts a batch of quarters within an existing transaction.
+        /// The connection must be passed explicitly so the INSERT runs on the
+        /// same connection that owns the transaction.
+        /// </summary>
+        Task InsertBatchAsync(IEnumerable<BundleQuarter> quarters, IDbTransaction tx, IDbConnection connection);
+
         Task<bool> UpdateLessonsUsedAsync(int quarterId, int lessonsUsed);
 
         /// <summary>

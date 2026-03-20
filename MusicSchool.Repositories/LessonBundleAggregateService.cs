@@ -3,6 +3,7 @@ using MusicSchool.Data.Interfaces;
 using MusicSchool.Data.Models;
 using MusicSchool.Models;
 using System.Data;
+
 namespace MusicSchool.Data.Implementations
 {
     public class LessonBundleAggregateService : ILessonBundleAggregateService
@@ -75,11 +76,7 @@ namespace MusicSchool.Data.Implementations
 
         /// <summary>
         /// Saves a new LessonBundle, its 4 BundleQuarter rows, and 12 monthly Invoice
-        /// instalments — all in a single transaction. Returns the new BundleID.
-        ///
-        /// Invoice due dates are the 1st of each month starting from the month the
-        /// bundle starts, running for 12 consecutive months.
-        /// Amount per instalment = (TotalLessons × PricePerLesson) / 12, rounded to 2dp.
+        /// instalments — all in a single transaction on the same connection.
         /// </summary>
         public async Task<int> SaveNewBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters)
         {
@@ -90,8 +87,7 @@ namespace MusicSchool.Data.Implementations
 
             try
             {
-                // 1. Resolve AccountHolderID inside the transaction so we don't need
-                //    a separate round-trip before opening the connection.
+                // 1. Resolve AccountHolderID inside the transaction.
                 var accountHolderId = await _connection.ExecuteScalarAsync<int>(
                     "SELECT AccountHolderID FROM Student WHERE StudentID = @StudentID",
                     new { bundle.StudentID }, transaction);
@@ -103,11 +99,15 @@ namespace MusicSchool.Data.Implementations
                 // 2. Insert bundle
                 var bundleId = await _lessonBundleService.InsertAsync(bundle, transaction);
 
-                // 3. Insert quarters
+                // 3. Insert quarters — pass _connection explicitly so the INSERT runs on
+                //    the same connection that owns the transaction. Without this, Dapper
+                //    uses the service's injected connection which is a different instance,
+                //    causing the quarters to be inserted outside the transaction or not at
+                //    all, leaving LessonsAllocated = 0 and breaking slot/lesson creation.
                 foreach (var quarter in quarters)
                     quarter.BundleID = bundleId;
 
-                await _bundleQuarterService.InsertBatchAsync(quarters, transaction);
+                await _bundleQuarterService.InsertBatchAsync(quarters, transaction, _connection);
 
                 // 4. Generate 12 monthly invoice instalments
                 var instalmentAmount = Math.Round(bundle.TotalLessons * bundle.PricePerLesson / 12, 2);
@@ -125,10 +125,6 @@ namespace MusicSchool.Data.Implementations
             }
         }
 
-        /// <summary>
-        /// Returns a flat LessonBundleWithQuarterDetail row per quarter (4 rows total)
-        /// for the given bundle, joining Student and LessonType for context.
-        /// </summary>
         public async Task<IEnumerable<LessonBundleWithQuarterDetail>> GetBundleByIdAsync(int bundleId)
         {
             return await _connection.QueryAsync<LessonBundleWithQuarterDetail>(
@@ -147,17 +143,12 @@ namespace MusicSchool.Data.Implementations
         // Helpers
         // -------------------------------------------------------------------------
 
-        /// <summary>
-        /// Builds 12 Invoice rows for a bundle. DueDate is the 1st of each month,
-        /// starting from the 1st of the month in which <paramref name="bundleStartDate"/> falls.
-        /// </summary>
         private static IEnumerable<Invoice> BuildInstalments(
             int bundleId,
             int accountHolderId,
             decimal instalmentAmount,
             DateTime bundleStartDate)
         {
-            // Anchor to the 1st of the start month regardless of the day the bundle starts.
             var firstDue = new DateTime(bundleStartDate.Year, bundleStartDate.Month, 1);
 
             for (byte i = 1; i <= 12; i++)

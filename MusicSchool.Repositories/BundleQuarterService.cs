@@ -31,7 +31,13 @@ namespace MusicSchool.Data.Implementations
             return await _connection.QueryAsync<BundleQuarter>(sql, new { BundleID = bundleId });
         }
 
-        public async Task InsertBatchAsync(IEnumerable<BundleQuarter> quarters, IDbTransaction tx)
+        /// <summary>
+        /// Inserts a batch of quarters within an existing transaction.
+        /// The connection is passed explicitly so the INSERT runs on the same
+        /// connection that owns the transaction — avoiding cross-connection issues
+        /// that would cause LessonsAllocated to be 0 or the INSERT to fail silently.
+        /// </summary>
+        public async Task InsertBatchAsync(IEnumerable<BundleQuarter> quarters, IDbTransaction tx, IDbConnection connection)
         {
             const string sql = @"
                 INSERT INTO BundleQuarter
@@ -41,7 +47,7 @@ namespace MusicSchool.Data.Implementations
                     (@BundleID, @QuarterNumber, @LessonsAllocated, @LessonsUsed,
                      @QuarterStartDate, @QuarterEndDate);";
 
-            await _connection.ExecuteAsync(
+            await connection.ExecuteAsync(
                 new CommandDefinition(sql, quarters, tx));
         }
 

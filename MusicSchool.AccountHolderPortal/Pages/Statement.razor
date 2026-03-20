@@ -57,7 +57,7 @@ else
                 <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
                     R @_current.ToString("N2")
                 </MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Not yet due</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Due today</MudText>
             </MudPaper>
         </MudItem>
 
@@ -213,10 +213,11 @@ else
         {
             var days = (today - inv.DueDate).Days;
 
-            if      (days <= 0)  _current += inv.Amount;
-            else if (days <= 30) _days30  += inv.Amount;
-            else if (days <= 60) _days60  += inv.Amount;
-            else                 _days90  += inv.Amount;
+            if (days < 0) continue;          // future — excluded from summary
+            else if (days == 0) _current += inv.Amount;
+            else if (days <= 30) _days30 += inv.Amount;
+            else if (days <= 60) _days60 += inv.Amount;
+            else _days90 += inv.Amount;
         }
     }
 
@@ -226,9 +227,10 @@ else
             return "—";
 
         var days = (DateTime.Today - inv.DueDate).Days;
-        if      (days <= 0)  return "Current";
+        if (days < 0) return "Not yet due";
+        else if (days == 0) return "Due today";
         else if (days <= 30) return $"{days}d overdue";
         else if (days <= 60) return $"{days}d overdue";
-        else                 return $"{days}d overdue";
+        else return $"{days}d overdue";
     }
 }

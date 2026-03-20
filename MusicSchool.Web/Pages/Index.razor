@@ -40,7 +40,7 @@
                 <div>
                     <MudText Typo="Typo.h4" Style="font-weight:700;">@_monthInvoiceCount</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        Invoices — @DateTime.Today.ToString("MMM yyyy")
+                        Invoices — @DateTime.Today.ToString("yyyy MMM")
                     </MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
                         R @_monthInvoiceTotal.ToString("N2")
@@ -58,7 +58,7 @@
                 <div>
                     <MudText Typo="Typo.h4" Style="font-weight:700;">@_monthPaidCount</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        Paid — @DateTime.Today.ToString("MMM yyyy")
+                        Paid — @DateTime.Today.ToString("yyyy MMM")
                     </MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
                         R @_monthPaidTotal.ToString("N2")
@@ -87,7 +87,7 @@
     <MudItem xs="12" md="6">
         <MudPaper Class="pa-4" Elevation="1">
             <MudText Typo="Typo.h6" Class="mb-3">
-                Year to Date — Invoices Due to @DateTime.Today.ToString("dd MMM yyyy")
+                Year to Date — Invoices Due to @DateTime.Today.ToString("yyyy MMM dd")
             </MudText>
             @if (!_loading)
             {

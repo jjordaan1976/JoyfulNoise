@@ -30,7 +30,7 @@
         </MudItem>
         <MudItem xs="12" sm="5" md="4">
             <MudDatePicker @bind-Date="_selectedDate" Label="Date"
-                           @bind-Date:after="LoadSchedule" />
+                           @bind-Date:after="LoadSchedule" DateFormat="yyyy/MM/dd" />
         </MudItem>
         <MudItem xs="12" sm="2" md="4">
             <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
@@ -173,14 +173,14 @@ else
     <TitleContent><MudText Typo="Typo.h6">Reschedule Lesson</MudText></TitleContent>
     <DialogContent>
         <MudText Class="mb-1">
-            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("dd MMM yyyy")</strong>
+            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("yyyy MMM dd")</strong>
             at <strong>@_lessonToReschedule?.ScheduledTime.ToString("HH:mm")</strong>
         </MudText>
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
             Cancelled by @(_lessonToReschedule?.CancelledBy ?? "—")
         </MudText>
         <MudDivider Class="mb-3" />
-        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" />
+        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" DateFormat="yyyy/MM/dd" />
         <MudTimePicker @bind-Time="_rescheduleTime" Label="New Time" Required="true" AmPm="false" />
     </DialogContent>
     <DialogActions>
@@ -197,7 +197,7 @@ else
     <DialogContent>
         <MudText Class="mb-2">
             <strong>@_lessonToComplete?.StudentFullName</strong>
-            — @_lessonToComplete?.ScheduledDate.ToString("dd MMM yyyy")
+            — @_lessonToComplete?.ScheduledDate.ToString("yyyy MMM dd")
             @_lessonToComplete?.ScheduledTime.ToString("HH:mm")
         </MudText>
         <MudDivider Class="mb-3" />
@@ -220,7 +220,7 @@ else
     <DialogContent>
         <MudText Class="mb-2">
             <strong>@_extraToComplete?.StudentFullName</strong>
-            — @_extraToComplete?.ScheduledDate.ToString("dd MMM yyyy")
+            — @_extraToComplete?.ScheduledDate.ToString("yyyy MMM dd")
             @_extraToComplete?.ScheduledTime.ToString("HH:mm")
         </MudText>
         <MudDivider Class="mb-3" />
@@ -243,7 +243,7 @@ else
     <DialogContent>
         <MudText Class="mb-2">
             <strong>@_lessonToAction?.StudentFullName</strong>
-            — @_lessonToAction?.ScheduledDate.ToString("dd MMM yyyy")
+            — @_lessonToAction?.ScheduledDate.ToString("yyyy MMM dd")
         </MudText>
         <MudDivider Class="mb-3" />
         <MudText Typo="Typo.body2" Class="mb-3">

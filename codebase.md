@@ -1,6 +1,6 @@
 # Flattened Codebase
 
-Generated: 03/20/2026 08:18:26
+Generated: 03/20/2026 08:50:50
 
 
 ## File: MusicSchool.AccountHolderPortal\Pages\Index.razor
@@ -108,7 +108,7 @@ else
                 <div class="text-right">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Statement date</MudText>
                     <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
-                        @DateTime.Today.ToString("dd MMMM yyyy")
+                        @DateTime.Today.ToString("yyyy MMMM dd")
                     </MudText>
                 </div>
             </MudItem>
@@ -204,7 +204,7 @@ else
                     <MudTh>Aging</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="Due Date">@context.DueDate.ToString("dd MMM yyyy")</MudTd>
+                    <MudTd DataLabel="Due Date">@context.DueDate.ToString("yyyy MMM dd")</MudTd>
                     <MudTd DataLabel="Description">
                         @if (context.BundleID.HasValue)
                         {
@@ -220,7 +220,7 @@ else
                         }
                     </MudTd>
                     <MudTd DataLabel="Amount">R @context.Amount.ToString("N2")</MudTd>
-                    <MudTd DataLabel="Paid Date">@(context.PaidDate?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+                    <MudTd DataLabel="Paid Date">@(context.PaidDate?.ToString("yyyy MMM dd") ?? "—")</MudTd>
                     <MudTd DataLabel="Status"><StatusChip Status="@context.Status" /></MudTd>
                     <MudTd DataLabel="Aging">@GetAgingLabel(context)</MudTd>
                 </RowTemplate>
@@ -5196,7 +5196,7 @@ else
                                       Justify="Justify.SpaceBetween"
                                       AlignItems="AlignItems.Center">
                                 <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
-                                    @lesson.ScheduledDate.ToString("dd MMM yyyy")
+                                    @lesson.ScheduledDate.ToString("yyyy MMM dd")
                                 </MudText>
                                 <StatusChip Status="@lesson.Status" />
                             </MudStack>
@@ -5739,7 +5739,7 @@ else
                                 <MudText Typo="Typo.body2">Instalment #@inv.InstallmentNumber — R@(inv.Amount.ToString("N2"))</MudText>
                                 <StatusChip Status="@inv.Status" />
                             </MudStack>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Due: @inv.DueDate.ToString("dd MMM yyyy")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Due: @inv.DueDate.ToString("yyyy MMM dd")</MudText>
                         </MudPaper>
                     }
                 }
@@ -5770,7 +5770,7 @@ else
                                 @context.FullName
                             </MudButton>
                         </MudTd>
-                        <MudTd>@(context.DateOfBirth?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+                        <MudTd>@(context.DateOfBirth?.ToString("yyyy MMM dd") ?? "—")</MudTd>
                         <MudTd>
                             @if (context.IsAccountHolder)
                             {
@@ -5825,7 +5825,7 @@ else
         <MudForm @ref="_addStudentForm">
             <MudTextField @bind-Value="_newStudent.FirstName" Label="First Name" Required="true" Class="mb-3" />
             <MudTextField @bind-Value="_newStudent.LastName" Label="Last Name" Required="true" Class="mb-3" />
-            <MudDatePicker @bind-Date="_dobDate" Label="Date of Birth" Class="mb-3" />
+            <MudDatePicker @bind-Date="_dobDate" Label="Date of Birth" Class="mb-3" DateFormat="yyyy/MM/dd" />
             <MudSwitch @bind-Value="_newStudent.IsAccountHolder" Label="Same as Account Holder" Color="Color.Primary" Class="mb-2" />
             <MudSwitch @bind-Value="_newStudent.IsActive" Label="Active" Color="Color.Primary" />
         </MudForm>
@@ -5843,7 +5843,7 @@ else
         <MudForm @ref="_editStudentForm">
             <MudTextField @bind-Value="_editStudent.FirstName" Label="First Name" Required="true" Class="mb-3" />
             <MudTextField @bind-Value="_editStudent.LastName" Label="Last Name" Required="true" Class="mb-3" />
-            <MudDatePicker @bind-Date="_editDobDate" Label="Date of Birth" Class="mb-3" />
+            <MudDatePicker @bind-Date="_editDobDate" Label="Date of Birth" Class="mb-3" DateFormat="yyyy/MM/dd" />
             <MudSwitch @bind-Value="_editStudent.IsAccountHolder" Label="Same as Account Holder" Color="Color.Primary" Class="mb-2" />
             <MudSwitch @bind-Value="_editStudent.IsActive" Label="Active" Color="Color.Primary" />
         </MudForm>
@@ -6293,7 +6293,7 @@ else
             <MudTh>Actions</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd>@context.ScheduledDate.ToString("dd MMM yyyy")</MudTd>
+            <MudTd>@context.ScheduledDate.ToString("yyyy MMM dd")</MudTd>
             <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
             <MudTd>@(_lessonTypes.FirstOrDefault(lt => lt.LessonTypeID == context.LessonTypeID)?.DurationMinutes ?? 0) min</MudTd>
             <MudTd>R @context.PriceCharged.ToString("N2")</MudTd>
@@ -6329,7 +6329,7 @@ else
                     <MudSelectItem Value="lt.LessonTypeID">@lt.DisplayName</MudSelectItem>
                 }
             </MudSelect>
-            <MudDatePicker @bind-Date="_extraDate" Label="Date" Required="true" Class="mb-3" />
+            <MudDatePicker @bind-Date="_extraDate" Label="Date" Required="true" Class="mb-3" DateFormat="yyyy/MM/dd" />
             <MudTimePicker @bind-Time="_extraTime" Label="Time" Required="true" AmPm="false" Class="mb-3" />
             <MudNumericField @bind-Value="_newExtra.PriceCharged" Label="Price Charged"
                              Required="true" Min="0m" Format="N2"
@@ -6502,7 +6502,7 @@ else
                 <div>
                     <MudText Typo="Typo.h4" Style="font-weight:700;">@_monthInvoiceCount</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        Invoices — @DateTime.Today.ToString("MMM yyyy")
+                        Invoices — @DateTime.Today.ToString("yyyy MMM")
                     </MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
                         R @_monthInvoiceTotal.ToString("N2")
@@ -6520,7 +6520,7 @@ else
                 <div>
                     <MudText Typo="Typo.h4" Style="font-weight:700;">@_monthPaidCount</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        Paid — @DateTime.Today.ToString("MMM yyyy")
+                        Paid — @DateTime.Today.ToString("yyyy MMM")
                     </MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
                         R @_monthPaidTotal.ToString("N2")
@@ -6549,7 +6549,7 @@ else
     <MudItem xs="12" md="6">
         <MudPaper Class="pa-4" Elevation="1">
             <MudText Typo="Typo.h6" Class="mb-3">
-                Year to Date — Invoices Due to @DateTime.Today.ToString("dd MMM yyyy")
+                Year to Date — Invoices Due to @DateTime.Today.ToString("yyyy MMM dd")
             </MudText>
             @if (!_loading)
             {
@@ -6864,8 +6864,8 @@ else
         <RowTemplate>
             <MudTd>Instalment @context.InstallmentNumber of 12</MudTd>
             <MudTd>R @context.Amount.ToString("N2")</MudTd>
-            <MudTd>@context.DueDate.ToString("dd MMM yyyy")</MudTd>
-            <MudTd>@(context.PaidDate?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+            <MudTd>@context.DueDate.ToString("yyyy MMM dd")</MudTd>
+            <MudTd>@(context.PaidDate?.ToString("yyyy MMM dd") ?? "—")</MudTd>
             <MudTd><StatusChip Status="@context.Status" /></MudTd>
             <MudTd>
                 @if (context.Status == InvoiceStatus.Pending || context.Status == InvoiceStatus.Overdue)
@@ -6901,7 +6901,7 @@ else
         <MudText Class="mb-3">
             Instalment #@_invoiceToPay?.InstallmentNumber — R@_invoiceToPay?.Amount.ToString("N2")
         </MudText>
-        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" />
+        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" DateFormat="yyyy/MM/dd" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => _markPaidDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
@@ -7064,7 +7064,7 @@ else
                 <MudPaper Class="pa-3 quarter-card" Elevation="1">
                     <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Quarter @q.QuarterNumber</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
-                        @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("dd MMM yyyy")
+                        @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("yyyy MMM dd")
                     </MudText>
                     <MudProgressLinear Color="Color.Primary" Value="pct" Class="my-2" Rounded="true" />
                     <MudStack Row="true" Justify="Justify.SpaceBetween">
@@ -7104,7 +7104,7 @@ else
                         </MudTh>
                     </GroupHeaderTemplate>
                     <RowTemplate>
-                        <MudTd>@context.ScheduledDate.ToString("dd MMM yyyy")</MudTd>
+                        <MudTd>@context.ScheduledDate.ToString("yyyy MMM dd")</MudTd>
                         <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
                         <MudTd><StatusChip Status="@context.Status" /></MudTd>
                         <MudTd>
@@ -7161,8 +7161,8 @@ else
                     <RowTemplate>
                         <MudTd>@context.InstallmentNumber</MudTd>
                         <MudTd>R @context.Amount.ToString("N2")</MudTd>
-                        <MudTd>@context.DueDate.ToString("dd MMM yyyy")</MudTd>
-                        <MudTd>@(context.PaidDate?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+                        <MudTd>@context.DueDate.ToString("yyyy MMM dd")</MudTd>
+                        <MudTd>@(context.PaidDate?.ToString("yyyy MMM dd") ?? "—")</MudTd>
                         <MudTd><StatusChip Status="@context.Status" /></MudTd>
                         <MudTd>
                             @if (context.Status != InvoiceStatus.Paid && context.Status != InvoiceStatus.Void)
@@ -7200,14 +7200,14 @@ else
     <TitleContent><MudText Typo="Typo.h6">Reschedule Lesson</MudText></TitleContent>
     <DialogContent>
         <MudText Class="mb-1">
-            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("dd MMM yyyy")</strong>
+            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("yyyy MMM dd")</strong>
             at <strong>@_lessonToReschedule?.ScheduledTime.ToString("HH:mm")</strong>
         </MudText>
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
             Cancelled by @(_lessonToReschedule?.CancelledBy ?? "—")
         </MudText>
         <MudDivider Class="mb-3" />
-        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" />
+        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" DateFormat="yyyy/MM/dd" />
         <MudTimePicker @bind-Time="_rescheduleTime" Label="New Time" Required="true" AmPm="false" />
     </DialogContent>
     <DialogActions>
@@ -7223,7 +7223,7 @@ else
     <TitleContent><MudText Typo="Typo.h6">Student Cancellation</MudText></TitleContent>
     <DialogContent>
         <MudText Class="mb-3">
-            Lesson on <strong>@_lessonToCancel?.ScheduledDate.ToString("dd MMM yyyy")</strong> cancelled by student.
+            Lesson on <strong>@_lessonToCancel?.ScheduledDate.ToString("yyyy MMM dd")</strong> cancelled by student.
         </MudText>
         <MudText Typo="Typo.body2" Class="mb-2">Does the teacher forfeit this lesson credit?</MudText>
         <MudTextField @bind-Value="_cancelReason" Label="Reason (optional)" Lines="2" />
@@ -7242,7 +7242,7 @@ else
         <MudText Class="mb-3">
             Mark instalment #@_invoiceToPay?.InstallmentNumber (R@_invoiceToPay?.Amount.ToString("N2")) as paid?
         </MudText>
-        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" />
+        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" DateFormat="yyyy/MM/dd" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => _markPaidDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
@@ -7483,7 +7483,7 @@ else
                         Total: R@((b.TotalLessons * b.PricePerLesson).ToString("N2"))
                     </MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
-                        @b.StartDate.ToString("dd MMM yyyy") – @b.EndDate.ToString("dd MMM yyyy")
+                        @b.StartDate.ToString("yyyy MMM dd") – @b.EndDate.ToString("yyyy MMM dd")
                     </MudText>
                 </div>
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
@@ -7766,7 +7766,7 @@ else if (!_loading)
         </MudItem>
         <MudItem xs="12" sm="5" md="4">
             <MudDatePicker @bind-Date="_selectedDate" Label="Date"
-                           @bind-Date:after="LoadSchedule" />
+                           @bind-Date:after="LoadSchedule" DateFormat="yyyy/MM/dd" />
         </MudItem>
         <MudItem xs="12" sm="2" md="4">
             <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
@@ -7909,14 +7909,14 @@ else
     <TitleContent><MudText Typo="Typo.h6">Reschedule Lesson</MudText></TitleContent>
     <DialogContent>
         <MudText Class="mb-1">
-            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("dd MMM yyyy")</strong>
+            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("yyyy MMM dd")</strong>
             at <strong>@_lessonToReschedule?.ScheduledTime.ToString("HH:mm")</strong>
         </MudText>
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
             Cancelled by @(_lessonToReschedule?.CancelledBy ?? "—")
         </MudText>
         <MudDivider Class="mb-3" />
-        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" />
+        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" DateFormat="yyyy/MM/dd" />
         <MudTimePicker @bind-Time="_rescheduleTime" Label="New Time" Required="true" AmPm="false" />
     </DialogContent>
     <DialogActions>
@@ -7933,7 +7933,7 @@ else
     <DialogContent>
         <MudText Class="mb-2">
             <strong>@_lessonToComplete?.StudentFullName</strong>
-            — @_lessonToComplete?.ScheduledDate.ToString("dd MMM yyyy")
+            — @_lessonToComplete?.ScheduledDate.ToString("yyyy MMM dd")
             @_lessonToComplete?.ScheduledTime.ToString("HH:mm")
         </MudText>
         <MudDivider Class="mb-3" />
@@ -7956,7 +7956,7 @@ else
     <DialogContent>
         <MudText Class="mb-2">
             <strong>@_extraToComplete?.StudentFullName</strong>
-            — @_extraToComplete?.ScheduledDate.ToString("dd MMM yyyy")
+            — @_extraToComplete?.ScheduledDate.ToString("yyyy MMM dd")
             @_extraToComplete?.ScheduledTime.ToString("HH:mm")
         </MudText>
         <MudDivider Class="mb-3" />
@@ -7979,7 +7979,7 @@ else
     <DialogContent>
         <MudText Class="mb-2">
             <strong>@_lessonToAction?.StudentFullName</strong>
-            — @_lessonToAction?.ScheduledDate.ToString("dd MMM yyyy")
+            — @_lessonToAction?.ScheduledDate.ToString("yyyy MMM dd")
         </MudText>
         <MudDivider Class="mb-3" />
         <MudText Typo="Typo.body2" Class="mb-3">
@@ -8340,7 +8340,7 @@ else
                                     <div>
                                         <MudText Typo="Typo.caption" Color="Color.Secondary">
                                             @first.TotalLessons lessons · R@(first.PricePerLesson.ToString("N2"))/lesson
-                                            · @(first.StartDate.ToString("dd MMM yyyy")) – @(first.EndDate.ToString("dd MMM yyyy"))
+                                            · @(first.StartDate.ToString("yyyy MMM dd")) – @(first.EndDate.ToString("yyyy MMM dd"))
                                         </MudText>
                                     </div>
                                 </MudStack>
@@ -8359,7 +8359,7 @@ else
                                         <MudPaper Class="pa-3 quarter-card" Elevation="0" Style="background:#F0F2F5;">
                                             <MudText Typo="Typo.subtitle2">Quarter @q.QuarterNumber</MudText>
                                             <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("dd MMM yyyy")
+                                                @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("yyyy MMM dd")
                                             </MudText>
                                             <MudProgressLinear Color="Color.Primary" Value="pct" Class="my-2" />
                                             <MudText Typo="Typo.body2">@q.LessonsUsed / @q.LessonsAllocated used</MudText>
@@ -8396,8 +8396,8 @@ else
                         <MudTd>@context.DayName</MudTd>
                         <MudTd>@context.SlotTime.ToString("HH:mm")</MudTd>
                         <MudTd>@(_lessonTypes.FirstOrDefault(lt => lt.LessonTypeID == context.LessonTypeID)?.DurationMinutes ?? 0) min</MudTd>
-                        <MudTd>@context.EffectiveFrom.ToString("dd MMM yyyy")</MudTd>
-                        <MudTd>@(context.EffectiveTo?.ToString("dd MMM yyyy") ?? "Active")</MudTd>
+                        <MudTd>@context.EffectiveFrom.ToString("yyyy MMM dd")</MudTd>
+                        <MudTd>@(context.EffectiveTo?.ToString("yyyy MMM dd") ?? "Active")</MudTd>
                         <MudTd>
                             <MudChip T="string" Size="Size.Small" Color="@(context.IsActive? Color.Success: Color.Default)">
                                 @(context.IsActive ? "Active" : "Closed")
@@ -8450,10 +8450,10 @@ else
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudDatePicker @bind-Date="_bundleStartDate" Label="Start Date" Required="true"
-                                   Class="mb-3" @bind-Date:after="RecalcBundle" />
+                                   Class="mb-3" @bind-Date:after="RecalcBundle" DateFormat="yyyy/MM/dd" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudDatePicker @bind-Date="_bundleEndDate" Label="End Date" Required="true" Class="mb-3" />
+                    <MudDatePicker @bind-Date="_bundleEndDate" Label="End Date" Required="true" Class="mb-3" DateFormat="yyyy/MM/dd" />
                 </MudItem>
                 <MudItem xs="12">
                     <MudTextField @bind-Value="_newBundle.Notes" Label="Notes" Lines="2" Class="mb-3" />
@@ -8472,7 +8472,7 @@ else
                                 <MudText Typo="Typo.subtitle2">Q@(q.QuarterNumber)</MudText>
                                 <MudText Typo="Typo.caption">@q.LessonsAllocated lessons</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                    @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("dd MMM yyyy")
+                                    @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("yyyy MMM dd")
                                 </MudText>
                             </MudPaper>
                         </MudItem>
@@ -8512,7 +8512,7 @@ else
                 <MudSelectItem Value="(byte)7">Sunday</MudSelectItem>
             </MudSelect>
             <MudTimePicker @bind-Time="_slotTime" Label="Slot Time" Required="true" Class="mb-3" AmPm="false" />
-            <MudDatePicker @bind-Date="_slotEffectiveFrom" Label="Effective From" Required="true" Class="mb-3" />
+            <MudDatePicker @bind-Date="_slotEffectiveFrom" Label="Effective From" Required="true" Class="mb-3" DateFormat="yyyy/MM/dd" />
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -8528,7 +8528,7 @@ else
         <MudText Class="mb-3">
             Close the <strong>@_slotToClose?.DayName @_slotToClose?.SlotTime.ToString("HH:mm")</strong> slot?
         </MudText>
-        <MudDatePicker @bind-Date="_closeSlotDate" Label="Effective To (last date)" Required="true" />
+        <MudDatePicker @bind-Date="_closeSlotDate" Label="Effective To (last date)" Required="true" DateFormat="yyyy/MM/dd" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => _closeSlotDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
@@ -8830,7 +8830,7 @@ else
         </HeaderContent>
         <RowTemplate>
             <MudTd>@context.FullName</MudTd>
-            <MudTd>@(context.DateOfBirth?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+            <MudTd>@(context.DateOfBirth?.ToString("yyyy MMM dd") ?? "—")</MudTd>
             <MudTd>
                 @if (context.IsAccountHolder)
                 {

@@ -45,7 +45,7 @@ else
                 <MudPaper Class="pa-3 quarter-card" Elevation="1">
                     <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Quarter @q.QuarterNumber</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
-                        @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("dd MMM yyyy")
+                        @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("yyyy MMM dd")
                     </MudText>
                     <MudProgressLinear Color="Color.Primary" Value="pct" Class="my-2" Rounded="true" />
                     <MudStack Row="true" Justify="Justify.SpaceBetween">
@@ -85,7 +85,7 @@ else
                         </MudTh>
                     </GroupHeaderTemplate>
                     <RowTemplate>
-                        <MudTd>@context.ScheduledDate.ToString("dd MMM yyyy")</MudTd>
+                        <MudTd>@context.ScheduledDate.ToString("yyyy MMM dd")</MudTd>
                         <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
                         <MudTd><StatusChip Status="@context.Status" /></MudTd>
                         <MudTd>
@@ -142,8 +142,8 @@ else
                     <RowTemplate>
                         <MudTd>@context.InstallmentNumber</MudTd>
                         <MudTd>R @context.Amount.ToString("N2")</MudTd>
-                        <MudTd>@context.DueDate.ToString("dd MMM yyyy")</MudTd>
-                        <MudTd>@(context.PaidDate?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+                        <MudTd>@context.DueDate.ToString("yyyy MMM dd")</MudTd>
+                        <MudTd>@(context.PaidDate?.ToString("yyyy MMM dd") ?? "—")</MudTd>
                         <MudTd><StatusChip Status="@context.Status" /></MudTd>
                         <MudTd>
                             @if (context.Status != InvoiceStatus.Paid && context.Status != InvoiceStatus.Void)
@@ -181,14 +181,14 @@ else
     <TitleContent><MudText Typo="Typo.h6">Reschedule Lesson</MudText></TitleContent>
     <DialogContent>
         <MudText Class="mb-1">
-            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("dd MMM yyyy")</strong>
+            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("yyyy MMM dd")</strong>
             at <strong>@_lessonToReschedule?.ScheduledTime.ToString("HH:mm")</strong>
         </MudText>
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
             Cancelled by @(_lessonToReschedule?.CancelledBy ?? "—")
         </MudText>
         <MudDivider Class="mb-3" />
-        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" />
+        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" DateFormat="yyyy/MM/dd" />
         <MudTimePicker @bind-Time="_rescheduleTime" Label="New Time" Required="true" AmPm="false" />
     </DialogContent>
     <DialogActions>
@@ -204,7 +204,7 @@ else
     <TitleContent><MudText Typo="Typo.h6">Student Cancellation</MudText></TitleContent>
     <DialogContent>
         <MudText Class="mb-3">
-            Lesson on <strong>@_lessonToCancel?.ScheduledDate.ToString("dd MMM yyyy")</strong> cancelled by student.
+            Lesson on <strong>@_lessonToCancel?.ScheduledDate.ToString("yyyy MMM dd")</strong> cancelled by student.
         </MudText>
         <MudText Typo="Typo.body2" Class="mb-2">Does the teacher forfeit this lesson credit?</MudText>
         <MudTextField @bind-Value="_cancelReason" Label="Reason (optional)" Lines="2" />
@@ -223,7 +223,7 @@ else
         <MudText Class="mb-3">
             Mark instalment #@_invoiceToPay?.InstallmentNumber (R@_invoiceToPay?.Amount.ToString("N2")) as paid?
         </MudText>
-        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" />
+        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" DateFormat="yyyy/MM/dd" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => _markPaidDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>

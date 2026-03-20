@@ -55,7 +55,7 @@
         </HeaderContent>
         <RowTemplate>
             <MudTd>@context.FullName</MudTd>
-            <MudTd>@(context.DateOfBirth?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+            <MudTd>@(context.DateOfBirth?.ToString("yyyy MMM dd") ?? "—")</MudTd>
             <MudTd>
                 @if (context.IsAccountHolder)
                 {

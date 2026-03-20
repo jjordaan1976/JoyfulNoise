@@ -1,2 +1,0 @@
-ALTER TABLE [dbo].[ExtraLesson]
-ALTER COLUMN [Notes] NVARCHAR(1000) NULL;

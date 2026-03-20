@@ -59,7 +59,7 @@ else
                                 <MudText Typo="Typo.body2">Instalment #@inv.InstallmentNumber — R@(inv.Amount.ToString("N2"))</MudText>
                                 <StatusChip Status="@inv.Status" />
                             </MudStack>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Due: @inv.DueDate.ToString("dd MMM yyyy")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Due: @inv.DueDate.ToString("yyyy MMM dd")</MudText>
                         </MudPaper>
                     }
                 }
@@ -90,7 +90,7 @@ else
                                 @context.FullName
                             </MudButton>
                         </MudTd>
-                        <MudTd>@(context.DateOfBirth?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+                        <MudTd>@(context.DateOfBirth?.ToString("yyyy MMM dd") ?? "—")</MudTd>
                         <MudTd>
                             @if (context.IsAccountHolder)
                             {
@@ -145,7 +145,7 @@ else
         <MudForm @ref="_addStudentForm">
             <MudTextField @bind-Value="_newStudent.FirstName" Label="First Name" Required="true" Class="mb-3" />
             <MudTextField @bind-Value="_newStudent.LastName" Label="Last Name" Required="true" Class="mb-3" />
-            <MudDatePicker @bind-Date="_dobDate" Label="Date of Birth" Class="mb-3" />
+            <MudDatePicker @bind-Date="_dobDate" Label="Date of Birth" Class="mb-3" DateFormat="yyyy/MM/dd" />
             <MudSwitch @bind-Value="_newStudent.IsAccountHolder" Label="Same as Account Holder" Color="Color.Primary" Class="mb-2" />
             <MudSwitch @bind-Value="_newStudent.IsActive" Label="Active" Color="Color.Primary" />
         </MudForm>
@@ -163,7 +163,7 @@ else
         <MudForm @ref="_editStudentForm">
             <MudTextField @bind-Value="_editStudent.FirstName" Label="First Name" Required="true" Class="mb-3" />
             <MudTextField @bind-Value="_editStudent.LastName" Label="Last Name" Required="true" Class="mb-3" />
-            <MudDatePicker @bind-Date="_editDobDate" Label="Date of Birth" Class="mb-3" />
+            <MudDatePicker @bind-Date="_editDobDate" Label="Date of Birth" Class="mb-3" DateFormat="yyyy/MM/dd" />
             <MudSwitch @bind-Value="_editStudent.IsAccountHolder" Label="Same as Account Holder" Color="Color.Primary" Class="mb-2" />
             <MudSwitch @bind-Value="_editStudent.IsActive" Label="Active" Color="Color.Primary" />
         </MudForm>

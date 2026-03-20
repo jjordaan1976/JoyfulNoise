@@ -39,7 +39,7 @@ else
                 <div class="text-right">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Statement date</MudText>
                     <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
-                        @DateTime.Today.ToString("dd MMMM yyyy")
+                        @DateTime.Today.ToString("yyyy MMMM dd")
                     </MudText>
                 </div>
             </MudItem>
@@ -135,7 +135,7 @@ else
                     <MudTh>Aging</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="Due Date">@context.DueDate.ToString("dd MMM yyyy")</MudTd>
+                    <MudTd DataLabel="Due Date">@context.DueDate.ToString("yyyy MMM dd")</MudTd>
                     <MudTd DataLabel="Description">
                         @if (context.BundleID.HasValue)
                         {
@@ -151,7 +151,7 @@ else
                         }
                     </MudTd>
                     <MudTd DataLabel="Amount">R @context.Amount.ToString("N2")</MudTd>
-                    <MudTd DataLabel="Paid Date">@(context.PaidDate?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+                    <MudTd DataLabel="Paid Date">@(context.PaidDate?.ToString("yyyy MMM dd") ?? "—")</MudTd>
                     <MudTd DataLabel="Status"><StatusChip Status="@context.Status" /></MudTd>
                     <MudTd DataLabel="Aging">@GetAgingLabel(context)</MudTd>
                 </RowTemplate>

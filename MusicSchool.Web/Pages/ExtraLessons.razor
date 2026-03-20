@@ -69,7 +69,7 @@
             <MudTh>Actions</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd>@context.ScheduledDate.ToString("dd MMM yyyy")</MudTd>
+            <MudTd>@context.ScheduledDate.ToString("yyyy MMM dd")</MudTd>
             <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
             <MudTd>@(_lessonTypes.FirstOrDefault(lt => lt.LessonTypeID == context.LessonTypeID)?.DurationMinutes ?? 0) min</MudTd>
             <MudTd>R @context.PriceCharged.ToString("N2")</MudTd>
@@ -105,7 +105,7 @@
                     <MudSelectItem Value="lt.LessonTypeID">@lt.DisplayName</MudSelectItem>
                 }
             </MudSelect>
-            <MudDatePicker @bind-Date="_extraDate" Label="Date" Required="true" Class="mb-3" />
+            <MudDatePicker @bind-Date="_extraDate" Label="Date" Required="true" Class="mb-3" DateFormat="yyyy/MM/dd" />
             <MudTimePicker @bind-Time="_extraTime" Label="Time" Required="true" AmPm="false" Class="mb-3" />
             <MudNumericField @bind-Value="_newExtra.PriceCharged" Label="Price Charged"
                              Required="true" Min="0m" Format="N2"

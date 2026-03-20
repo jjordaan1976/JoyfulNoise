@@ -109,8 +109,8 @@
         <RowTemplate>
             <MudTd>Instalment @context.InstallmentNumber of 12</MudTd>
             <MudTd>R @context.Amount.ToString("N2")</MudTd>
-            <MudTd>@context.DueDate.ToString("dd MMM yyyy")</MudTd>
-            <MudTd>@(context.PaidDate?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+            <MudTd>@context.DueDate.ToString("yyyy MMM dd")</MudTd>
+            <MudTd>@(context.PaidDate?.ToString("yyyy MMM dd") ?? "—")</MudTd>
             <MudTd><StatusChip Status="@context.Status" /></MudTd>
             <MudTd>
                 @if (context.Status == InvoiceStatus.Pending || context.Status == InvoiceStatus.Overdue)
@@ -146,7 +146,7 @@
         <MudText Class="mb-3">
             Instalment #@_invoiceToPay?.InstallmentNumber — R@_invoiceToPay?.Amount.ToString("N2")
         </MudText>
-        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" />
+        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" DateFormat="yyyy/MM/dd" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => _markPaidDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>

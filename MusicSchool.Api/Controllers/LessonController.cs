@@ -63,7 +63,10 @@ namespace MusicSchool.Controllers
         }
 
         [HttpPut("UpdateLessonStatus")]
-        public async Task<ResponseBase<bool>> UpdateLessonStatus([FromQuery] int lessonId, [FromQuery] string status)
+        public async Task<ResponseBase<bool>> UpdateLessonStatus(
+            [FromQuery] int lessonId,
+            [FromQuery] string status,
+            [FromQuery] string? note = null)
         {
             ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
             var result = await _lessonRepository.UpdateLessonStatusAsync(
@@ -73,7 +76,8 @@ namespace MusicSchool.Controllers
                            : status == LessonStatus.CancelledStudent || status == LessonStatus.Forfeited ? CancelledBy.Student
                            : null,
                 cancellationReason: null,
-                completedAt: status == LessonStatus.Completed ? DateTime.UtcNow : null);
+                completedAt: status == LessonStatus.Completed ? DateTime.UtcNow : null,
+                note: note);
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";

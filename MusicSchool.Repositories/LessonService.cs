@@ -29,6 +29,7 @@ namespace MusicSchool.Data.Implementations
                        CancellationReason,
                        OriginalLessonID,
                        CompletedAt,
+                       Notes,
                        CreatedAt
                 FROM Lesson
                 WHERE LessonID = @LessonID;";
@@ -51,6 +52,7 @@ namespace MusicSchool.Data.Implementations
                        CancellationReason,
                        OriginalLessonID,
                        CompletedAt,
+                       Notes,
                        CreatedAt
                 FROM Lesson
                 WHERE BundleID = @BundleID
@@ -74,6 +76,7 @@ namespace MusicSchool.Data.Implementations
                        CancellationReason,
                        OriginalLessonID,
                        CompletedAt,
+                       Notes,
                        CreatedAt
                 FROM Lesson
                 WHERE Status = @Status
@@ -83,7 +86,7 @@ namespace MusicSchool.Data.Implementations
         }
 
         public async Task<int> InsertAsync(Lesson lesson)
-            => await InsertAsync(lesson);
+            => await InsertAsync(lesson, null!);
 
         public async Task<int> InsertAsync(Lesson lesson, IDbTransaction tx)
         {
@@ -104,7 +107,8 @@ namespace MusicSchool.Data.Implementations
         }
 
         public async Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
-            string? cancelledBy, string? cancellationReason, DateTime? completedAt)
+            string? cancelledBy, string? cancellationReason, DateTime? completedAt,
+            string? note = null)
         {
             const string sql = @"
                 UPDATE Lesson
@@ -112,7 +116,8 @@ namespace MusicSchool.Data.Implementations
                     CreditForfeited    = @CreditForfeited,
                     CancelledBy        = @CancelledBy,
                     CancellationReason = @CancellationReason,
-                    CompletedAt        = @CompletedAt
+                    CompletedAt        = @CompletedAt,
+                    Notes              = COALESCE(@Notes, Notes)
                 WHERE LessonID = @LessonID;";
 
             var rowsAffected = await _connection.ExecuteAsync(sql, new
@@ -122,7 +127,8 @@ namespace MusicSchool.Data.Implementations
                 CreditForfeited    = creditForfeited,
                 CancelledBy        = cancelledBy,
                 CancellationReason = cancellationReason,
-                CompletedAt        = completedAt
+                CompletedAt        = completedAt,
+                Notes              = note
             });
             return rowsAffected > 0;
         }

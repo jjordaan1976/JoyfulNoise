@@ -63,10 +63,13 @@ namespace MusicSchool.Controllers
         }
 
         [HttpPut("UpdateExtraLessonStatus")]
-        public async Task<ResponseBase<bool>> UpdateExtraLessonStatus([FromQuery] int extraLessonId, [FromQuery] string status)
+        public async Task<ResponseBase<bool>> UpdateExtraLessonStatus(
+            [FromQuery] int extraLessonId,
+            [FromQuery] string status,
+            [FromQuery] string? note = null)
         {
             ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
-            var result = await _extraLessonRepository.UpdateExtraLessonStatusAsync(extraLessonId, status);
+            var result = await _extraLessonRepository.UpdateExtraLessonStatusAsync(extraLessonId, status, note);
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";

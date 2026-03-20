@@ -68,13 +68,23 @@
                         <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
                         <MudTd>@context.StudentFullName</MudTd>
                         <MudTd>@context.DurationMinutes min</MudTd>
-                        <MudTd><StatusChip Status="@context.Status" /></MudTd>
+                        <MudTd>
+                            <StatusChip Status="@context.Status" />
+                            @if (!string.IsNullOrWhiteSpace(context.Notes))
+                            {
+                                <MudTooltip Text="@context.Notes" Placement="Placement.Right">
+                                    <MudIcon Icon="@Icons.Material.Filled.StickyNote2"
+                                             Size="Size.Small" Color="Color.Secondary"
+                                             Class="ml-1" Style="vertical-align:middle;" />
+                                </MudTooltip>
+                            }
+                        </MudTd>
                         <MudTd>
                             @if (context.Status == LessonStatus.Scheduled)
                             {
                                 <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
                                                Color="Color.Success" Title="Mark Completed"
-                                               OnClick="@(() => QuickUpdateLesson(context, LessonStatus.Completed))" />
+                                               OnClick="@(() => OpenCompleteLessonDialog(context))" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small"
                                                Color="Color.Warning" Title="Teacher Cancelled"
                                                OnClick="@(() => QuickUpdateLesson(context, LessonStatus.CancelledTeacher))" />
@@ -113,13 +123,23 @@
                         <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
                         <MudTd>@context.StudentFullName</MudTd>
                         <MudTd>R @context.PriceCharged.ToString("N2")</MudTd>
-                        <MudTd><StatusChip Status="@context.Status" /></MudTd>
+                        <MudTd>
+                            <StatusChip Status="@context.Status" />
+                            @if (!string.IsNullOrWhiteSpace(context.Notes))
+                            {
+                                <MudTooltip Text="@context.Notes" Placement="Placement.Right">
+                                    <MudIcon Icon="@Icons.Material.Filled.StickyNote2"
+                                             Size="Size.Small" Color="Color.Secondary"
+                                             Class="ml-1" Style="vertical-align:middle;" />
+                                </MudTooltip>
+                            }
+                        </MudTd>
                         <MudTd>
                             @if (context.Status == ExtraLessonStatus.Scheduled)
                             {
                                 <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
                                                Color="Color.Success" Title="Complete"
-                                               OnClick="@(() => QuickUpdateExtra(context, ExtraLessonStatus.Completed))" />
+                                               OnClick="@(() => OpenCompleteExtraDialog(context))" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small"
                                                Color="Color.Error" Title="Cancel"
                                                OnClick="@(() => QuickUpdateExtra(context, ExtraLessonStatus.Cancelled))" />
@@ -140,6 +160,52 @@ else
         Select a teacher and date to view the schedule.
     </MudAlert>
 }
+
+<!-- Complete Lesson Dialog -->
+<MudDialog @ref="_completeLessonDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Complete Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-2">
+            <strong>@_lessonToComplete?.StudentFullName</strong>
+            — @_lessonToComplete?.ScheduledDate.ToString("dd MMM yyyy")
+            @_lessonToComplete?.ScheduledTime.ToString("HH:mm")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudTextField @bind-Value="_completeLessonNote"
+                      Label="Lesson note (optional)"
+                      Lines="3"
+                      Placeholder="e.g. Worked on scales, great progress with sight-reading…" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _completeLessonDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmCompleteLesson">
+            Mark Completed
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Complete Extra Lesson Dialog -->
+<MudDialog @ref="_completeExtraDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Complete Extra Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-2">
+            <strong>@_extraToComplete?.StudentFullName</strong>
+            — @_extraToComplete?.ScheduledDate.ToString("dd MMM yyyy")
+            @_extraToComplete?.ScheduledTime.ToString("HH:mm")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudTextField @bind-Value="_completeExtraNote"
+                      Label="Lesson note (optional)"
+                      Lines="3"
+                      Placeholder="e.g. Worked on scales, great progress with sight-reading…" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _completeExtraDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmCompleteExtra">
+            Mark Completed
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 <!-- Forfeit Dialog -->
 <MudDialog @ref="_forfeitDialog" Options="_dialogOptions">
@@ -208,12 +274,26 @@ else
     private int _selectedTeacherId;
     private DateTime? _selectedDate = DateTime.Today;
 
-    private MudDialog? _forfeitDialog, _addExtraDialog;
-    private MudForm? _extraForm;
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    // Complete lesson dialog
+    private MudDialog? _completeLessonDialog;
+    private LessonDetail? _lessonToComplete;
+    private string _completeLessonNote = string.Empty;
 
+    // Complete extra lesson dialog
+    private MudDialog? _completeExtraDialog;
+    private ExtraLessonDetail? _extraToComplete;
+    private string _completeExtraNote = string.Empty;
+
+    // Forfeit / cancellation dialog
+    private MudDialog? _forfeitDialog;
     private LessonDetail? _lessonToAction;
     private string _actionReason = string.Empty;
+
+    // Add extra lesson dialog
+    private MudDialog? _addExtraDialog;
+    private MudForm? _extraForm;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
 
     private ExtraLesson _newExtra = new();
     private TimeSpan? _extraTime;
@@ -222,13 +302,11 @@ else
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
         _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
-        
+
         if (_teachers.Any())
         {
             _selectedTeacherId = _teachers.First().TeacherID;
-
             await LoadSchedule();
-
             StateHasChanged();
         }
     }
@@ -262,6 +340,58 @@ else
     private void GoToToday() { _selectedDate = DateTime.Today; _ = LoadSchedule(); }
     private void PreviousDay() { _selectedDate = (_selectedDate ?? DateTime.Today).AddDays(-1); _ = LoadSchedule(); }
     private void NextDay() { _selectedDate = (_selectedDate ?? DateTime.Today).AddDays(1); _ = LoadSchedule(); }
+
+    // ── Complete bundle lesson ────────────────────────────────────
+
+    private async Task OpenCompleteLessonDialog(LessonDetail lesson)
+    {
+        _lessonToComplete = lesson;
+        _completeLessonNote = string.Empty;
+        await _completeLessonDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmCompleteLesson()
+    {
+        if (_lessonToComplete is null) return;
+        var result = await LessonSvc.UpdateLessonStatusAsync(
+            _lessonToComplete.LessonID,
+            LessonStatus.Completed,
+            note: string.IsNullOrWhiteSpace(_completeLessonNote) ? null : _completeLessonNote);
+        if (result)
+        {
+            Snackbar.Add("Lesson marked as completed.", Severity.Success);
+            await _completeLessonDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed to update lesson.", Severity.Error);
+    }
+
+    // ── Complete extra lesson ─────────────────────────────────────
+
+    private async Task OpenCompleteExtraDialog(ExtraLessonDetail extra)
+    {
+        _extraToComplete = extra;
+        _completeExtraNote = string.Empty;
+        await _completeExtraDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmCompleteExtra()
+    {
+        if (_extraToComplete is null) return;
+        var result = await ExtraLessonSvc.UpdateExtraLessonStatusAsync(
+            _extraToComplete.ExtraLessonID,
+            ExtraLessonStatus.Completed,
+            note: string.IsNullOrWhiteSpace(_completeExtraNote) ? null : _completeExtraNote);
+        if (result)
+        {
+            Snackbar.Add("Extra lesson marked as completed.", Severity.Success);
+            await _completeExtraDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed to update extra lesson.", Severity.Error);
+    }
+
+    // ── Other status updates (no note prompt) ────────────────────
 
     private async Task QuickUpdateLesson(LessonDetail lesson, string status)
     {
@@ -297,6 +427,8 @@ else
         }
         else Snackbar.Add("Failed.", Severity.Error);
     }
+
+    // ── Add extra lesson ─────────────────────────────────────────
 
     private async Task OpenAddExtraLessonDialog()
     {

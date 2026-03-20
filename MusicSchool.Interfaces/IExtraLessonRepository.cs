@@ -14,6 +14,10 @@ namespace MusicSchool.Data.Interfaces
         /// </summary>
         Task<int?> AddExtraLessonAsync(ExtraLesson extraLesson);
 
-        Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status);
+        /// <summary>
+        /// Updates the status on an extra lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
+        Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status, string? note = null);
     }
 }

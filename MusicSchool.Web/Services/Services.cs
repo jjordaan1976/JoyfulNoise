@@ -334,11 +334,14 @@ namespace MusicSchool.Services
             catch { return null; }
         }
 
-        public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status)
+        public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status, string? note = null)
         {
             try
             {
-                var r = await http.PutAsync($"Lesson/UpdateLessonStatus?lessonId={lessonId}&status={status}", null);
+                var url = $"Lesson/UpdateLessonStatus?lessonId={lessonId}&status={status}";
+                if (!string.IsNullOrWhiteSpace(note))
+                    url += $"&note={Uri.EscapeDataString(note)}";
+                var r = await http.PutAsync(url, null);
                 var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
                 return result?.Data ?? false;
             }
@@ -379,11 +382,14 @@ namespace MusicSchool.Services
             catch { return null; }
         }
 
-        public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status)
+        public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status, string? note = null)
         {
             try
             {
-                var r = await http.PutAsync($"ExtraLesson/UpdateExtraLessonStatus?extraLessonId={extraLessonId}&status={status}", null);
+                var url = $"ExtraLesson/UpdateExtraLessonStatus?extraLessonId={extraLessonId}&status={status}";
+                if (!string.IsNullOrWhiteSpace(note))
+                    url += $"&note={Uri.EscapeDataString(note)}";
+                var r = await http.PutAsync(url, null);
                 var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
                 return result?.Data ?? false;
             }

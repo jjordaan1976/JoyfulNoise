@@ -74,15 +74,20 @@ namespace MusicSchool.Data.Implementations
                 new CommandDefinition(sql, extraLesson, tx));
         }
 
-        public async Task<bool> UpdateStatusAsync(int extraLessonId, string status)
+        /// <summary>
+        /// Updates the status on an extra lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
+        public async Task<bool> UpdateStatusAsync(int extraLessonId, string status, string? note = null)
         {
             const string sql = @"
                 UPDATE ExtraLesson
-                SET Status = @Status
+                SET Status = @Status,
+                    Notes  = COALESCE(@Notes, Notes)
                 WHERE ExtraLessonID = @ExtraLessonID;";
 
             var rowsAffected = await _connection.ExecuteAsync(sql,
-                new { ExtraLessonID = extraLessonId, Status = status });
+                new { ExtraLessonID = extraLessonId, Status = status, Notes = note });
             return rowsAffected > 0;
         }
     }

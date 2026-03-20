@@ -1,4 +1,4 @@
-﻿public class LessonDetail
+public class LessonDetail
 {
     // Lesson fields
     public int LessonID { get; set; }
@@ -13,6 +13,7 @@
     public string? CancellationReason { get; set; }
     public int? OriginalLessonID { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public string? Notes { get; set; }
 
     // Student fields
     public int StudentID { get; set; }

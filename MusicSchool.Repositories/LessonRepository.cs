@@ -54,10 +54,11 @@ namespace MusicSchool.Data.Implementations
         ///   CancelledTeacher / CancelledStudent → -1 only if the previous status
         ///   had already consumed a credit (i.e. was Completed or Forfeited).
         /// The delta approach is atomic — no separate read is needed.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
         /// </summary>
         public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status,
             bool creditForfeited, string? cancelledBy, string? cancellationReason,
-            DateTime? completedAt)
+            DateTime? completedAt, string? note = null)
         {
             try
             {
@@ -68,7 +69,7 @@ namespace MusicSchool.Data.Implementations
                 // 2. Update the lesson row.
                 var updated = await _lessonService.UpdateStatusAsync(
                     lessonId, status, creditForfeited,
-                    cancelledBy, cancellationReason, completedAt);
+                    cancelledBy, cancellationReason, completedAt, note);
 
                 if (!updated) return false;
 

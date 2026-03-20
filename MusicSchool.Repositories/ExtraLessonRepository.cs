@@ -106,11 +106,15 @@ namespace MusicSchool.Data.Implementations
             }
         }
 
-        public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status)
+        /// <summary>
+        /// Updates the status on an extra lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
+        public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status, string? note = null)
         {
             try
             {
-                return await _extraLessonService.UpdateStatusAsync(extraLessonId, status);
+                return await _extraLessonService.UpdateStatusAsync(extraLessonId, status, note);
             }
             catch (Exception ex)
             {

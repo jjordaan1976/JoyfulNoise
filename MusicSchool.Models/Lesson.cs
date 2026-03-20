@@ -74,6 +74,12 @@ namespace MusicSchool.Data.Models
         public int?      OriginalLessonID   { get; set; }
 
         public DateTime? CompletedAt        { get; set; }
+
+        /// <summary>
+        /// Optional free-text note that can be attached when updating the lesson status.
+        /// </summary>
+        public string?   Notes              { get; set; }
+
         public DateTime  CreatedAt          { get; set; }
     }
 }

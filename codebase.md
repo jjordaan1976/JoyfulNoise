@@ -1,186 +1,587 @@
 # Flattened Codebase
 
-Generated: 03/20/2026 01:51:27
+Generated: 03/20/2026 07:09:12
 
 
-## File: MusicSchool.AccountHolderApp\Pages\Statement.razor
+## File: MusicSchool.AccountHolderPortal\Pages\Index.razor
+
+```razor
+@page "/"
+@namespace MusicSchool.AccountHolderPortal.Pages
+
+<PageTitle>Music School — Account Portal</PageTitle>
+
+<MudPaper Class="pa-6 mt-6" Elevation="1" Style="max-width:480px; margin:auto; border-top:4px solid #F3D395;">
+
+    <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-5">
+        <MudIcon Icon="@Icons.Material.Filled.MusicNote"
+                 Style="font-size:3rem; color:#F3D395;" />
+        <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
+            Account Portal
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+            Enter your Account Holder ID to view your statement and invoices.
+        </MudText>
+    </MudStack>
+
+    <MudTextField @bind-Value="_accountHolderId"
+                  Label="Account Holder ID"
+                  Variant="Variant.Outlined"
+                  InputType="InputType.Number"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.AccountCircle"
+                  Class="mb-4"
+                  OnKeyDown="@OnKeyDown" />
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               FullWidth="true"
+               Size="Size.Large"
+               StartIcon="@Icons.Material.Filled.Receipt"
+               OnClick="ViewStatement"
+               Disabled="@(_accountHolderId <= 0)">
+        View My Statement
+    </MudButton>
+
+</MudPaper>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private int _accountHolderId;
+
+    private void ViewStatement()
+    {
+        if (_accountHolderId > 0)
+            Nav.NavigateTo($"/statement/{_accountHolderId}");
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") ViewStatement();
+    }
+}
+
+```
+
+## File: MusicSchool.AccountHolderPortal\Pages\Statement.razor
 
 ```razor
 @page "/statement/{AccountHolderId:int}"
-@using MusicSchool.AccountHolderApp.Services
+@namespace MusicSchool.AccountHolderPortal.Pages
+
 @using MusicSchool.Data.Models
+
 @inject ApiService Api
 
-<h3>Statement</h3>
+<PageTitle>Account Statement — Music School</PageTitle>
 
-@if (invoices == null)
+@if (_loading)
 {
-    <p>Loading...</p>
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+    <MudText>Loading your statement…</MudText>
+}
+else if (_accountHolder is null)
+{
+    <MudAlert Severity="Severity.Error">Account not found. Please check your link or contact your teacher.</MudAlert>
 }
 else
 {
-    <h4>Aging Summary</h4>
-    <ul>
-        <li>Current: @CurrentTotal</li>
-        <li>30 Days: @Days30</li>
-        <li>60 Days: @Days60</li>
-        <li>90+ Days: @Days90</li>
-    </ul>
+    <!-- ── Header ──────────────────────────────────────────────── -->
+    <MudPaper Class="pa-5 mb-4" Elevation="1" Style="border-top: 4px solid #F3D395;">
+        <MudGrid AlignItems="AlignItems.Center">
+            <MudItem xs="12" sm="8">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.MusicNote"
+                             Style="font-size:2rem; color:#F3D395;" />
+                    <div>
+                        <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
+                            Account Statement
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @_accountHolder.FullName &nbsp;·&nbsp; @_accountHolder.Email
+                        </MudText>
+                    </div>
+                </MudStack>
+            </MudItem>
+            <MudItem xs="12" sm="4" Class="d-flex justify-end">
+                <div class="text-right">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Statement date</MudText>
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
+                        @DateTime.Today.ToString("dd MMMM yyyy")
+                    </MudText>
+                </div>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
 
-    <h4>Invoices</h4>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Due Date</th>
-                <th>Amount</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var inv in invoices)
-            {
-                <tr>
-                    <td>@inv.DueDate.ToShortDateString()</td>
-                    <td>@inv.Amount</td>
-                    <td>@inv.Status</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <!-- ── Aging summary cards ─────────────────────────────────── -->
+    <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600;">Outstanding Balance Summary</MudText>
+    <MudGrid Spacing="3" Class="mb-5">
+
+        <!-- Current (not yet due) -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 aging-card" Elevation="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Current</MudText>
+                <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
+                    R @_current.ToString("N2")
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Not yet due</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <!-- 1–30 days -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 aging-card-warn" Elevation="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">30 Days</MudText>
+                <MudText Typo="Typo.h5" Style="font-weight:700; color:#E65100;">
+                    R @_days30.ToString("N2")
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">1–30 days overdue</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <!-- 31–60 days -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 aging-card-alert" Elevation="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">60 Days</MudText>
+                <MudText Typo="Typo.h5" Style="font-weight:700; color:#B71C1C;">
+                    R @_days60.ToString("N2")
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">31–60 days overdue</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <!-- 61+ days -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 aging-card-crit" Elevation="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">90+ Days</MudText>
+                <MudText Typo="Typo.h5" Style="font-weight:700; color:#C62828;">
+                    R @_days90.ToString("N2")
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">61+ days overdue</MudText>
+            </MudPaper>
+        </MudItem>
+
+    </MudGrid>
+
+    <!-- ── Total outstanding banner ────────────────────────────── -->
+    @if (TotalOutstanding > 0)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4" Icon="@Icons.Material.Filled.Warning">
+            <strong>Total outstanding: R @TotalOutstanding.ToString("N2")</strong>
+            &nbsp;— Please arrange payment at your earliest convenience.
+        </MudAlert>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" Icon="@Icons.Material.Filled.CheckCircle">
+            Your account is up to date. No outstanding amounts.
+        </MudAlert>
+    }
+
+    <!-- ── Full invoice list ────────────────────────────────────── -->
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600;">Invoice History</MudText>
+
+        @if (_allInvoices.Count == 0)
+        {
+            <MudText Color="Color.Secondary">No invoices found on this account.</MudText>
+        }
+        else
+        {
+            <MudTable Items="_allInvoices"
+                      Hover="true"
+                      Dense="false"
+                      Elevation="0"
+                      SortLabel="Sort By">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice,object>(x => x.DueDate)">Due Date</MudTableSortLabel></MudTh>
+                    <MudTh>Description</MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice,object>(x => x.Amount)">Amount</MudTableSortLabel></MudTh>
+                    <MudTh>Paid Date</MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice,object>(x => x.Status)">Status</MudTableSortLabel></MudTh>
+                    <MudTh>Aging</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Due Date">@context.DueDate.ToString("dd MMM yyyy")</MudTd>
+                    <MudTd DataLabel="Description">
+                        @if (context.BundleID.HasValue)
+                        {
+                            <span>Bundle #@context.BundleID — Instalment @context.InstallmentNumber</span>
+                        }
+                        else if (context.ExtraLessonID.HasValue)
+                        {
+                            <span>Extra Lesson #@context.ExtraLessonID</span>
+                        }
+                        else
+                        {
+                            <span>Invoice #@context.InvoiceID</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Amount">R @context.Amount.ToString("N2")</MudTd>
+                    <MudTd DataLabel="Paid Date">@(context.PaidDate?.ToString("dd MMM yyyy") ?? "—")</MudTd>
+                    <MudTd DataLabel="Status"><StatusChip Status="@context.Status" /></MudTd>
+                    <MudTd DataLabel="Aging">@GetAgingLabel(context)</MudTd>
+                </RowTemplate>
+                <FooterContent>
+                    <MudTd colspan="2" Style="font-weight:600;">
+                        Total Invoiced
+                    </MudTd>
+                    <MudTd Style="font-weight:600;">
+                        R @_allInvoices.Sum(i => i.Amount).ToString("N2")
+                    </MudTd>
+                    <MudTd colspan="3"></MudTd>
+                </FooterContent>
+            </MudTable>
+        }
+    </MudPaper>
 }
 
 @code {
     [Parameter] public int AccountHolderId { get; set; }
 
-    List<Invoice>? invoices;
+    private bool           _loading       = true;
+    private AccountHolder? _accountHolder;
+    private List<Invoice>  _allInvoices   = [];
 
-    decimal CurrentTotal, Days30, Days60, Days90;
+    // Aging buckets (outstanding only)
+    private decimal _current;
+    private decimal _days30;
+    private decimal _days60;
+    private decimal _days90;
+
+    private decimal TotalOutstanding => _current + _days30 + _days60 + _days90;
 
     protected override async Task OnInitializedAsync()
     {
-        invoices = (await Api.GetAsync<IEnumerable<Invoice>>(
-            $"Invoice/GetOutstandingByAccountHolder?accountHolderId={AccountHolderId}"
-        ))?.ToList();
+        _loading = true;
+
+        var accountHolderTask = Api.GetAccountHolderAsync(AccountHolderId);
+        var allInvoicesTask   = Api.GetAllInvoicesAsync(AccountHolderId);
+
+        await Task.WhenAll(accountHolderTask, allInvoicesTask);
+
+        _accountHolder = await accountHolderTask;
+        _allInvoices   = await allInvoicesTask;
+
+        // Sort by due date descending so newest appears first
+        _allInvoices = [.. _allInvoices.OrderByDescending(i => i.DueDate)];
 
         CalculateAging();
+        _loading = false;
     }
 
-    void CalculateAging()
+    private void CalculateAging()
     {
+        _current = _days30 = _days60 = _days90 = 0;
         var today = DateTime.Today;
 
-        foreach (var inv in invoices!)
+        foreach (var inv in _allInvoices
+            .Where(i => i.Status is InvoiceStatus.Pending or InvoiceStatus.Overdue))
         {
             var days = (today - inv.DueDate).Days;
 
-            if (days <= 0)
-                CurrentTotal += inv.Amount;
-            else if (days <= 30)
-                Days30 += inv.Amount;
-            else if (days <= 60)
-                Days60 += inv.Amount;
-            else
-                Days90 += inv.Amount;
+            if      (days <= 0)  _current += inv.Amount;
+            else if (days <= 30) _days30  += inv.Amount;
+            else if (days <= 60) _days60  += inv.Amount;
+            else                 _days90  += inv.Amount;
         }
     }
+
+    private static string GetAgingLabel(Invoice inv)
+    {
+        if (inv.Status is InvoiceStatus.Paid or InvoiceStatus.Void)
+            return "—";
+
+        var days = (DateTime.Today - inv.DueDate).Days;
+        if      (days <= 0)  return "Current";
+        else if (days <= 30) return $"{days}d overdue";
+        else if (days <= 60) return $"{days}d overdue";
+        else                 return $"{days}d overdue";
+    }
 }
+
 ```
 
-## File: MusicSchool.AccountHolderApp\Properties\launchSettings.json
+## File: MusicSchool.AccountHolderPortal\Properties\launchSettings.json
 
 ```json
 {
   "profiles": {
-    "MusicSchool.AccountHolderApp": {
+    "MusicSchool.AccountHolderPortal": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "https://localhost:52073;http://localhost:52074"
+      "applicationUrl": "https://localhost:57349;http://localhost:57350"
     }
   }
 }
 ```
 
-## File: MusicSchool.AccountHolderApp\Services\ApiClient.cs
+## File: MusicSchool.AccountHolderPortal\Services\ApiService.cs
 
 ```csharp
+using MusicSchool.Data.Models;
 using MusicSchool.Models.TransferModels;
-using System.Net.Http;
 using System.Net.Http.Json;
-using System.Threading.Tasks;
 
-namespace MusicSchool.AccountHolderApp.Services;
+namespace MusicSchool.AccountHolderPortal.Services;
 
 public class ApiService
 {
     private readonly HttpClient _http;
 
-    public ApiService(HttpClient http)
+    public ApiService(HttpClient http) => _http = http;
+
+    public async Task<T?> GetAsync<T>(string url)
     {
-        _http = http;
+        try
+        {
+            var response = await _http.GetFromJsonAsync<ResponseBase<T>>(url);
+            return response is not null ? response.Data : default;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[ApiService.GetAsync] {url} — {ex.Message}");
+            return default;
+        }
     }
 
-    public async Task<T> GetAsync<T>(string url)
+    // ── Convenience helpers ──────────────────────────────────────
+
+    public Task<AccountHolder?> GetAccountHolderAsync(int id)
+        => GetAsync<AccountHolder>($"AccountHolder/GetAccountHolder?id={id}");
+
+    public async Task<List<Invoice>> GetAllInvoicesAsync(int accountHolderId)
     {
-        var response = await _http.GetFromJsonAsync<ResponseBase<T>>(url);
-        return response.Data;
+        var result = await GetAsync<IEnumerable<Invoice>>(
+            $"Invoice/GetByAccountHolder?accountHolderId={accountHolderId}");
+        return result?.ToList() ?? [];
+    }
+
+    public async Task<List<Invoice>> GetOutstandingInvoicesAsync(int accountHolderId)
+    {
+        var result = await GetAsync<IEnumerable<Invoice>>(
+            $"Invoice/GetOutstandingByAccountHolder?accountHolderId={accountHolderId}");
+        return result?.ToList() ?? [];
     }
 }
+
 ```
 
-## File: MusicSchool.AccountHolderApp\App.razor
+## File: MusicSchool.AccountHolderPortal\Shared\MainLayout.razor
 
 ```razor
-@using Microsoft.AspNetCore.Components.Routing
-<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <p>Sorry, there's nothing here.</p>
-    </NotFound>
-</Router>
+@inherits LayoutComponentBase
+@namespace MusicSchool.AccountHolderPortal.Shared
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudIcon Icon="@Icons.Material.Filled.MusicNote" Class="mr-2" />
+        <MudText Typo="Typo.h6" Style="font-weight:600;">Music School</MudText>
+        <MudSpacer />
+        <MudText Typo="Typo.body2">Account Portal</MudText>
+    </MudAppBar>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4 pa-md-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
 ```
 
-## File: MusicSchool.AccountHolderApp\MusicSchool.AccountHolderApp.csproj
+## File: MusicSchool.AccountHolderPortal\Shared\StatusChip.razor
+
+```razor
+@* Shared/StatusChip.razor *@
+@namespace MusicSchool.AccountHolderPortal.Shared
+
+<MudChip T="string"
+         Size="Size.Small"
+         Class="@($"mud-chip-filled {GetCssClass()}")"
+         Style="font-size:0.7rem;">
+    @Status
+</MudChip>
+
+@code {
+    [Parameter] public string Status { get; set; } = string.Empty;
+
+    private string GetCssClass() => Status?.ToLower() switch
+    {
+        "paid"    => "status-paid",
+        "overdue" => "status-overdue",
+        "void"    => "status-void",
+        _         => "status-pending"     // Pending
+    };
+}
+
+```
+
+## File: MusicSchool.AccountHolderPortal\wwwroot\appsettings.Development.json
+
+```json
+{
+  "profiles": {
+    "MusicSchool.AccountHolderPortal": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:52100;http://localhost:52101"
+    }
+  }
+}
+
+```
+
+## File: MusicSchool.AccountHolderPortal\wwwroot\appsettings.json
+
+```json
+{
+  "ApiBaseUrl": "https://localhost:64100/"
+}
+
+```
+
+## File: MusicSchool.AccountHolderPortal\App.razor
+
+```razor
+@using MudBlazor
+@namespace MusicSchool.AccountHolderPortal
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<Router AppAssembly="typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Shared.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="typeof(Shared.MainLayout)">
+            <MudText Typo="Typo.h5" Class="pa-4">Sorry, there's nothing at this address.</MudText>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary              = "#F3D395",
+            PrimaryContrastText  = "#3A3A3A",
+            Secondary            = "#78797A",
+            SecondaryContrastText= "#FFFFFF",
+            Background           = "#F0F2F5",
+            Surface              = "#FFFFFF",
+            AppbarBackground     = "#F3D395",
+            AppbarText           = "#3A3A3A",
+            DrawerBackground     = "#FFFFFF",
+            DrawerText           = "#3A3A3A",
+            TextPrimary          = "#3A3A3A",
+            TextSecondary        = "#78797A",
+            ActionDefault        = "#78797A",
+            Divider              = "#DFE1E3",
+            TableLines           = "#DFE1E3",
+            LinesDefault         = "#DFE1E3",
+        }
+    };
+}
+
+```
+
+## File: MusicSchool.AccountHolderPortal\MusicSchool.AccountHolderPortal.csproj
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.0" PrivateAssets="all" />
+    <PackageReference Include="MudBlazor" Version="7.15.0" />
   </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\MusicSchool.Models\MusicSchool.Models.csproj" />
   </ItemGroup>
+
+  <!--
+    Add a project reference to your shared MusicSchool.Models project:
+    <ItemGroup>
+      <ProjectReference Include="..\MusicSchool.Models\MusicSchool.Models.csproj" />
+    </ItemGroup>
+
+    Until then, the model classes are duplicated inline in Services\Models.cs.
+  -->
+
 </Project>
+
 ```
 
-## File: MusicSchool.AccountHolderApp\Program.cs
+## File: MusicSchool.AccountHolderPortal\Program.cs
 
 ```csharp
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using MusicSchool.AccountHolderApp;
-using System;
-using System.Net.Http;
+using MudBlazor.Services;
+using MusicSchool.AccountHolderPortal;
+using MusicSchool.AccountHolderPortal.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped(sp => new HttpClient
 {
-    BaseAddress = new Uri("https://localhost:64100/")
+    BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:64100/")
 });
 
+builder.Services.AddScoped<ApiService>();
+builder.Services.AddMudServices();
+
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+    Console.Error.WriteLine($"[UnhandledException] {e.ExceptionObject}");
+
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    Console.Error.WriteLine($"[UnobservedTaskException] {e.Exception}");
+    e.SetObserved();
+};
+
 await builder.Build().RunAsync();
+
+```
+
+## File: MusicSchool.AccountHolderPortal\_Imports.razor
+
+```razor
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@using MudBlazor
+@using MusicSchool.AccountHolderPortal
+@using MusicSchool.AccountHolderPortal.Services
+@using MusicSchool.AccountHolderPortal.Shared
 
 ```
 
@@ -337,10 +738,13 @@ namespace MusicSchool.Controllers
         }
 
         [HttpPut("UpdateExtraLessonStatus")]
-        public async Task<ResponseBase<bool>> UpdateExtraLessonStatus([FromQuery] int extraLessonId, [FromQuery] string status)
+        public async Task<ResponseBase<bool>> UpdateExtraLessonStatus(
+            [FromQuery] int extraLessonId,
+            [FromQuery] string status,
+            [FromQuery] string? note = null)
         {
             ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
-            var result = await _extraLessonRepository.UpdateExtraLessonStatusAsync(extraLessonId, status);
+            var result = await _extraLessonRepository.UpdateExtraLessonStatusAsync(extraLessonId, status, note);
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";
@@ -573,7 +977,10 @@ namespace MusicSchool.Controllers
         }
 
         [HttpPut("UpdateLessonStatus")]
-        public async Task<ResponseBase<bool>> UpdateLessonStatus([FromQuery] int lessonId, [FromQuery] string status)
+        public async Task<ResponseBase<bool>> UpdateLessonStatus(
+            [FromQuery] int lessonId,
+            [FromQuery] string status,
+            [FromQuery] string? note = null)
         {
             ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
             var result = await _lessonRepository.UpdateLessonStatusAsync(
@@ -583,7 +990,8 @@ namespace MusicSchool.Controllers
                            : status == LessonStatus.CancelledStudent || status == LessonStatus.Forfeited ? CancelledBy.Student
                            : null,
                 cancellationReason: null,
-                completedAt: status == LessonStatus.Completed ? DateTime.UtcNow : null);
+                completedAt: status == LessonStatus.Completed ? DateTime.UtcNow : null,
+                note: note);
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";
@@ -1007,7 +1415,6 @@ namespace MusicSchool.Controllers
 ## File: MusicSchool.Api\Program.cs
 
 ```csharp
-using MusicSchool.Api;
 using Serilog;
 
 namespace MusicSchool.Api
@@ -1039,7 +1446,7 @@ namespace MusicSchool.Api
                     options.AddPolicy(name: MyAllowSpecificOrigins,
                         policy =>
                         {
-                            policy.WithOrigins("https://localhost:64314;https://localhost:52073") // Blazor WASM origin
+                            policy.WithOrigins("https://localhost:64314","https://localhost:57349", "https://localhost:51173") // Blazor WASM origin
                                   .AllowAnyHeader()
                                   .AllowAnyMethod();
                         });
@@ -1277,7 +1684,11 @@ namespace MusicSchool.Data.Interfaces
         /// </summary>
         Task<int?> AddExtraLessonAsync(ExtraLesson extraLesson);
 
-        Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status);
+        /// <summary>
+        /// Updates the status on an extra lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
+        Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status, string? note = null);
     }
 }
 
@@ -1302,7 +1713,11 @@ namespace MusicSchool.Data.Interfaces
         /// <summary>Inserts within an existing transaction.</summary>
         Task<int> InsertAsync(ExtraLesson extraLesson, IDbTransaction tx, IDbConnection connection);
 
-        Task<bool> UpdateStatusAsync(int extraLessonId, string status);
+        /// <summary>
+        /// Updates the status on an extra lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
+        Task<bool> UpdateStatusAsync(int extraLessonId, string status, string? note = null);
     }
 }
 
@@ -1440,8 +1855,15 @@ namespace MusicSchool.Data.Interfaces
         Task<IEnumerable<LessonDetail>> GetByTeacherAndDateAsync(int teacherId, DateTime scheduledDate);
         Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId);
         Task<int?> AddLessonAsync(Lesson lesson);
+
+        /// <summary>
+        /// Updates the lesson status, keeps BundleQuarter.LessonsUsed in sync,
+        /// and optionally records a free-text <paramref name="note"/>.
+        /// When <paramref name="note"/> is null the existing Notes value is preserved.
+        /// </summary>
         Task<bool> UpdateLessonStatusAsync(int lessonId, string status, bool creditForfeited,
-            string? cancelledBy, string? cancellationReason, DateTime? completedAt);
+            string? cancelledBy, string? cancellationReason, DateTime? completedAt,
+            string? note = null);
     }
 }
 
@@ -1467,8 +1889,13 @@ namespace MusicSchool.Data.Interfaces
         /// <summary>Inserts within an existing transaction.</summary>
         Task<int> InsertAsync(Lesson lesson, IDbTransaction tx);
 
+        /// <summary>
+        /// Updates the status fields on a lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
         Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
-            string? cancelledBy, string? cancellationReason, DateTime? completedAt);
+            string? cancelledBy, string? cancellationReason, DateTime? completedAt,
+            string? note = null);
     }
 }
 
@@ -1897,8 +2324,6 @@ namespace MusicSchool.Data.Models
 ## File: MusicSchool.Models\Lesson.cs
 
 ```csharp
-using System;
-
 namespace MusicSchool.Data.Models
 {
     /// <summary>
@@ -1975,6 +2400,12 @@ namespace MusicSchool.Data.Models
         public int?      OriginalLessonID   { get; set; }
 
         public DateTime? CompletedAt        { get; set; }
+
+        /// <summary>
+        /// Optional free-text note that can be attached when updating the lesson status.
+        /// </summary>
+        public string?   Notes              { get; set; }
+
         public DateTime  CreatedAt          { get; set; }
     }
 }
@@ -2100,6 +2531,7 @@ public class LessonDetail
     public string? CancellationReason { get; set; }
     public int? OriginalLessonID { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public string? Notes { get; set; }
 
     // Student fields
     public int StudentID { get; set; }
@@ -2117,6 +2549,7 @@ public class LessonDetail
     public int DurationMinutes { get; set; }
     public decimal BasePricePerLesson { get; set; }
 }
+
 ```
 
 ## File: MusicSchool.Models\LessonType.cs
@@ -2691,11 +3124,15 @@ namespace MusicSchool.Data.Implementations
             }
         }
 
-        public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status)
+        /// <summary>
+        /// Updates the status on an extra lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
+        public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status, string? note = null)
         {
             try
             {
-                return await _extraLessonService.UpdateStatusAsync(extraLessonId, status);
+                return await _extraLessonService.UpdateStatusAsync(extraLessonId, status, note);
             }
             catch (Exception ex)
             {
@@ -2788,15 +3225,20 @@ namespace MusicSchool.Data.Implementations
                 new CommandDefinition(sql, extraLesson, tx));
         }
 
-        public async Task<bool> UpdateStatusAsync(int extraLessonId, string status)
+        /// <summary>
+        /// Updates the status on an extra lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
+        public async Task<bool> UpdateStatusAsync(int extraLessonId, string status, string? note = null)
         {
             const string sql = @"
                 UPDATE ExtraLesson
-                SET Status = @Status
+                SET Status = @Status,
+                    Notes  = COALESCE(@Notes, Notes)
                 WHERE ExtraLessonID = @ExtraLessonID;";
 
             var rowsAffected = await _connection.ExecuteAsync(sql,
-                new { ExtraLessonID = extraLessonId, Status = status });
+                new { ExtraLessonID = extraLessonId, Status = status, Notes = note });
             return rowsAffected > 0;
         }
     }
@@ -3067,6 +3509,7 @@ namespace MusicSchool.Data.Implementations
                    l.CancellationReason,
                    l.OriginalLessonID,
                    l.CompletedAt,
+                   l.Notes,
                    s.StudentID,
                    s.FirstName      AS StudentFirstName,
                    s.LastName       AS StudentLastName,
@@ -3095,6 +3538,7 @@ namespace MusicSchool.Data.Implementations
                    l.CancellationReason,
                    l.OriginalLessonID,
                    l.CompletedAt,
+                   l.Notes,
                    s.StudentID,
                    s.FirstName      AS StudentFirstName,
                    s.LastName       AS StudentLastName,
@@ -3556,10 +4000,11 @@ namespace MusicSchool.Data.Implementations
         ///   CancelledTeacher / CancelledStudent → -1 only if the previous status
         ///   had already consumed a credit (i.e. was Completed or Forfeited).
         /// The delta approach is atomic — no separate read is needed.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
         /// </summary>
         public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status,
             bool creditForfeited, string? cancelledBy, string? cancellationReason,
-            DateTime? completedAt)
+            DateTime? completedAt, string? note = null)
         {
             try
             {
@@ -3570,7 +4015,7 @@ namespace MusicSchool.Data.Implementations
                 // 2. Update the lesson row.
                 var updated = await _lessonService.UpdateStatusAsync(
                     lessonId, status, creditForfeited,
-                    cancelledBy, cancellationReason, completedAt);
+                    cancelledBy, cancellationReason, completedAt, note);
 
                 if (!updated) return false;
 
@@ -3635,6 +4080,7 @@ namespace MusicSchool.Data.Implementations
                        CancellationReason,
                        OriginalLessonID,
                        CompletedAt,
+                       Notes,
                        CreatedAt
                 FROM Lesson
                 WHERE LessonID = @LessonID;";
@@ -3657,6 +4103,7 @@ namespace MusicSchool.Data.Implementations
                        CancellationReason,
                        OriginalLessonID,
                        CompletedAt,
+                       Notes,
                        CreatedAt
                 FROM Lesson
                 WHERE BundleID = @BundleID
@@ -3680,6 +4127,7 @@ namespace MusicSchool.Data.Implementations
                        CancellationReason,
                        OriginalLessonID,
                        CompletedAt,
+                       Notes,
                        CreatedAt
                 FROM Lesson
                 WHERE Status = @Status
@@ -3689,7 +4137,7 @@ namespace MusicSchool.Data.Implementations
         }
 
         public async Task<int> InsertAsync(Lesson lesson)
-            => await InsertAsync(lesson);
+            => await InsertAsync(lesson, null!);
 
         public async Task<int> InsertAsync(Lesson lesson, IDbTransaction tx)
         {
@@ -3710,7 +4158,8 @@ namespace MusicSchool.Data.Implementations
         }
 
         public async Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
-            string? cancelledBy, string? cancellationReason, DateTime? completedAt)
+            string? cancelledBy, string? cancellationReason, DateTime? completedAt,
+            string? note = null)
         {
             const string sql = @"
                 UPDATE Lesson
@@ -3718,7 +4167,8 @@ namespace MusicSchool.Data.Implementations
                     CreditForfeited    = @CreditForfeited,
                     CancelledBy        = @CancelledBy,
                     CancellationReason = @CancellationReason,
-                    CompletedAt        = @CompletedAt
+                    CompletedAt        = @CompletedAt,
+                    Notes              = COALESCE(@Notes, Notes)
                 WHERE LessonID = @LessonID;";
 
             var rowsAffected = await _connection.ExecuteAsync(sql, new
@@ -3728,7 +4178,8 @@ namespace MusicSchool.Data.Implementations
                 CreditForfeited    = creditForfeited,
                 CancelledBy        = cancelledBy,
                 CancellationReason = cancellationReason,
-                CompletedAt        = completedAt
+                CompletedAt        = completedAt,
+                Notes              = note
             });
             return rowsAffected > 0;
         }
@@ -4493,105 +4944,669 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.StudentApp\Pages\Dashboard.razor
+## File: MusicSchool.StudentPortal\Pages\Dashboard.razor
 
 ```razor
-@page "/student/{StudentId:int}"
+@page "/dashboard/{StudentId:int}"
+
+@namespace MusicSchool.StudentPortal.Pages
+
+@using MusicSchool.Data.Models
+
 @inject ApiService Api
 
-<h3>Student Dashboard</h3>
+<PageTitle>My Lessons — Music School</PageTitle>
 
-@if (nextLesson == null)
+@if (_loading)
 {
-    <p>Loading...</p>
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+    <MudText>Loading your lessons…</MudText>
+}
+else if (_student is null)
+{
+    <MudAlert Severity="Severity.Error">
+        Student not found. Please check your ID or contact your teacher.
+    </MudAlert>
 }
 else
 {
-    <h4>Next Lesson</h4>
-    <p>
-        @nextLesson.ScheduledDate.ToShortDateString()
-        @nextLesson.ScheduledTime
-    </p>
+    <!-- ── Page header ──────────────────────────────────────── -->
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-5">
+        <MudIcon Icon="@Icons.Material.Filled.LibraryMusic"
+                 Style="font-size:2rem; color:#F3D395;" />
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
+                Welcome, @_student.FirstName!
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Here's your lesson overview.
+            </MudText>
+        </div>
+    </MudStack>
 
-    <h4>Last 3 Lessons</h4>
-    <ul>
-        @foreach (var lesson in lastLessons)
-        {
-            <li>
-                @lesson.ScheduledDate.ToShortDateString() - @lesson.Status
-            </li>
-        }
-    </ul>
+    <!-- ══════════════════════════════════════════════════════
+         NEXT LESSON HERO
+    ══════════════════════════════════════════════════════ -->
+    <MudText Typo="Typo.h6" Style="font-weight:600;" Class="mb-3">
+        Next Lesson
+    </MudText>
+
+    @if (_nextLesson is null)
+    {
+        <MudPaper Class="pa-5 mb-6" Elevation="1">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.EventBusy"
+                         Style="font-size:2.5rem; color:#78797A;" />
+                <MudText Color="Color.Secondary">
+                    No upcoming lessons scheduled. Contact your teacher to book.
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-5 mb-6 next-lesson-card" Elevation="2">
+            <MudGrid AlignItems="AlignItems.Center">
+
+                <!-- Date / time block -->
+                <MudItem xs="12" sm="6" md="4">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.caption" Style="color:#78797A; text-transform:uppercase; letter-spacing:.05em;">
+                            Date &amp; Time
+                        </MudText>
+                        <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
+                            @_nextLesson.ScheduledDate.ToString("dddd, dd MMMM")
+                        </MudText>
+                        <MudText Typo="Typo.h6" Style="color:#3A3A3A;">
+                            @_nextLesson.ScheduledTime.ToString("HH:mm")
+                            @if (_nextLessonDuration > 0)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                         Style="margin-left:6px;">
+                                    (@_nextLessonDuration min)
+                                </MudText>
+                            }
+                        </MudText>
+                    </MudStack>
+                </MudItem>
+
+                <!-- Countdown block -->
+                <MudItem xs="12" sm="6" md="4"
+                         Class="d-flex justify-center align-center">
+                    @{
+                        var daysUntil = (_nextLesson.ScheduledDate.Date - DateTime.Today).Days;
+                    }
+                    @if (daysUntil == 0)
+                    {
+                        <span class="countdown-badge" style="font-size:1rem; padding:8px 20px;">
+                            🎵 Today!
+                        </span>
+                    }
+                    else if (daysUntil == 1)
+                    {
+                        <span class="countdown-badge">Tomorrow</span>
+                    }
+                    else
+                    {
+                        <span class="countdown-badge">In @daysUntil days</span>
+                    }
+                </MudItem>
+
+                <!-- Bundle / teacher info -->
+                <MudItem xs="12" md="4">
+                    <MudStack Spacing="1">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.Inventory2"
+                                     Size="Size.Small" Style="color:#78797A;" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Bundle #@_nextLesson.BundleID
+                            </MudText>
+                        </MudStack>
+                        @if (!string.IsNullOrEmpty(_nextLessonTeacher))
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Person"
+                                         Size="Size.Small" Style="color:#78797A;" />
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    @_nextLessonTeacher
+                                </MudText>
+                            </MudStack>
+                        }
+                        <StatusChip Status="@_nextLesson.Status" />
+                    </MudStack>
+                </MudItem>
+
+            </MudGrid>
+        </MudPaper>
+    }
+
+    <!-- ══════════════════════════════════════════════════════
+         PREVIOUS 3 LESSON NOTES
+    ══════════════════════════════════════════════════════ -->
+    <MudText Typo="Typo.h6" Style="font-weight:600;" Class="mb-3">
+        Previous Lesson Notes
+    </MudText>
+
+    @if (_previousLessons.Count == 0)
+    {
+        <MudPaper Class="pa-5" Elevation="1">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.StickyNote2"
+                         Style="font-size:2.5rem; color:#78797A;" />
+                <MudText Color="Color.Secondary">
+                    No completed lessons yet. Notes from your teacher will appear here.
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Spacing="3">
+            @foreach (var (lesson, index) in _previousLessons.Select((l, i) => (l, i)))
+            {
+                var cardClass = lesson.Status.ToLower() switch
+                {
+                    "completed"        => "lesson-notes-card completed",
+                    "cancelledteacher" => "lesson-notes-card cancelled",
+                    "cancelledstudent" => "lesson-notes-card cancelled",
+                    "forfeited"        => "lesson-notes-card cancelled",
+                    _                  => "lesson-notes-card"
+                };
+
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="@($"pa-4 {cardClass}")" Elevation="1" Style="height:100%;">
+                        <MudStack Spacing="2">
+
+                            <!-- Lesson header -->
+                            <MudStack Row="true"
+                                      Justify="Justify.SpaceBetween"
+                                      AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
+                                    @lesson.ScheduledDate.ToString("dd MMM yyyy")
+                                </MudText>
+                                <StatusChip Status="@lesson.Status" />
+                            </MudStack>
+
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @lesson.ScheduledTime.ToString("HH:mm")
+                                @if (_lessonDurationMap.TryGetValue(lesson.BundleID, out var dur) && dur > 0)
+                                {
+                                    <span> · @dur min</span>
+                                }
+                                · Bundle #@lesson.BundleID
+                            </MudText>
+
+                            <MudDivider />
+
+                            <!-- Notes section -->
+                            <MudStack Spacing="1">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Notes"
+                                             Size="Size.Small" Style="color:#F3D395;" />
+                                    <MudText Typo="Typo.caption"
+                                             Style="font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#78797A;">
+                                        Teacher's Notes
+                                    </MudText>
+                                </MudStack>
+
+                                @{
+                                    var notes = @lesson.Notes;
+                                }
+                                @if (!string.IsNullOrWhiteSpace(notes))
+                                {
+                                    <MudText Typo="Typo.body2" Style="color:#3A3A3A; white-space:pre-line;">
+                                        @notes
+                                    </MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary"
+                                             Style="font-style:italic;">
+                                        No notes recorded for this lesson.
+                                    </MudText>
+                                }
+                            </MudStack>
+
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
 }
 
 @code {
     [Parameter] public int StudentId { get; set; }
 
-    LessonDetail? nextLesson;
-    List<LessonDetail> lastLessons = new();
+    private bool     _loading = true;
+    private Student? _student;
+
+    // Next upcoming scheduled lesson
+    private Lesson? _nextLesson;
+    private int     _nextLessonDuration;
+    private string  _nextLessonTeacher = string.Empty;
+
+    // Last 3 completed / past lessons
+    private List<Lesson>          _previousLessons  = [];
+    private Dictionary<int, int>  _lessonDurationMap = [];   // BundleID → DurationMinutes
 
     protected override async Task OnInitializedAsync()
     {
-        var lessons = (await Api.GetAsync<IEnumerable<LessonDetail>>(
-            $"Lesson/GetByStudent?studentId={StudentId}"
-        ))?
-        .OrderBy(l => l.ScheduledDate)
-        .ToList();
+        _loading = true;
 
-        if (lessons == null) return;
+        // 1. Load student info
+        _student = await Api.GetStudentAsync(StudentId);
+        if (_student is null)
+        {
+            _loading = false;
+            return;
+        }
 
-        var now = DateTime.Now;
+        // 2. Load all bundles for this student so we can look up duration
+        var bundles = await Api.GetBundlesByStudentAsync(StudentId);
+        foreach (var b in bundles)
+            _lessonDurationMap[b.BundleID] = b.DurationMinutes;
 
-        nextLesson = lessons
-            .Where(l => l.ScheduledDate >= now)
+        // 3. Load all lessons across all bundles
+        var allLessons = new List<Lesson>();
+        foreach (var bundle in bundles)
+        {
+            var lessonList = await Api.GetLessonsByBundleAsync(bundle.BundleID);
+            allLessons.AddRange(lessonList);
+        }
+
+        var today = DateTime.Today;
+
+        // 4. Next lesson = earliest future Scheduled lesson
+        _nextLesson = allLessons
+            .Where(l => l.Status == LessonStatus.Scheduled
+                        && l.ScheduledDate.Date >= today)
             .OrderBy(l => l.ScheduledDate)
+            .ThenBy(l => l.ScheduledTime)
             .FirstOrDefault();
 
-        lastLessons = lessons
-            .Where(l => l.ScheduledDate < now)
+        if (_nextLesson is not null
+            && _lessonDurationMap.TryGetValue(_nextLesson.BundleID, out var dur))
+        {
+            _nextLessonDuration = dur;
+        }
+
+        // Derive teacher name from bundle detail when available
+        var nextBundle = bundles.FirstOrDefault(b =>
+            _nextLesson is not null && b.BundleID == _nextLesson.BundleID);
+        // TeacherName is not on LessonBundleDetail — it surfaces on LessonDetail.
+        // We surface the BundleID as a fallback; extend ApiService to fetch
+        // LessonDetail if you want teacher name on this card.
+        _nextLessonTeacher = string.Empty;   // See note above
+
+        // 5. Previous 3 lessons = most-recent lessons that are past today
+        //    (Completed, Forfeited, or either Cancelled variant)
+        _previousLessons = allLessons
+            .Where(l => l.ScheduledDate.Date < today
+                        || (l.ScheduledDate.Date == today
+                            && l.Status != LessonStatus.Scheduled))
             .OrderByDescending(l => l.ScheduledDate)
+            .ThenByDescending(l => l.ScheduledTime)
             .Take(3)
             .ToList();
+
+        _loading = false;
     }
+}
+
+```
+
+## File: MusicSchool.StudentPortal\Pages\Index.razor
+
+```razor
+@page "/"
+@namespace MusicSchool.StudentPortal.Pages
+
+<PageTitle>Music School — Student Portal</PageTitle>
+
+<MudPaper Class="pa-6 mt-6" Elevation="1"
+          Style="max-width:480px; margin:auto; border-top:4px solid #F3D395;">
+
+    <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-5">
+        <MudIcon Icon="@Icons.Material.Filled.LibraryMusic"
+                 Style="font-size:3rem; color:#F3D395;" />
+        <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
+            Student Portal
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+            Enter your Student ID to see your upcoming lesson and recent lesson notes.
+        </MudText>
+    </MudStack>
+
+    <MudTextField @bind-Value="_studentId"
+                  Label="Student ID"
+                  Variant="Variant.Outlined"
+                  InputType="InputType.Number"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.School"
+                  Class="mb-4"
+                  OnKeyDown="@OnKeyDown" />
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               FullWidth="true"
+               Size="Size.Large"
+               StartIcon="@Icons.Material.Filled.CalendarToday"
+               OnClick="ViewDashboard"
+               Disabled="@(_studentId <= 0)">
+        View My Lessons
+    </MudButton>
+
+</MudPaper>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private int _studentId;
+
+    private void ViewDashboard()
+    {
+        if (_studentId > 0)
+            Nav.NavigateTo($"/dashboard/{_studentId}");
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") ViewDashboard();
+    }
+}
+
+```
+
+## File: MusicSchool.StudentPortal\Properties\launchSettings.json
+
+```json
+{
+  "profiles": {
+    "MusicSchool.StudentPortal": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:51173;http://localhost:51174"
+    }
+  }
 }
 ```
 
-## File: MusicSchool.StudentApp\App.razor
+## File: MusicSchool.StudentPortal\Services\ApiService.cs
 
-```razor
-<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
-    </Found>
-</Router>
+```csharp
+using MusicSchool.Data.Models;
+using MusicSchool.Models;
+using MusicSchool.Models.TransferModels;
+using System.Net.Http.Json;
+
+
+namespace MusicSchool.StudentPortal.Services;
+
+public class ApiService
+{
+    private readonly HttpClient _http;
+
+    public ApiService(HttpClient http) => _http = http;
+
+    // ── Generic helper ───────────────────────────────────────────
+    public async Task<T?> GetAsync<T>(string url)
+    {
+        try
+        {
+            var response = await _http.GetFromJsonAsync<ResponseBase<T>>(url);
+            return response is not null ? response.Data : default;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[ApiService.GetAsync] {url} — {ex.Message}");
+            return default;
+        }
+    }
+
+    // ── Student ──────────────────────────────────────────────────
+    public Task<Student?> GetStudentAsync(int studentId)
+        => GetAsync<Student>($"Student/GetStudent?id={studentId}");
+
+    // ── Lessons ──────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all lessons for a bundle (base Lesson model).
+    /// We fetch bundles first, then pull lessons per bundle.
+    /// </summary>
+    public async Task<List<Lesson>> GetLessonsByBundleAsync(int bundleId)
+    {
+        var result = await GetAsync<IEnumerable<Lesson>>(
+            $"Lesson/GetByBundle?bundleId={bundleId}");
+        return result?.ToList() ?? [];
+    }
+
+    // ── Bundles ──────────────────────────────────────────────────
+    public async Task<List<LessonBundleDetail>> GetBundlesByStudentAsync(int studentId)
+    {
+        var result = await GetAsync<IEnumerable<LessonBundleDetail>>(
+            $"LessonBundle/GetByStudent?studentId={studentId}");
+        return result?.ToList() ?? [];
+    }
+
+    // ── Scheduled slots ──────────────────────────────────────────
+    public async Task<List<ScheduledSlot>> GetActiveSlotsByStudentAsync(int studentId)
+    {
+        var result = await GetAsync<IEnumerable<ScheduledSlot>>(
+            $"ScheduledSlot/GetActiveByStudent?studentId={studentId}");
+        return result?.ToList() ?? [];
+    }
+}
 
 ```
 
-## File: MusicSchool.StudentApp\MusicSchool.StudentApp.csproj
+## File: MusicSchool.StudentPortal\Shared\MainLayout.razor
+
+```razor
+@inherits LayoutComponentBase
+@namespace MusicSchool.StudentPortal.Shared
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudIcon Icon="@Icons.Material.Filled.MusicNote" Class="mr-2" />
+        <MudText Typo="Typo.h6" Style="font-weight:600;">Music School</MudText>
+        <MudSpacer />
+        <MudText Typo="Typo.body2">Student Portal</MudText>
+    </MudAppBar>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4 pa-md-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+```
+
+## File: MusicSchool.StudentPortal\Shared\StatusChip.razor
+
+```razor
+@* Shared/StatusChip.razor *@
+@namespace MusicSchool.StudentPortal.Shared
+
+<MudChip T="string"
+         Size="Size.Small"
+         Class="@($"mud-chip-filled {GetCssClass()}")"
+         Style="font-size:0.7rem;">
+    @Status
+</MudChip>
+
+@code {
+    [Parameter] public string Status { get; set; } = string.Empty;
+
+    private string GetCssClass() => Status?.ToLower() switch
+    {
+        "scheduled"        => "status-scheduled",
+        "completed"        => "status-completed",
+        "forfeited"        => "status-forfeited",
+        "cancelledteacher" => "status-cancelled",
+        "cancelledstudent" => "status-cancelled",
+        "cancelled"        => "status-cancelled",
+        "rescheduled"      => "status-rescheduled",
+        _                  => "status-scheduled"
+    };
+}
+
+```
+
+## File: MusicSchool.StudentPortal\wwwroot\appsettings.Development.json
+
+```json
+{
+  "ApiBaseUrl": "https://localhost:64100/"
+}
+
+```
+
+## File: MusicSchool.StudentPortal\wwwroot\appsettings.json
+
+```json
+{
+  "ApiBaseUrl": "https://localhost:64100/"
+}
+
+```
+
+## File: MusicSchool.StudentPortal\App.razor
+
+```razor
+@using MudBlazor
+@namespace MusicSchool.StudentPortal
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<Router AppAssembly="typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Shared.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="typeof(Shared.MainLayout)">
+            <MudText Typo="Typo.h5" Class="pa-4">Sorry, there's nothing at this address.</MudText>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary              = "#F3D395",
+            PrimaryContrastText  = "#3A3A3A",
+            Secondary            = "#78797A",
+            SecondaryContrastText= "#FFFFFF",
+            Background           = "#F0F2F5",
+            Surface              = "#FFFFFF",
+            AppbarBackground     = "#F3D395",
+            AppbarText           = "#3A3A3A",
+            DrawerBackground     = "#FFFFFF",
+            DrawerText           = "#3A3A3A",
+            TextPrimary          = "#3A3A3A",
+            TextSecondary        = "#78797A",
+            ActionDefault        = "#78797A",
+            Divider              = "#DFE1E3",
+            TableLines           = "#DFE1E3",
+            LinesDefault         = "#DFE1E3",
+        }
+    };
+}
+
+```
+
+## File: MusicSchool.StudentPortal\MusicSchool.StudentPortal.csproj
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.0" PrivateAssets="all" />
+    <PackageReference Include="MudBlazor" Version="7.15.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MusicSchool.Models\MusicSchool.Models.csproj" />
+  </ItemGroup>
+
+  <!--
+    Add a project reference to your shared MusicSchool.Models project:
+    <ItemGroup>
+      <ProjectReference Include="..\MusicSchool.Models\MusicSchool.Models.csproj" />
+    </ItemGroup>
+
+    Until then, the model classes are duplicated inline in Services\Models.cs.
+  -->
+
 </Project>
+
 ```
 
-## File: MusicSchool.StudentApp\Program.cs
+## File: MusicSchool.StudentPortal\Program.cs
 
 ```csharp
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using MudBlazor.Services;
+using MusicSchool.StudentPortal;
+using MusicSchool.StudentPortal.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped(sp => new HttpClient
 {
-    BaseAddress = new Uri("https://localhost:64100/")
+    BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:64100/")
 });
 
+builder.Services.AddScoped<ApiService>();
+builder.Services.AddMudServices();
+
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+    Console.Error.WriteLine($"[UnhandledException] {e.ExceptionObject}");
+
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    Console.Error.WriteLine($"[UnobservedTaskException] {e.Exception}");
+    e.SetObserved();
+};
+
 await builder.Build().RunAsync();
+
+```
+
+## File: MusicSchool.StudentPortal\_Imports.razor
+
+```razor
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@using MudBlazor
+@using MusicSchool.StudentPortal
+@using MusicSchool.StudentPortal.Services
+@using MusicSchool.StudentPortal.Shared
 
 ```
 
@@ -6652,13 +7667,23 @@ else if (!_loading)
                         <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
                         <MudTd>@context.StudentFullName</MudTd>
                         <MudTd>@context.DurationMinutes min</MudTd>
-                        <MudTd><StatusChip Status="@context.Status" /></MudTd>
+                        <MudTd>
+                            <StatusChip Status="@context.Status" />
+                            @if (!string.IsNullOrWhiteSpace(context.Notes))
+                            {
+                                <MudTooltip Text="@context.Notes" Placement="Placement.Right">
+                                    <MudIcon Icon="@Icons.Material.Filled.StickyNote2"
+                                             Size="Size.Small" Color="Color.Secondary"
+                                             Class="ml-1" Style="vertical-align:middle;" />
+                                </MudTooltip>
+                            }
+                        </MudTd>
                         <MudTd>
                             @if (context.Status == LessonStatus.Scheduled)
                             {
                                 <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
                                                Color="Color.Success" Title="Mark Completed"
-                                               OnClick="@(() => QuickUpdateLesson(context, LessonStatus.Completed))" />
+                                               OnClick="@(() => OpenCompleteLessonDialog(context))" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small"
                                                Color="Color.Warning" Title="Teacher Cancelled"
                                                OnClick="@(() => QuickUpdateLesson(context, LessonStatus.CancelledTeacher))" />
@@ -6697,13 +7722,23 @@ else if (!_loading)
                         <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
                         <MudTd>@context.StudentFullName</MudTd>
                         <MudTd>R @context.PriceCharged.ToString("N2")</MudTd>
-                        <MudTd><StatusChip Status="@context.Status" /></MudTd>
+                        <MudTd>
+                            <StatusChip Status="@context.Status" />
+                            @if (!string.IsNullOrWhiteSpace(context.Notes))
+                            {
+                                <MudTooltip Text="@context.Notes" Placement="Placement.Right">
+                                    <MudIcon Icon="@Icons.Material.Filled.StickyNote2"
+                                             Size="Size.Small" Color="Color.Secondary"
+                                             Class="ml-1" Style="vertical-align:middle;" />
+                                </MudTooltip>
+                            }
+                        </MudTd>
                         <MudTd>
                             @if (context.Status == ExtraLessonStatus.Scheduled)
                             {
                                 <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
                                                Color="Color.Success" Title="Complete"
-                                               OnClick="@(() => QuickUpdateExtra(context, ExtraLessonStatus.Completed))" />
+                                               OnClick="@(() => OpenCompleteExtraDialog(context))" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small"
                                                Color="Color.Error" Title="Cancel"
                                                OnClick="@(() => QuickUpdateExtra(context, ExtraLessonStatus.Cancelled))" />
@@ -6724,6 +7759,52 @@ else
         Select a teacher and date to view the schedule.
     </MudAlert>
 }
+
+<!-- Complete Lesson Dialog -->
+<MudDialog @ref="_completeLessonDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Complete Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-2">
+            <strong>@_lessonToComplete?.StudentFullName</strong>
+            — @_lessonToComplete?.ScheduledDate.ToString("dd MMM yyyy")
+            @_lessonToComplete?.ScheduledTime.ToString("HH:mm")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudTextField @bind-Value="_completeLessonNote"
+                      Label="Lesson note (optional)"
+                      Lines="3"
+                      Placeholder="e.g. Worked on scales, great progress with sight-reading…" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _completeLessonDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmCompleteLesson">
+            Mark Completed
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Complete Extra Lesson Dialog -->
+<MudDialog @ref="_completeExtraDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Complete Extra Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-2">
+            <strong>@_extraToComplete?.StudentFullName</strong>
+            — @_extraToComplete?.ScheduledDate.ToString("dd MMM yyyy")
+            @_extraToComplete?.ScheduledTime.ToString("HH:mm")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudTextField @bind-Value="_completeExtraNote"
+                      Label="Lesson note (optional)"
+                      Lines="3"
+                      Placeholder="e.g. Worked on scales, great progress with sight-reading…" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _completeExtraDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmCompleteExtra">
+            Mark Completed
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 <!-- Forfeit Dialog -->
 <MudDialog @ref="_forfeitDialog" Options="_dialogOptions">
@@ -6792,12 +7873,26 @@ else
     private int _selectedTeacherId;
     private DateTime? _selectedDate = DateTime.Today;
 
-    private MudDialog? _forfeitDialog, _addExtraDialog;
-    private MudForm? _extraForm;
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    // Complete lesson dialog
+    private MudDialog? _completeLessonDialog;
+    private LessonDetail? _lessonToComplete;
+    private string _completeLessonNote = string.Empty;
 
+    // Complete extra lesson dialog
+    private MudDialog? _completeExtraDialog;
+    private ExtraLessonDetail? _extraToComplete;
+    private string _completeExtraNote = string.Empty;
+
+    // Forfeit / cancellation dialog
+    private MudDialog? _forfeitDialog;
     private LessonDetail? _lessonToAction;
     private string _actionReason = string.Empty;
+
+    // Add extra lesson dialog
+    private MudDialog? _addExtraDialog;
+    private MudForm? _extraForm;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
 
     private ExtraLesson _newExtra = new();
     private TimeSpan? _extraTime;
@@ -6806,13 +7901,11 @@ else
     {
         _teachers = await TeacherSvc.GetAllActiveAsync();
         _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
-        
+
         if (_teachers.Any())
         {
             _selectedTeacherId = _teachers.First().TeacherID;
-
             await LoadSchedule();
-
             StateHasChanged();
         }
     }
@@ -6846,6 +7939,58 @@ else
     private void GoToToday() { _selectedDate = DateTime.Today; _ = LoadSchedule(); }
     private void PreviousDay() { _selectedDate = (_selectedDate ?? DateTime.Today).AddDays(-1); _ = LoadSchedule(); }
     private void NextDay() { _selectedDate = (_selectedDate ?? DateTime.Today).AddDays(1); _ = LoadSchedule(); }
+
+    // ── Complete bundle lesson ────────────────────────────────────
+
+    private async Task OpenCompleteLessonDialog(LessonDetail lesson)
+    {
+        _lessonToComplete = lesson;
+        _completeLessonNote = string.Empty;
+        await _completeLessonDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmCompleteLesson()
+    {
+        if (_lessonToComplete is null) return;
+        var result = await LessonSvc.UpdateLessonStatusAsync(
+            _lessonToComplete.LessonID,
+            LessonStatus.Completed,
+            note: string.IsNullOrWhiteSpace(_completeLessonNote) ? null : _completeLessonNote);
+        if (result)
+        {
+            Snackbar.Add("Lesson marked as completed.", Severity.Success);
+            await _completeLessonDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed to update lesson.", Severity.Error);
+    }
+
+    // ── Complete extra lesson ─────────────────────────────────────
+
+    private async Task OpenCompleteExtraDialog(ExtraLessonDetail extra)
+    {
+        _extraToComplete = extra;
+        _completeExtraNote = string.Empty;
+        await _completeExtraDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmCompleteExtra()
+    {
+        if (_extraToComplete is null) return;
+        var result = await ExtraLessonSvc.UpdateExtraLessonStatusAsync(
+            _extraToComplete.ExtraLessonID,
+            ExtraLessonStatus.Completed,
+            note: string.IsNullOrWhiteSpace(_completeExtraNote) ? null : _completeExtraNote);
+        if (result)
+        {
+            Snackbar.Add("Extra lesson marked as completed.", Severity.Success);
+            await _completeExtraDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed to update extra lesson.", Severity.Error);
+    }
+
+    // ── Other status updates (no note prompt) ────────────────────
 
     private async Task QuickUpdateLesson(LessonDetail lesson, string status)
     {
@@ -6881,6 +8026,8 @@ else
         }
         else Snackbar.Add("Failed.", Severity.Error);
     }
+
+    // ── Add extra lesson ─────────────────────────────────────────
 
     private async Task OpenAddExtraLessonDialog()
     {
@@ -8113,11 +9260,14 @@ namespace MusicSchool.Services
             catch { return null; }
         }
 
-        public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status)
+        public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status, string? note = null)
         {
             try
             {
-                var r = await http.PutAsync($"Lesson/UpdateLessonStatus?lessonId={lessonId}&status={status}", null);
+                var url = $"Lesson/UpdateLessonStatus?lessonId={lessonId}&status={status}";
+                if (!string.IsNullOrWhiteSpace(note))
+                    url += $"&note={Uri.EscapeDataString(note)}";
+                var r = await http.PutAsync(url, null);
                 var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
                 return result?.Data ?? false;
             }
@@ -8158,11 +9308,14 @@ namespace MusicSchool.Services
             catch { return null; }
         }
 
-        public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status)
+        public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status, string? note = null)
         {
             try
             {
-                var r = await http.PutAsync($"ExtraLesson/UpdateExtraLessonStatus?extraLessonId={extraLessonId}&status={status}", null);
+                var url = $"ExtraLesson/UpdateExtraLessonStatus?extraLessonId={extraLessonId}&status={status}";
+                if (!string.IsNullOrWhiteSpace(note))
+                    url += $"&note={Uri.EscapeDataString(note)}";
+                var r = await http.PutAsync(url, null);
                 var result = await r.Content.ReadFromJsonAsync<ResponseBase<bool>>();
                 return result?.Data ?? false;
             }
@@ -8216,6 +9369,7 @@ namespace MusicSchool.Services
         }
     }
 }
+
 ```
 
 ## File: MusicSchool.Web\Shared\MainLayout.razor

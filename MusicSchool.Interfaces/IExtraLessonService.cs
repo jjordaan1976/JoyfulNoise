@@ -14,6 +14,10 @@ namespace MusicSchool.Data.Interfaces
         /// <summary>Inserts within an existing transaction.</summary>
         Task<int> InsertAsync(ExtraLesson extraLesson, IDbTransaction tx, IDbConnection connection);
 
-        Task<bool> UpdateStatusAsync(int extraLessonId, string status);
+        /// <summary>
+        /// Updates the status on an extra lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
+        Task<bool> UpdateStatusAsync(int extraLessonId, string status, string? note = null);
     }
 }

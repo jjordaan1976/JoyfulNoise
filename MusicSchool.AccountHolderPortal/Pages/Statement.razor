@@ -14,7 +14,9 @@
 }
 else if (_accountHolder is null)
 {
-    <MudAlert Severity="Severity.Error">Account not found. Please check your link or contact your teacher.</MudAlert>
+    <MudAlert Severity="Severity.Error">
+        Account not found. Please check your link or contact your teacher.
+    </MudAlert>
 }
 else
 {
@@ -49,8 +51,6 @@ else
     <!-- ── Aging summary cards ─────────────────────────────────── -->
     <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600;">Outstanding Balance Summary</MudText>
     <MudGrid Spacing="3" Class="mb-5">
-
-        <!-- Current (not yet due) -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-4 aging-card" Elevation="1">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Current</MudText>
@@ -60,8 +60,6 @@ else
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Due today</MudText>
             </MudPaper>
         </MudItem>
-
-        <!-- 1–30 days -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-4 aging-card-warn" Elevation="1">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">30 Days</MudText>
@@ -71,8 +69,6 @@ else
                 <MudText Typo="Typo.caption" Color="Color.Secondary">1–30 days overdue</MudText>
             </MudPaper>
         </MudItem>
-
-        <!-- 31–60 days -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-4 aging-card-alert" Elevation="1">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">60 Days</MudText>
@@ -82,8 +78,6 @@ else
                 <MudText Typo="Typo.caption" Color="Color.Secondary">31–60 days overdue</MudText>
             </MudPaper>
         </MudItem>
-
-        <!-- 61+ days -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-4 aging-card-crit" Elevation="1">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">90+ Days</MudText>
@@ -93,7 +87,6 @@ else
                 <MudText Typo="Typo.caption" Color="Color.Secondary">61+ days overdue</MudText>
             </MudPaper>
         </MudItem>
-
     </MudGrid>
 
     <!-- ── Total outstanding banner ────────────────────────────── -->
@@ -112,7 +105,7 @@ else
     }
 
     <!-- ── Full invoice list ────────────────────────────────────── -->
-    <MudPaper Class="pa-4" Elevation="1">
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
         <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600;">Invoice History</MudText>
 
         @if (_allInvoices.Count == 0)
@@ -121,17 +114,14 @@ else
         }
         else
         {
-            <MudTable Items="_allInvoices"
-                      Hover="true"
-                      Dense="false"
-                      Elevation="0"
+            <MudTable Items="_allInvoices" Hover="true" Dense="false" Elevation="0"
                       SortLabel="Sort By">
                 <HeaderContent>
-                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice,object>(x => x.DueDate)">Due Date</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice, object>(x => x.DueDate)">Due Date</MudTableSortLabel></MudTh>
                     <MudTh>Description</MudTh>
-                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice,object>(x => x.Amount)">Amount</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice, object>(x => x.Amount)">Amount</MudTableSortLabel></MudTh>
                     <MudTh>Paid Date</MudTh>
-                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice,object>(x => x.Status)">Status</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice, object>(x => x.Status)">Status</MudTableSortLabel></MudTh>
                     <MudTh>Aging</MudTh>
                 </HeaderContent>
                 <RowTemplate>
@@ -156,9 +146,7 @@ else
                     <MudTd DataLabel="Aging">@GetAgingLabel(context)</MudTd>
                 </RowTemplate>
                 <FooterContent>
-                    <MudTd colspan="2" Style="font-weight:600;">
-                        Total Invoiced
-                    </MudTd>
+                    <MudTd colspan="2" Style="font-weight:600;">Total Invoiced</MudTd>
                     <MudTd Style="font-weight:600;">
                         R @_allInvoices.Sum(i => i.Amount).ToString("N2")
                     </MudTd>
@@ -167,16 +155,66 @@ else
             </MudTable>
         }
     </MudPaper>
+
+    <!-- ── Unallocated payments ──────────────────────────────────── -->
+    @if (UnallocatedPayments.Count > 0)
+    {
+        <MudPaper Class="pa-4" Elevation="1" Style="border-left: 4px solid #F3D395;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                <MudIcon Icon="@Icons.Material.Filled.Pending" Style="color:#F3D395;" />
+                <MudText Typo="Typo.h6" Style="font-weight:600;">Unallocated Payments</MudText>
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning">
+                    R @TotalUnallocated.ToString("N2") pending
+                </MudChip>
+            </MudStack>
+
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                The following payment(s) have been received but not yet matched to an invoice.
+                They will be automatically applied once they reach the next invoice amount
+                @if (NextPendingInvoiceAmount is not null)
+                {
+                    <span>(R @NextPendingInvoiceAmount).</span>
+                }
+            </MudAlert>
+
+            <MudTable Items="UnallocatedPayments" Hover="true" Dense="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Payment Date</MudTh>
+                    <MudTh>Amount Paid</MudTh>
+                    <MudTh>Unallocated</MudTh>
+                    <MudTh>Reference</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.PaymentDate.ToString("yyyy MMM dd")</MudTd>
+                    <MudTd>R @context.Amount.ToString("N2")</MudTd>
+                    <MudTd>
+                        <MudText Style="font-weight:600; color:#E65100;">
+                            R @context.UnallocatedAmount.ToString("N2")
+                        </MudText>
+                    </MudTd>
+                    <MudTd>@(context.Reference ?? "—")</MudTd>
+                </RowTemplate>
+                <FooterContent>
+                    <MudTd colspan="2" Style="font-weight:600;">Total Unallocated</MudTd>
+                    <MudTd Style="font-weight:600; color:#E65100;">
+                        R @TotalUnallocated.ToString("N2")
+                    </MudTd>
+                    <MudTd></MudTd>
+                </FooterContent>
+            </MudTable>
+        </MudPaper>
+    }
 }
 
 @code {
     [Parameter] public int AccountHolderId { get; set; }
 
-    private bool           _loading       = true;
+    private bool _loading = true;
     private AccountHolder? _accountHolder;
-    private List<Invoice>  _allInvoices   = [];
+    private List<Invoice> _allInvoices = [];
+    private List<Payment> _payments = [];
 
-    // Aging buckets (outstanding only)
+    // Aging buckets
     private decimal _current;
     private decimal _days30;
     private decimal _days60;
@@ -184,19 +222,34 @@ else
 
     private decimal TotalOutstanding => _current + _days30 + _days60 + _days90;
 
+    // Computed properties — used directly in markup, no @{ } blocks needed
+    private List<Payment> UnallocatedPayments =>
+        _payments.Where(p => p.UnallocatedAmount > 0).ToList();
+
+    private decimal TotalUnallocated =>
+        _payments.Sum(p => p.UnallocatedAmount);
+
+    private string? NextPendingInvoiceAmount =>
+        _allInvoices
+            .Where(i => i.Status is InvoiceStatus.Pending or InvoiceStatus.Overdue)
+            .OrderBy(i => i.DueDate)
+            .FirstOrDefault()
+            ?.Amount.ToString("N2");
+
     protected override async Task OnInitializedAsync()
     {
         _loading = true;
 
         var accountHolderTask = Api.GetAccountHolderAsync(AccountHolderId);
-        var allInvoicesTask   = Api.GetAllInvoicesAsync(AccountHolderId);
+        var allInvoicesTask = Api.GetAllInvoicesAsync(AccountHolderId);
+        var paymentsTask = Api.GetPaymentsByAccountHolderAsync(AccountHolderId);
 
-        await Task.WhenAll(accountHolderTask, allInvoicesTask);
+        await Task.WhenAll(accountHolderTask, allInvoicesTask, paymentsTask);
 
         _accountHolder = await accountHolderTask;
-        _allInvoices   = await allInvoicesTask;
+        _allInvoices = await allInvoicesTask;
+        _payments = await paymentsTask;
 
-        // Sort by due date descending so newest appears first
         _allInvoices = [.. _allInvoices.OrderByDescending(i => i.DueDate)];
 
         CalculateAging();
@@ -212,8 +265,7 @@ else
             .Where(i => i.Status is InvoiceStatus.Pending or InvoiceStatus.Overdue))
         {
             var days = (today - inv.DueDate).Days;
-
-            if (days < 0) continue;          // future — excluded from summary
+            if (days < 0) continue;
             else if (days == 0) _current += inv.Amount;
             else if (days <= 30) _days30 += inv.Amount;
             else if (days <= 60) _days60 += inv.Amount;
@@ -223,9 +275,7 @@ else
 
     private static string GetAgingLabel(Invoice inv)
     {
-        if (inv.Status is InvoiceStatus.Paid or InvoiceStatus.Void)
-            return "—";
-
+        if (inv.Status is InvoiceStatus.Paid or InvoiceStatus.Void) return "—";
         var days = (DateTime.Today - inv.DueDate).Days;
         if (days < 0) return "Not yet due";
         else if (days == 0) return "Due today";

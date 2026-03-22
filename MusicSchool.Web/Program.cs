@@ -21,6 +21,7 @@ builder.Services.AddScoped<ScheduledSlotService>();
 builder.Services.AddScoped<LessonService>();
 builder.Services.AddScoped<ExtraLessonService>();
 builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<PaymentService>();
 
 // Catch any unhandled exception and write it to the browser console instead of
 // crashing the JS debug adapter with exit code 0xffffffff.

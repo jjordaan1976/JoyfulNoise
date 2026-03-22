@@ -42,4 +42,11 @@ public class ApiService
             $"Invoice/GetOutstandingByAccountHolder?accountHolderId={accountHolderId}");
         return result?.ToList() ?? [];
     }
+
+    public async Task<List<Payment>> GetPaymentsByAccountHolderAsync(int accountHolderId)
+{
+    var result = await GetAsync<IEnumerable<Payment>>(
+        $"Payment/GetByAccountHolder?accountHolderId={accountHolderId}");
+    return result?.ToList() ?? [];
+}
 }

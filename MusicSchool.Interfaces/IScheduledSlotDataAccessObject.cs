@@ -3,7 +3,7 @@ using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IScheduledSlotService
+    public interface IScheduledSlotDataAccessObject
     {
         Task<ScheduledSlot?> GetSlotAsync(int id);
         Task<IEnumerable<ScheduledSlot>> GetActiveByStudentAsync(int studentId);

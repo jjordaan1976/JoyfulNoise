@@ -7,10 +7,10 @@ namespace MusicSchool.Data.Implementations
 {
     public class InvoiceRepository : IInvoiceRepository
     {
-        private readonly IInvoiceService _invoiceService;
+        private readonly IInvoiceDataAccessObject _invoiceService;
         private readonly ILogger<InvoiceRepository> _logger;
 
-        public InvoiceRepository(IInvoiceService invoiceService, ILogger<InvoiceRepository> logger)
+        public InvoiceRepository(IInvoiceDataAccessObject invoiceService, ILogger<InvoiceRepository> logger)
         {
             _invoiceService = invoiceService;
             _logger = logger;

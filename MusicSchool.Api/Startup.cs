@@ -36,19 +36,19 @@ namespace MusicSchool.Api
             services.AddScoped<ILessonRepository, LessonRepository>();
             services.AddScoped<IExtraLessonRepository, ExtraLessonRepository>();
             services.AddScoped<IInvoiceRepository, InvoiceRepository>();
-            services.AddScoped<IAccountHolderService, AccountHolderService>();
-            services.AddScoped<IBundleQuarterService, BundleQuarterService>();
-            services.AddScoped<IExtraLessonService, ExtraLessonService>();
-            services.AddScoped<IExtraLessonAggregateService, ExtraLessonAggregateService>();
-            services.AddScoped<IInvoiceService, InvoiceService>();
-            services.AddScoped<ILessonAggregateService, LessonAggregateService>();
-            services.AddScoped<ILessonBundleService, LessonBundleService>();
-            services.AddScoped<ILessonService, LessonService>();
-            services.AddScoped<ILessonTypeService, LessonTypeService>();
-            services.AddScoped<IScheduledSlotService, ScheduledSlotService>();
-            services.AddScoped<IStudentService, StudentService>();
-            services.AddScoped<ITeacherService, TeacherService>();
-            services.AddScoped<ILessonBundleAggregateService, LessonBundleAggregateService>();
+            services.AddScoped<IAccountHolderDataAccessObject, AccountHolderDataAccessObject>();
+            services.AddScoped<IBundleQuarterDataAccessObject, BundleQuarterDataAccessObject>();
+            services.AddScoped<IExtraLessonDataAccessObject, ExtraLessonDataAccessObject>();
+            services.AddScoped<IExtraLessonAggregateDataAccessObject, ExtraLessonAggregateDataAccessObject>();
+            services.AddScoped<IInvoiceDataAccessObject, InvoiceDataAccessObject>();
+            services.AddScoped<ILessonAggregateDataAccessObject, LessonAggregateDataAccessObject>();
+            services.AddScoped<ILessonBundleDataAccessObject, LessonBundleDataAccessObject>();
+            services.AddScoped<ILessonDataAccessObject, LessonDataAccessObject>();
+            services.AddScoped<ILessonTypeDataAccessObject, LessonTypeDataAccessObject>();
+            services.AddScoped<IScheduledSlotDataAccessObject, ScheduledSlotDataAccessObject>();
+            services.AddScoped<IStudentDataAccessObject, StudentDataAccessObject>();
+            services.AddScoped<ITeacherDataAccessObject, TeacherDataAccessObject>();
+            services.AddScoped<ILessonBundleAggregateDataAccessObject, LessonBundleAggregateDataAccessObject>();
 
             services.AddControllers();
 

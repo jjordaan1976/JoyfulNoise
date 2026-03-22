@@ -4,7 +4,7 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class ExtraLessonAggregateService : IExtraLessonAggregateService
+    public class ExtraLessonAggregateDataAccessObject : IExtraLessonAggregateDataAccessObject
     {
         private readonly IDbConnection _connection;
 
@@ -52,7 +52,7 @@ namespace MusicSchool.Data.Implementations
               AND el.ScheduledDate = @ScheduledDate
             ORDER BY el.ScheduledTime;";
 
-        public ExtraLessonAggregateService(IDbConnection connection)
+        public ExtraLessonAggregateDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }

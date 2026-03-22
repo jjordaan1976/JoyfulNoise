@@ -6,15 +6,15 @@ namespace MusicSchool.Data.Implementations
 {
     public class LessonRepository : ILessonRepository
     {
-        private readonly ILessonAggregateService _aggregateService;
-        private readonly ILessonService _lessonService;
-        private readonly IBundleQuarterService _bundleQuarterService;
+        private readonly ILessonAggregateDataAccessObject _aggregateService;
+        private readonly ILessonDataAccessObject _lessonService;
+        private readonly IBundleQuarterDataAccessObject _bundleQuarterService;
         private readonly ILogger<LessonRepository> _logger;
 
         public LessonRepository(
-            ILessonAggregateService aggregateService,
-            ILessonService lessonService,
-            IBundleQuarterService bundleQuarterService,
+            ILessonAggregateDataAccessObject aggregateService,
+            ILessonDataAccessObject lessonService,
+            IBundleQuarterDataAccessObject bundleQuarterService,
             ILogger<LessonRepository> logger)
         {
             _aggregateService = aggregateService;

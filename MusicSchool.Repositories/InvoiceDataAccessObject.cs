@@ -5,11 +5,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class InvoiceService : IInvoiceService
+    public class InvoiceDataAccessObject : IInvoiceDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public InvoiceService(IDbConnection connection)
+        public InvoiceDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }

@@ -3,7 +3,7 @@ using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IInvoiceService
+    public interface IInvoiceDataAccessObject
     {
         Task<Invoice?> GetInvoiceAsync(int id);
         Task<IEnumerable<Invoice>> GetByBundleAsync(int bundleId);

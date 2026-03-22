@@ -26,8 +26,8 @@ Use a strict four-layer architecture. Every data operation flows top-to-bottom t
 
 ```
 Controller
-    └── Repository          (orchestration, transactions, error handling)
-            └── AggregateService    (complex multi-table reads via JOIN queries)
+    └── Repository          (orchestration, error handling)
+            └── AggregateService    (transactions, complex multi-table reads via JOIN queries)
             └── Service             (single-table CRUD, raw Dapper SQL)
 ```
 
@@ -40,12 +40,13 @@ Controller
 - Inherits from `BaseController : ControllerBase` which is decorated with `[ApiController]`.
 
 **Repository** (`[AppName].Repositories/[Entity]Repository.cs`)
-- Orchestrates multi-step operations and owns transactions.
 - Catches exceptions, logs them via `ILogger<T>`, returns null/false on failure (never throws to the controller).
-- For write operations that touch multiple tables, opens a connection, begins a transaction, calls services within it, commits or rolls back.
+
 - Delegates all reads to either the AggregateService (for joined/detail reads) or the Service (for flat reads).
 
 **AggregateService** (`[AppName].Repositories/[Entity]AggregateService.cs`)
+- Orchestrates multi-step operations and owns transactions.
+- For write operations that touch multiple tables, opens a connection, begins a transaction, calls services within it, commits or rolls back.
 - Handles complex SELECT queries that JOIN multiple tables.
 - Returns detail/view model classes (e.g. `LessonDetail`) that are flat projections of the join.
 - Queries are declared as `public static readonly string` constants so they can be referenced in tests.
@@ -133,7 +134,7 @@ Use Serilog for structured logging with Console and rolling File sinks.
 
 ---
 
-## Blazor WebAssembly front-end (if applicable)
+## Blazor WebAssembly front-end 
 
 ### Client services (`Services/Services.cs`)
 - One service class per API controller, e.g. `LessonService`, `ExtraLessonService`.
@@ -151,6 +152,27 @@ Use Serilog for structured logging with Console and rolling File sinks.
 - `ResponseBase<T>.ReturnCode != 0` check for API-level business errors (distinct from HTTP errors).
 
 ---
+### Unit Testing ([AppName].Tests)
+Adhere strictly to TDD principles using xUnit and Moq to ensure structural integrity and correct orchestration.
+
+Repository Testing
+Focus: Tests must target the [AppName].Repositories/[Entity]Repository.cs classes.
+
+Mocking: Inject mocked dependencies (ILogger<T>, IService, IAggregateService) using Moq. No database interfaces (IDbConnection, IDbTransaction) should be mocked here, as the Repository is database-agnostic.
+
+Validation criteria:
+
+Verify that the Repository calls the correct underlying Service/AggregateService methods.
+
+Verify exception handling: use Moq to configure a Service to throw an exception, then assert that the Repository catches it, logs the error via the mocked ILogger, and returns the expected failure state (null/false).
+
+Verify that dependencies are called with the correct mapped parameters.
+---
+
+### Integration Testing ([AppName].Integration.Tests)
+Service and aggregated Service Testing into the Database
+Focus: Tests must target the [AppName].Repositories/[Entity]Service.cs classes.
+Execute EACH SQl Statement With to VALIDATE the Systax, against an actual Database (So all queries has to be publicly declared)
 
 ## Entities to generate
 

@@ -2,7 +2,7 @@ using MusicSchool.Data.Models;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IStudentService
+    public interface IStudentDataAccessObject
     {
         Task<Student?> GetStudentAsync(int id);
         Task<IEnumerable<Student>> GetByAccountHolderAsync(int accountHolderId);

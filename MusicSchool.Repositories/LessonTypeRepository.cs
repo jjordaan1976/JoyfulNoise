@@ -6,10 +6,10 @@ namespace MusicSchool.Data.Implementations
 {
     public class LessonTypeRepository : ILessonTypeRepository
     {
-        private readonly ILessonTypeService _lessonTypeService;
+        private readonly ILessonTypeDataAccessObject _lessonTypeService;
         private readonly ILogger<LessonTypeRepository> _logger;
 
-        public LessonTypeRepository(ILessonTypeService lessonTypeService, ILogger<LessonTypeRepository> logger)
+        public LessonTypeRepository(ILessonTypeDataAccessObject lessonTypeService, ILogger<LessonTypeRepository> logger)
         {
             _lessonTypeService = lessonTypeService;
             _logger = logger;

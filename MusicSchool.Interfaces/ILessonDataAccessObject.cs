@@ -3,7 +3,7 @@ using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface ILessonService
+    public interface ILessonDataAccessObject
     {
         Task<Lesson?> GetLessonAsync(int id);
         Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId);

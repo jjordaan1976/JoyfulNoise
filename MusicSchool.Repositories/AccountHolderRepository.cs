@@ -7,10 +7,10 @@ namespace MusicSchool.Data.Implementations
 {
     public class AccountHolderRepository : IAccountHolderRepository
     {
-        private readonly IAccountHolderService _accountHolderService;
+        private readonly IAccountHolderDataAccessObject _accountHolderService;
         private readonly ILogger<AccountHolderRepository> _logger;
 
-        public AccountHolderRepository(IAccountHolderService accountHolderService, ILogger<AccountHolderRepository> logger)
+        public AccountHolderRepository(IAccountHolderDataAccessObject accountHolderService, ILogger<AccountHolderRepository> logger)
         {
             _accountHolderService = accountHolderService;
             _logger = logger;

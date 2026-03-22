@@ -8,16 +8,16 @@ namespace MusicSchool.Data.Implementations
 {
     public class ExtraLessonRepository : IExtraLessonRepository
     {
-        private readonly IExtraLessonAggregateService _aggregateService;
-        private readonly IExtraLessonService _extraLessonService;
-        private readonly IInvoiceService _invoiceService;
+        private readonly IExtraLessonAggregateDataAccessObject _aggregateService;
+        private readonly IExtraLessonDataAccessObject _extraLessonService;
+        private readonly IInvoiceDataAccessObject _invoiceService;
         private readonly IDbConnection _connection;
         private readonly ILogger<ExtraLessonRepository> _logger;
 
         public ExtraLessonRepository(
-            IExtraLessonAggregateService aggregateService,
-            IExtraLessonService extraLessonService,
-            IInvoiceService invoiceService,
+            IExtraLessonAggregateDataAccessObject aggregateService,
+            IExtraLessonDataAccessObject extraLessonService,
+            IInvoiceDataAccessObject invoiceService,
             IDbConnection connection,
             ILogger<ExtraLessonRepository> logger)
         {

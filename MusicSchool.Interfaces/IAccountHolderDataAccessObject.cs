@@ -2,7 +2,7 @@
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IAccountHolderService
+    public interface IAccountHolderDataAccessObject
     {
         Task<AccountHolder?> GetAccountHolderAsync(int id);
         Task<IEnumerable<AccountHolder>> GetByTeacherAsync(int teacherId);

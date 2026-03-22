@@ -3,7 +3,7 @@ using MusicSchool.Models;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface ILessonBundleAggregateService
+    public interface ILessonBundleAggregateDataAccessObject
     {
         Task<int> SaveNewBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters);
         Task<IEnumerable<LessonBundleWithQuarterDetail>> GetBundleByIdAsync(int bundleId);

@@ -1,6 +1,6 @@
 # Flattened Codebase
 
-Generated: 03/20/2026 08:50:50
+Generated: 03/20/2026 13:58:57
 
 
 ## File: MusicSchool.AccountHolderPortal\Pages\Index.razor

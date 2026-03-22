@@ -3,7 +3,7 @@ using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IBundleQuarterService
+    public interface IBundleQuarterDataAccessObject
     {
         Task<IEnumerable<BundleQuarter>> GetByBundleAsync(int bundleId);
 

@@ -5,11 +5,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class ScheduledSlotService : IScheduledSlotService
+    public class ScheduledSlotDataAccessObject : IScheduledSlotDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public ScheduledSlotService(IDbConnection connection)
+        public ScheduledSlotDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }

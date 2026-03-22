@@ -6,17 +6,17 @@ namespace MusicSchool.Data.Implementations
 {
     public class ScheduledSlotRepository : IScheduledSlotRepository
     {
-        private readonly IScheduledSlotService _slotService;
-        private readonly ILessonBundleService _bundleService;
-        private readonly IBundleQuarterService _quarterService;
-        private readonly ILessonService _lessonService;
+        private readonly IScheduledSlotDataAccessObject _slotService;
+        private readonly ILessonBundleDataAccessObject _bundleService;
+        private readonly IBundleQuarterDataAccessObject _quarterService;
+        private readonly ILessonDataAccessObject _lessonService;
         private readonly ILogger<ScheduledSlotRepository> _logger;
 
         public ScheduledSlotRepository(
-            IScheduledSlotService slotService,
-            ILessonBundleService bundleService,
-            IBundleQuarterService quarterService,
-            ILessonService lessonService,
+            IScheduledSlotDataAccessObject slotService,
+            ILessonBundleDataAccessObject bundleService,
+            IBundleQuarterDataAccessObject quarterService,
+            ILessonDataAccessObject lessonService,
             ILogger<ScheduledSlotRepository> logger)
         {
             _slotService = slotService;

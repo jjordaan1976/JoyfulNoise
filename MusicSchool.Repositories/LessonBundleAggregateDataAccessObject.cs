@@ -6,12 +6,12 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class LessonBundleAggregateService : ILessonBundleAggregateService
+    public class LessonBundleAggregateDataAccessObject : ILessonBundleAggregateDataAccessObject
     {
         private readonly IDbConnection _connection;
-        private readonly ILessonBundleService _lessonBundleService;
-        private readonly IBundleQuarterService _bundleQuarterService;
-        private readonly IInvoiceService _invoiceService;
+        private readonly ILessonBundleDataAccessObject _lessonBundleService;
+        private readonly IBundleQuarterDataAccessObject _bundleQuarterService;
+        private readonly IInvoiceDataAccessObject _invoiceService;
 
         public static readonly string SELECT_BUNDLE_WITH_QUARTERS_QRY = @"
             SELECT lb.BundleID,
@@ -62,11 +62,11 @@ namespace MusicSchool.Data.Implementations
             WHERE s.StudentID = @StudentID
             ORDER BY lb.BundleID;";
 
-        public LessonBundleAggregateService(
+        public LessonBundleAggregateDataAccessObject(
             IDbConnection connection,
-            ILessonBundleService lessonBundleService,
-            IBundleQuarterService bundleQuarterService,
-            IInvoiceService invoiceService)
+            ILessonBundleDataAccessObject lessonBundleService,
+            IBundleQuarterDataAccessObject bundleQuarterService,
+            IInvoiceDataAccessObject invoiceService)
         {
             _connection = connection;
             _lessonBundleService = lessonBundleService;

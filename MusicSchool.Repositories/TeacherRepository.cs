@@ -6,10 +6,10 @@ namespace MusicSchool.Data.Implementations
 {
     public class TeacherRepository : ITeacherRepository
     {
-        private readonly ITeacherService _teacherService;
+        private readonly ITeacherDataAccessObject _teacherService;
         private readonly ILogger<TeacherRepository> _logger;
 
-        public TeacherRepository(ITeacherService teacherService, ILogger<TeacherRepository> logger)
+        public TeacherRepository(ITeacherDataAccessObject teacherService, ILogger<TeacherRepository> logger)
         {
             _teacherService = teacherService;
             _logger = logger;

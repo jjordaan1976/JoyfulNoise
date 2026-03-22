@@ -2,7 +2,7 @@ using MusicSchool.Data.Models;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface ITeacherService
+    public interface ITeacherDataAccessObject
     {
         Task<Teacher?> GetTeacherAsync(int id);
         Task<IEnumerable<Teacher>> GetAllActiveAsync();

@@ -3,7 +3,7 @@ using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IExtraLessonService
+    public interface IExtraLessonDataAccessObject
     {
         Task<ExtraLesson?> GetExtraLessonAsync(int id);
         Task<IEnumerable<ExtraLesson>> GetByStudentAsync(int studentId);

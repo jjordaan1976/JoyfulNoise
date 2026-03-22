@@ -13,7 +13,7 @@ namespace MusicSchool.Data.Interfaces
         Task<int> InsertAsync(ScheduledSlot slot);
 
         /// <summary>Inserts within an existing transaction.</summary>
-        Task<int> InsertAsync(ScheduledSlot slot, IDbTransaction tx);
+        Task<int> InsertAsync(ScheduledSlot slot, IDbConnection connection, IDbTransaction tx);
 
         Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo);
 
@@ -21,6 +21,5 @@ namespace MusicSchool.Data.Interfaces
         /// Opens a connection (if not already open), begins a transaction,
         /// invokes <paramref name="work"/>, and commits. Rolls back on exception.
         /// </summary>
-        Task ExecuteInTransactionAsync(Func<IDbTransaction, IDbConnection, Task> work);
     }
 }

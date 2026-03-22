@@ -29,10 +29,12 @@ namespace MusicSchool.Api
             // Repositories
             services.AddScoped<ITeacherRepository, TeacherRepository>();
             services.AddScoped<IAccountHolderRepository, AccountHolderRepository>();
+            
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<ILessonTypeRepository, LessonTypeRepository>();
             services.AddScoped<ILessonBundleRepository, LessonBundleRepository>();
             services.AddScoped<IScheduledSlotRepository, ScheduledSlotRepository>();
+            
             services.AddScoped<ILessonRepository, LessonRepository>();
             services.AddScoped<IExtraLessonRepository, ExtraLessonRepository>();
             services.AddScoped<IInvoiceRepository, InvoiceRepository>();
@@ -49,6 +51,9 @@ namespace MusicSchool.Api
             services.AddScoped<IStudentDataAccessObject, StudentDataAccessObject>();
             services.AddScoped<ITeacherDataAccessObject, TeacherDataAccessObject>();
             services.AddScoped<ILessonBundleAggregateDataAccessObject, LessonBundleAggregateDataAccessObject>();
+            services.AddScoped<IScheduledSlotAggregateDataAccessObject, ScheduledSlotAggregateDataAccessObject>();
+
+            
 
             services.AddControllers();
 

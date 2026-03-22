@@ -6,23 +6,17 @@ namespace MusicSchool.Data.Implementations
 {
     public class ScheduledSlotRepository : IScheduledSlotRepository
     {
+        private readonly IScheduledSlotAggregateDataAccessObject _aggregateService;
         private readonly IScheduledSlotDataAccessObject _slotService;
-        private readonly ILessonBundleDataAccessObject _bundleService;
-        private readonly IBundleQuarterDataAccessObject _quarterService;
-        private readonly ILessonDataAccessObject _lessonService;
         private readonly ILogger<ScheduledSlotRepository> _logger;
 
         public ScheduledSlotRepository(
+            IScheduledSlotAggregateDataAccessObject aggregateService,
             IScheduledSlotDataAccessObject slotService,
-            ILessonBundleDataAccessObject bundleService,
-            IBundleQuarterDataAccessObject quarterService,
-            ILessonDataAccessObject lessonService,
             ILogger<ScheduledSlotRepository> logger)
         {
+            _aggregateService = aggregateService;
             _slotService = slotService;
-            _bundleService = bundleService;
-            _quarterService = quarterService;
-            _lessonService = lessonService;
             _logger = logger;
         }
 
@@ -46,65 +40,13 @@ namespace MusicSchool.Data.Implementations
         {
             try
             {
-                // 1. Find the student's active bundle that still has remaining credits.
-                //    "Active" means IsActive = true, not yet expired, and at least one
-                //    quarter still has lessons remaining.
-                var bundles = await _bundleService.GetByStudentAsync(slot.StudentID);
-
-                LessonBundle? bundle = null;
-
-                foreach (var b in bundles.Where(b => b.IsActive && b.EndDate >= DateTime.Today))
-                {
-                    var quartersl = (await _quarterService.GetByBundleAsync(b.BundleID)).ToList();
-                    if (quartersl.Any(q => q.LessonsUsed < q.LessonsAllocated))
-                    {
-                        bundle = b;
-                        break;
-                    }
-                }
-
-                if (bundle is null)
-                {
-                    _logger.LogWarning(
-                        "AddSlotAsync rejected: StudentID {StudentID} has no active bundle with remaining credits.",
-                        slot.StudentID);
-                    return null;
-                }
-
-                var quarters = (await _quarterService.GetByBundleAsync(bundle.BundleID)).ToList();
-
-                // 2. Insert the slot and generate lessons in one transaction.
-                await _slotService.ExecuteInTransactionAsync(async (tx, conn) =>
-                {
-                    var slotId = await _slotService.InsertAsync(slot, tx);
-                    slot.SlotID = slotId;
-
-                    // Generate one Lesson per weekly occurrence from the slot's EffectiveFrom
-                    // through the bundle's EndDate. EffectiveFrom is authoritative — do not
-                    // clamp to today, as slots may be created retroactively or in advance.
-                    var lessonDates = GetOccurrences(slot.EffectiveFrom.Date, bundle.EndDate, slot.DayOfWeek);
-
-                    foreach (var date in lessonDates)
-                    {
-                        var quarter = quarters.FirstOrDefault(q =>
-                            date >= q.QuarterStartDate && date <= q.QuarterEndDate);
-
-                        if (quarter is null) continue;
-
-                        await _lessonService.InsertAsync(new Lesson
-                        {
-                            SlotID          = slotId,
-                            BundleID        = bundle.BundleID,
-                            QuarterID       = quarter.QuarterID,
-                            ScheduledDate   = date,
-                            ScheduledTime   = slot.SlotTime,
-                            Status          = LessonStatus.Scheduled,
-                            CreditForfeited = false,
-                        }, tx);
-                    }
-                });
-
-                return slot.SlotID;
+                return await _aggregateService.SaveNewSlotWithLessonsAsync(slot);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Business rule violation (no active bundle) — warn rather than error.
+                _logger.LogWarning(ex.Message);
+                return null;
             }
             catch (Exception ex)
             {
@@ -128,36 +70,6 @@ namespace MusicSchool.Data.Implementations
             {
                 _logger.LogError(ex, "Failed to close SlotID {SlotID}", slotId);
                 return false;
-            }
-        }
-
-        // -------------------------------------------------------------------------
-        // Helpers
-        // -------------------------------------------------------------------------
-
-        /// <summary>
-        /// Enumerates every calendar date between <paramref name="from"/> and
-        /// <paramref name="to"/> (inclusive) that falls on <paramref name="isoDayOfWeek"/>
-        /// (1 = Monday … 7 = Sunday, matching the ScheduledSlot.DayOfWeek convention).
-        /// </summary>
-        private static IEnumerable<DateTime> GetOccurrences(
-            DateTime from, DateTime to, byte isoDayOfWeek)
-        {
-            // .NET DayOfWeek: Sunday=0, Monday=1 … Saturday=6
-            // ISO DayOfWeek:  Monday=1, Tuesday=2 … Sunday=7
-            var targetDotNet = isoDayOfWeek == 7
-                ? DayOfWeek.Sunday
-                : (DayOfWeek)isoDayOfWeek;
-
-            var date = from;
-            // Advance to the first matching weekday
-            while (date.DayOfWeek != targetDotNet)
-                date = date.AddDays(1);
-
-            while (date <= to)
-            {
-                yield return date;
-                date = date.AddDays(7);
             }
         }
     }

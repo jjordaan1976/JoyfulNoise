@@ -75,9 +75,11 @@ namespace MusicSchool.Data.Implementations
         }
 
         public async Task<int> InsertAsync(ScheduledSlot slot)
-            => await InsertAsync(slot);
+        {
+            return await InsertAsync(slot, _connection, null);
+        }
 
-        public async Task<int> InsertAsync(ScheduledSlot slot, IDbTransaction tx)
+        public async Task<int> InsertAsync(ScheduledSlot slot, IDbConnection connection, IDbTransaction tx)
         {
             const string sql = @"
                 INSERT INTO ScheduledSlot
@@ -89,7 +91,7 @@ namespace MusicSchool.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(
+            return await connection.ExecuteScalarAsync<int>(
                 new CommandDefinition(sql, slot, tx));
         }
 
@@ -104,28 +106,6 @@ namespace MusicSchool.Data.Implementations
             var rowsAffected = await _connection.ExecuteAsync(sql,
                 new { SlotID = slotId, EffectiveTo = effectiveTo });
             return rowsAffected > 0;
-        }
-
-        /// <summary>
-        /// Opens the connection if needed, begins a transaction, runs <paramref name="work"/>,
-        /// and commits. Rolls back on any exception.
-        /// </summary>
-        public async Task ExecuteInTransactionAsync(Func<IDbTransaction, IDbConnection, Task> work)
-        {
-            if (_connection.State != ConnectionState.Open)
-                _connection.Open();
-
-            using var tx = _connection.BeginTransaction();
-            try
-            {
-                await work(tx, _connection);
-                tx.Commit();
-            }
-            catch
-            {
-                tx.Rollback();
-                throw;
-            }
         }
     }
 }

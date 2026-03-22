@@ -1,8 +1,6 @@
-using Dapper;
 using Microsoft.Extensions.Logging;
 using MusicSchool.Data.Interfaces;
 using MusicSchool.Data.Models;
-using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
@@ -10,21 +8,15 @@ namespace MusicSchool.Data.Implementations
     {
         private readonly IExtraLessonAggregateDataAccessObject _aggregateService;
         private readonly IExtraLessonDataAccessObject _extraLessonService;
-        private readonly IInvoiceDataAccessObject _invoiceService;
-        private readonly IDbConnection _connection;
         private readonly ILogger<ExtraLessonRepository> _logger;
 
         public ExtraLessonRepository(
             IExtraLessonAggregateDataAccessObject aggregateService,
             IExtraLessonDataAccessObject extraLessonService,
-            IInvoiceDataAccessObject invoiceService,
-            IDbConnection connection,
             ILogger<ExtraLessonRepository> logger)
         {
             _aggregateService = aggregateService;
             _extraLessonService = extraLessonService;
-            _invoiceService = invoiceService;
-            _connection = connection;
             _logger = logger;
         }
 
@@ -52,53 +44,16 @@ namespace MusicSchool.Data.Implementations
 
         /// <summary>
         /// Inserts the ExtraLesson and a corresponding Invoice atomically.
-        /// The Invoice is a single one-off row (InstallmentNumber = 1) for the full
-        /// PriceCharged amount, due on the day of the lesson.
         /// Returns the new ExtraLessonID, or null if the operation fails.
         /// </summary>
         public async Task<int?> AddExtraLessonAsync(ExtraLesson extraLesson)
         {
-            if (_connection.State != ConnectionState.Open)
-                _connection.Open();
-
-            using var transaction = _connection.BeginTransaction();
-
             try
             {
-                // 1. Resolve the AccountHolderID for the student so we know who to bill.
-                var accountHolderId = await _connection.ExecuteScalarAsync<int>(
-                    "SELECT AccountHolderID FROM Student WHERE StudentID = @StudentID",
-                    new { extraLesson.StudentID },
-                    transaction);
-
-                if (accountHolderId == 0)
-                    throw new InvalidOperationException(
-                        $"Student {extraLesson.StudentID} not found when creating extra lesson.");
-
-                // 2. Insert the ExtraLesson row.
-                var extraLessonId = await _extraLessonService.InsertAsync(extraLesson, transaction, _connection);
-
-                // 3. Build and insert a single invoice for the full price, due on lesson day.
-                var invoice = new Invoice
-                {
-                    BundleID          = null,
-                    ExtraLessonID     = extraLessonId,
-                    AccountHolderID   = accountHolderId,
-                    InstallmentNumber = 1,
-                    Amount            = extraLesson.PriceCharged,
-                    DueDate           = extraLesson.ScheduledDate.Date,
-                    Status            = InvoiceStatus.Pending,
-                    Notes             = $"Extra lesson on {extraLesson.ScheduledDate:dd MMM yyyy}"
-                };
-
-                await _invoiceService.InsertAsync(invoice, transaction, _connection);
-
-                transaction.Commit();
-                return extraLessonId;
+                return await _aggregateService.SaveNewExtraLessonAsync(extraLesson);
             }
             catch (Exception ex)
             {
-                transaction.Rollback();
                 _logger.LogError(ex,
                     "Failed to insert ExtraLesson + Invoice for StudentID {StudentID} on {ScheduledDate}",
                     extraLesson.StudentID, extraLesson.ScheduledDate);

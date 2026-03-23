@@ -1,6 +1,6 @@
 # Flattened Codebase
 
-Generated: 03/20/2026 13:58:57
+Generated: 03/23/2026 14:07:02
 
 
 ## File: MusicSchool.AccountHolderPortal\Pages\Index.razor
@@ -83,7 +83,9 @@ Generated: 03/20/2026 13:58:57
 }
 else if (_accountHolder is null)
 {
-    <MudAlert Severity="Severity.Error">Account not found. Please check your link or contact your teacher.</MudAlert>
+    <MudAlert Severity="Severity.Error">
+        Account not found. Please check your link or contact your teacher.
+    </MudAlert>
 }
 else
 {
@@ -118,8 +120,6 @@ else
     <!-- ── Aging summary cards ─────────────────────────────────── -->
     <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600;">Outstanding Balance Summary</MudText>
     <MudGrid Spacing="3" Class="mb-5">
-
-        <!-- Current (not yet due) -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-4 aging-card" Elevation="1">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Current</MudText>
@@ -129,8 +129,6 @@ else
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Due today</MudText>
             </MudPaper>
         </MudItem>
-
-        <!-- 1–30 days -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-4 aging-card-warn" Elevation="1">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">30 Days</MudText>
@@ -140,8 +138,6 @@ else
                 <MudText Typo="Typo.caption" Color="Color.Secondary">1–30 days overdue</MudText>
             </MudPaper>
         </MudItem>
-
-        <!-- 31–60 days -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-4 aging-card-alert" Elevation="1">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">60 Days</MudText>
@@ -151,8 +147,6 @@ else
                 <MudText Typo="Typo.caption" Color="Color.Secondary">31–60 days overdue</MudText>
             </MudPaper>
         </MudItem>
-
-        <!-- 61+ days -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-4 aging-card-crit" Elevation="1">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">90+ Days</MudText>
@@ -162,7 +156,6 @@ else
                 <MudText Typo="Typo.caption" Color="Color.Secondary">61+ days overdue</MudText>
             </MudPaper>
         </MudItem>
-
     </MudGrid>
 
     <!-- ── Total outstanding banner ────────────────────────────── -->
@@ -181,7 +174,7 @@ else
     }
 
     <!-- ── Full invoice list ────────────────────────────────────── -->
-    <MudPaper Class="pa-4" Elevation="1">
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
         <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600;">Invoice History</MudText>
 
         @if (_allInvoices.Count == 0)
@@ -190,17 +183,14 @@ else
         }
         else
         {
-            <MudTable Items="_allInvoices"
-                      Hover="true"
-                      Dense="false"
-                      Elevation="0"
+            <MudTable Items="_allInvoices" Hover="true" Dense="false" Elevation="0"
                       SortLabel="Sort By">
                 <HeaderContent>
-                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice,object>(x => x.DueDate)">Due Date</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice, object>(x => x.DueDate)">Due Date</MudTableSortLabel></MudTh>
                     <MudTh>Description</MudTh>
-                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice,object>(x => x.Amount)">Amount</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice, object>(x => x.Amount)">Amount</MudTableSortLabel></MudTh>
                     <MudTh>Paid Date</MudTh>
-                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice,object>(x => x.Status)">Status</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<Invoice, object>(x => x.Status)">Status</MudTableSortLabel></MudTh>
                     <MudTh>Aging</MudTh>
                 </HeaderContent>
                 <RowTemplate>
@@ -225,9 +215,7 @@ else
                     <MudTd DataLabel="Aging">@GetAgingLabel(context)</MudTd>
                 </RowTemplate>
                 <FooterContent>
-                    <MudTd colspan="2" Style="font-weight:600;">
-                        Total Invoiced
-                    </MudTd>
+                    <MudTd colspan="2" Style="font-weight:600;">Total Invoiced</MudTd>
                     <MudTd Style="font-weight:600;">
                         R @_allInvoices.Sum(i => i.Amount).ToString("N2")
                     </MudTd>
@@ -236,16 +224,66 @@ else
             </MudTable>
         }
     </MudPaper>
+
+    <!-- ── Unallocated payments ──────────────────────────────────── -->
+    @if (UnallocatedPayments.Count > 0)
+    {
+        <MudPaper Class="pa-4" Elevation="1" Style="border-left: 4px solid #F3D395;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                <MudIcon Icon="@Icons.Material.Filled.Pending" Style="color:#F3D395;" />
+                <MudText Typo="Typo.h6" Style="font-weight:600;">Unallocated Payments</MudText>
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning">
+                    R @TotalUnallocated.ToString("N2") pending
+                </MudChip>
+            </MudStack>
+
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                The following payment(s) have been received but not yet matched to an invoice.
+                They will be automatically applied once they reach the next invoice amount
+                @if (NextPendingInvoiceAmount is not null)
+                {
+                    <span>(R @NextPendingInvoiceAmount).</span>
+                }
+            </MudAlert>
+
+            <MudTable Items="UnallocatedPayments" Hover="true" Dense="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Payment Date</MudTh>
+                    <MudTh>Amount Paid</MudTh>
+                    <MudTh>Unallocated</MudTh>
+                    <MudTh>Reference</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.PaymentDate.ToString("yyyy MMM dd")</MudTd>
+                    <MudTd>R @context.Amount.ToString("N2")</MudTd>
+                    <MudTd>
+                        <MudText Style="font-weight:600; color:#E65100;">
+                            R @context.UnallocatedAmount.ToString("N2")
+                        </MudText>
+                    </MudTd>
+                    <MudTd>@(context.Reference ?? "—")</MudTd>
+                </RowTemplate>
+                <FooterContent>
+                    <MudTd colspan="2" Style="font-weight:600;">Total Unallocated</MudTd>
+                    <MudTd Style="font-weight:600; color:#E65100;">
+                        R @TotalUnallocated.ToString("N2")
+                    </MudTd>
+                    <MudTd></MudTd>
+                </FooterContent>
+            </MudTable>
+        </MudPaper>
+    }
 }
 
 @code {
     [Parameter] public int AccountHolderId { get; set; }
 
-    private bool           _loading       = true;
+    private bool _loading = true;
     private AccountHolder? _accountHolder;
-    private List<Invoice>  _allInvoices   = [];
+    private List<Invoice> _allInvoices = [];
+    private List<Payment> _payments = [];
 
-    // Aging buckets (outstanding only)
+    // Aging buckets
     private decimal _current;
     private decimal _days30;
     private decimal _days60;
@@ -253,19 +291,34 @@ else
 
     private decimal TotalOutstanding => _current + _days30 + _days60 + _days90;
 
+    // Computed properties — used directly in markup, no @{ } blocks needed
+    private List<Payment> UnallocatedPayments =>
+        _payments.Where(p => p.UnallocatedAmount > 0).ToList();
+
+    private decimal TotalUnallocated =>
+        _payments.Sum(p => p.UnallocatedAmount);
+
+    private string? NextPendingInvoiceAmount =>
+        _allInvoices
+            .Where(i => i.Status is InvoiceStatus.Pending or InvoiceStatus.Overdue)
+            .OrderBy(i => i.DueDate)
+            .FirstOrDefault()
+            ?.Amount.ToString("N2");
+
     protected override async Task OnInitializedAsync()
     {
         _loading = true;
 
         var accountHolderTask = Api.GetAccountHolderAsync(AccountHolderId);
-        var allInvoicesTask   = Api.GetAllInvoicesAsync(AccountHolderId);
+        var allInvoicesTask = Api.GetAllInvoicesAsync(AccountHolderId);
+        var paymentsTask = Api.GetPaymentsByAccountHolderAsync(AccountHolderId);
 
-        await Task.WhenAll(accountHolderTask, allInvoicesTask);
+        await Task.WhenAll(accountHolderTask, allInvoicesTask, paymentsTask);
 
         _accountHolder = await accountHolderTask;
-        _allInvoices   = await allInvoicesTask;
+        _allInvoices = await allInvoicesTask;
+        _payments = await paymentsTask;
 
-        // Sort by due date descending so newest appears first
         _allInvoices = [.. _allInvoices.OrderByDescending(i => i.DueDate)];
 
         CalculateAging();
@@ -281,8 +334,7 @@ else
             .Where(i => i.Status is InvoiceStatus.Pending or InvoiceStatus.Overdue))
         {
             var days = (today - inv.DueDate).Days;
-
-            if (days < 0) continue;          // future — excluded from summary
+            if (days < 0) continue;
             else if (days == 0) _current += inv.Amount;
             else if (days <= 30) _days30 += inv.Amount;
             else if (days <= 60) _days60 += inv.Amount;
@@ -292,9 +344,7 @@ else
 
     private static string GetAgingLabel(Invoice inv)
     {
-        if (inv.Status is InvoiceStatus.Paid or InvoiceStatus.Void)
-            return "—";
-
+        if (inv.Status is InvoiceStatus.Paid or InvoiceStatus.Void) return "—";
         var days = (DateTime.Today - inv.DueDate).Days;
         if (days < 0) return "Not yet due";
         else if (days == 0) return "Due today";
@@ -370,6 +420,13 @@ public class ApiService
             $"Invoice/GetOutstandingByAccountHolder?accountHolderId={accountHolderId}");
         return result?.ToList() ?? [];
     }
+
+    public async Task<List<Payment>> GetPaymentsByAccountHolderAsync(int accountHolderId)
+{
+    var result = await GetAsync<IEnumerable<Payment>>(
+        $"Payment/GetByAccountHolder?accountHolderId={accountHolderId}");
+    return result?.ToList() ?? [];
+}
 }
 
 ```
@@ -1097,6 +1154,100 @@ namespace MusicSchool.Controllers
 
 ```
 
+## File: MusicSchool.Api\Controllers\PaymentController.cs
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+using MusicSchool.Models.TransferModels;
+
+namespace MusicSchool.Api
+{
+    [Route("Payment")]
+    public class PaymentController : BaseController
+    {
+        private readonly IPaymentRepository _paymentRepository;
+        private readonly ILogger<PaymentController> _logger;
+
+        public PaymentController(
+            IPaymentRepository paymentRepository,
+            ILogger<PaymentController> logger)
+        {
+            _paymentRepository = paymentRepository;
+            _logger            = logger;
+        }
+
+        /// <summary>
+        /// Returns all payments for the given account holder, newest first.
+        /// </summary>
+        [HttpGet("GetByAccountHolder")]
+        public async Task<ResponseBase<IEnumerable<Payment>>> GetByAccountHolder(
+            [FromQuery] int accountHolderId)
+        {
+            var result = await _paymentRepository.GetByAccountHolderAsync(accountHolderId);
+            return new ResponseBase<IEnumerable<Payment>>
+            {
+                ReturnCode    = 0,
+                ReturnMessage = "Success",
+                Data          = result
+            };
+        }
+
+        /// <summary>
+        /// Records a manual payment and runs the allocation engine.
+        /// Returns the new PaymentID.
+        /// </summary>
+        [HttpPost("Add")]
+        public async Task<ResponseBase<int?>> Add([FromBody] Payment payment)
+        {
+            var newId = await _paymentRepository.AddPaymentAsync(payment);
+            return new ResponseBase<int?>
+            {
+                ReturnCode    = newId.HasValue ? 0 : -1,
+                ReturnMessage = newId.HasValue ? "Success" : "Failed to record payment",
+                Data          = newId
+            };
+        }
+
+        /// <summary>
+        /// Creates a payment exactly equal to the invoice amount and marks it paid.
+        /// Called when the teacher clicks the "Paid" button on an invoice row.
+        /// </summary>
+        [HttpPost("QuickPay")]
+        public async Task<ResponseBase<int?>> QuickPay(
+            [FromQuery] int invoiceId,
+            [FromQuery] DateTime paymentDate)
+        {
+            var newId = await _paymentRepository.QuickPayInvoiceAsync(invoiceId, paymentDate);
+            return new ResponseBase<int?>
+            {
+                ReturnCode    = newId.HasValue ? 0 : -1,
+                ReturnMessage = newId.HasValue ? "Success" : "Failed to record quick-pay",
+                Data          = newId
+            };
+        }
+
+        /// <summary>
+        /// Returns all PaymentAllocation rows for a given payment.
+        /// </summary>
+        [HttpGet("GetAllocations")]
+        public async Task<ResponseBase<IEnumerable<PaymentAllocation>>> GetAllocations(
+            [FromQuery] int paymentId)
+        {
+            var result = await _paymentRepository.GetAllocationsByPaymentAsync(paymentId);
+            return new ResponseBase<IEnumerable<PaymentAllocation>>
+            {
+                ReturnCode    = 0,
+                ReturnMessage = "Success",
+                Data          = result
+            };
+        }
+    }
+}
+
+```
+
 ## File: MusicSchool.Api\Controllers\ScheduledSlotController.cs
 
 ```csharp
@@ -1533,30 +1684,32 @@ namespace MusicSchool.Api
 
             // Repositories
             services.AddScoped<ITeacherRepository, TeacherRepository>();
-            services.AddScoped<IAccountHolderRepository, AccountHolderRepository>();
+            services.AddScoped<IAccountHolderRepository, AccountHolderRepository>();            
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<ILessonTypeRepository, LessonTypeRepository>();
             services.AddScoped<ILessonBundleRepository, LessonBundleRepository>();
-            services.AddScoped<IScheduledSlotRepository, ScheduledSlotRepository>();
+            services.AddScoped<IScheduledSlotRepository, ScheduledSlotRepository>();            
             services.AddScoped<ILessonRepository, LessonRepository>();
             services.AddScoped<IExtraLessonRepository, ExtraLessonRepository>();
             services.AddScoped<IInvoiceRepository, InvoiceRepository>();
-            services.AddScoped<IAccountHolderService, AccountHolderService>();
-            services.AddScoped<IBundleQuarterService, BundleQuarterService>();
-            services.AddScoped<IExtraLessonService, ExtraLessonService>();
-            services.AddScoped<IExtraLessonAggregateService, ExtraLessonAggregateService>();
-            services.AddScoped<IInvoiceService, InvoiceService>();
-            services.AddScoped<ILessonAggregateService, LessonAggregateService>();
-            services.AddScoped<ILessonBundleService, LessonBundleService>();
-            services.AddScoped<ILessonService, LessonService>();
-            services.AddScoped<ILessonTypeService, LessonTypeService>();
-            services.AddScoped<IScheduledSlotService, ScheduledSlotService>();
-            services.AddScoped<IStudentService, StudentService>();
-            services.AddScoped<ITeacherService, TeacherService>();
-            services.AddScoped<ILessonBundleAggregateService, LessonBundleAggregateService>();
+            services.AddScoped<IAccountHolderDataAccessObject, AccountHolderDataAccessObject>();
+            services.AddScoped<IBundleQuarterDataAccessObject, BundleQuarterDataAccessObject>();
+            services.AddScoped<IExtraLessonDataAccessObject, ExtraLessonDataAccessObject>();
+            services.AddScoped<IExtraLessonAggregateDataAccessObject, ExtraLessonAggregateDataAccessObject>();
+            services.AddScoped<IInvoiceDataAccessObject, InvoiceDataAccessObject>();
+            services.AddScoped<ILessonAggregateDataAccessObject, LessonAggregateDataAccessObject>();
+            services.AddScoped<ILessonBundleDataAccessObject, LessonBundleDataAccessObject>();
+            services.AddScoped<ILessonDataAccessObject, LessonDataAccessObject>();
+            services.AddScoped<ILessonTypeDataAccessObject, LessonTypeDataAccessObject>();
+            services.AddScoped<IScheduledSlotDataAccessObject, ScheduledSlotDataAccessObject>();
+            services.AddScoped<IStudentDataAccessObject, StudentDataAccessObject>();
+            services.AddScoped<ITeacherDataAccessObject, TeacherDataAccessObject>();
+            services.AddScoped<ILessonBundleAggregateDataAccessObject, LessonBundleAggregateDataAccessObject>();
+            services.AddScoped<IScheduledSlotAggregateDataAccessObject, ScheduledSlotAggregateDataAccessObject>();
+            services.AddScoped<IPaymentDataAccessObject, PaymentDataAccessObject>();
+            services.AddScoped<IPaymentRepository, PaymentRepository>();           
 
             services.AddControllers();
-
             services.AddOpenApi();
         }
 
@@ -1615,6 +1768,23 @@ namespace MusicSchool.Api
 
 ```
 
+## File: MusicSchool.Interfaces\IAccountHolderDataAccessObject.cs
+
+```csharp
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Data.Interfaces
+{
+    public interface IAccountHolderDataAccessObject
+    {
+        Task<AccountHolder?> GetAccountHolderAsync(int id);
+        Task<IEnumerable<AccountHolder>> GetByTeacherAsync(int teacherId);
+        Task<int> InsertAsync(AccountHolder accountHolder);
+        Task<bool> UpdateAsync(AccountHolder accountHolder);
+    }
+}
+```
+
 ## File: MusicSchool.Interfaces\IAccountHolderRepository.cs
 
 ```csharp
@@ -1632,24 +1802,7 @@ namespace MusicSchool.Data.Interfaces
 }
 ```
 
-## File: MusicSchool.Interfaces\IAccountHolderService.cs
-
-```csharp
-using MusicSchool.Data.Models;
-
-namespace MusicSchool.Data.Interfaces
-{
-    public interface IAccountHolderService
-    {
-        Task<AccountHolder?> GetAccountHolderAsync(int id);
-        Task<IEnumerable<AccountHolder>> GetByTeacherAsync(int teacherId);
-        Task<int> InsertAsync(AccountHolder accountHolder);
-        Task<bool> UpdateAsync(AccountHolder accountHolder);
-    }
-}
-```
-
-## File: MusicSchool.Interfaces\IBundleQuarterService.cs
+## File: MusicSchool.Interfaces\IBundleQuarterDataAccessObject.cs
 
 ```csharp
 using MusicSchool.Data.Models;
@@ -1657,7 +1810,7 @@ using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IBundleQuarterService
+    public interface IBundleQuarterDataAccessObject
     {
         Task<IEnumerable<BundleQuarter>> GetByBundleAsync(int bundleId);
 
@@ -1682,15 +1835,55 @@ namespace MusicSchool.Data.Interfaces
 
 ```
 
-## File: MusicSchool.Interfaces\IExtraLessonAggregateService.cs
+## File: MusicSchool.Interfaces\IExtraLessonAggregateDataAccessObject.cs
 
 ```csharp
+using MusicSchool.Data.Models;
+
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IExtraLessonAggregateService
+    public interface IExtraLessonAggregateDataAccessObject
     {
         Task<ExtraLessonDetail?> GetExtraLessonByIdAsync(int extraLessonId);
-        Task<IEnumerable<ExtraLessonDetail>> GetExtraLessonsByTeacherAndDateAsync(int teacherId, DateTime scheduledDate);
+
+        Task<IEnumerable<ExtraLessonDetail>> GetExtraLessonsByTeacherAndDateAsync(
+            int teacherId, DateTime scheduledDate);
+
+        /// <summary>
+        /// Inserts the ExtraLesson and a corresponding Invoice atomically.
+        /// Returns the new ExtraLessonID.
+        /// Throws <see cref="InvalidOperationException"/> when the student is not found.
+        /// </summary>
+        Task<int> SaveNewExtraLessonAsync(ExtraLesson extraLesson);
+    }
+}
+
+```
+
+## File: MusicSchool.Interfaces\IExtraLessonDataAccessObject.cs
+
+```csharp
+using MusicSchool.Data.Models;
+using System.Data;
+
+namespace MusicSchool.Data.Interfaces
+{
+    public interface IExtraLessonDataAccessObject
+    {
+        Task<ExtraLesson?> GetExtraLessonAsync(int id);
+        Task<IEnumerable<ExtraLesson>> GetByStudentAsync(int studentId);
+
+        /// <summary>Inserts outside of a transaction (existing callers).</summary>
+        Task<int> InsertAsync(ExtraLesson extraLesson);
+
+        /// <summary>Inserts within an existing transaction.</summary>
+        Task<int> InsertAsync(ExtraLesson extraLesson, IDbTransaction tx, IDbConnection connection);
+
+        /// <summary>
+        /// Updates the status on an extra lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
+        Task<bool> UpdateStatusAsync(int extraLessonId, string status, string? note = null);
     }
 }
 
@@ -1725,7 +1918,7 @@ namespace MusicSchool.Data.Interfaces
 
 ```
 
-## File: MusicSchool.Interfaces\IExtraLessonService.cs
+## File: MusicSchool.Interfaces\IInvoiceDataAccessObject.cs
 
 ```csharp
 using MusicSchool.Data.Models;
@@ -1733,22 +1926,20 @@ using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IExtraLessonService
+    public interface IInvoiceDataAccessObject
     {
-        Task<ExtraLesson?> GetExtraLessonAsync(int id);
-        Task<IEnumerable<ExtraLesson>> GetByStudentAsync(int studentId);
+        Task<Invoice?> GetInvoiceAsync(int id);
+        Task<IEnumerable<Invoice>> GetByBundleAsync(int bundleId);
+        Task<IEnumerable<Invoice>> GetByAccountHolderAsync(int accountHolderId);
+        Task<IEnumerable<Invoice>> GetOutstandingByAccountHolderAsync(int accountHolderId);
 
-        /// <summary>Inserts outside of a transaction (existing callers).</summary>
-        Task<int> InsertAsync(ExtraLesson extraLesson);
+        /// <summary>Inserts multiple invoice rows within an existing transaction (used for bundle instalments).</summary>
+        Task InsertBatchAsync(IEnumerable<Invoice> invoices, IDbTransaction tx, IDbConnection connection);
 
-        /// <summary>Inserts within an existing transaction.</summary>
-        Task<int> InsertAsync(ExtraLesson extraLesson, IDbTransaction tx, IDbConnection connection);
+        /// <summary>Inserts a single invoice row within an existing transaction (used for extra-lesson invoices).</summary>
+        Task<int> InsertAsync(Invoice invoice, IDbTransaction tx, IDbConnection connection);
 
-        /// <summary>
-        /// Updates the status on an extra lesson row.
-        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
-        /// </summary>
-        Task<bool> UpdateStatusAsync(int extraLessonId, string status, string? note = null);
+        Task<bool> UpdateStatusAsync(int invoiceId, string status, DateOnly? paidDate);
     }
 }
 
@@ -1775,39 +1966,12 @@ namespace MusicSchool.Data.Interfaces
 
 ```
 
-## File: MusicSchool.Interfaces\IInvoiceService.cs
-
-```csharp
-using MusicSchool.Data.Models;
-using System.Data;
-
-namespace MusicSchool.Data.Interfaces
-{
-    public interface IInvoiceService
-    {
-        Task<Invoice?> GetInvoiceAsync(int id);
-        Task<IEnumerable<Invoice>> GetByBundleAsync(int bundleId);
-        Task<IEnumerable<Invoice>> GetByAccountHolderAsync(int accountHolderId);
-        Task<IEnumerable<Invoice>> GetOutstandingByAccountHolderAsync(int accountHolderId);
-
-        /// <summary>Inserts multiple invoice rows within an existing transaction (used for bundle instalments).</summary>
-        Task InsertBatchAsync(IEnumerable<Invoice> invoices, IDbTransaction tx, IDbConnection connection);
-
-        /// <summary>Inserts a single invoice row within an existing transaction (used for extra-lesson invoices).</summary>
-        Task<int> InsertAsync(Invoice invoice, IDbTransaction tx, IDbConnection connection);
-
-        Task<bool> UpdateStatusAsync(int invoiceId, string status, DateOnly? paidDate);
-    }
-}
-
-```
-
-## File: MusicSchool.Interfaces\ILessonAggregateService.cs
+## File: MusicSchool.Interfaces\ILessonAggregateDataAccessObject.cs
 
 ```csharp
 namespace MusicSchool.Data.Interfaces
 {
-    public interface ILessonAggregateService
+    public interface ILessonAggregateDataAccessObject
     {
         Task<LessonDetail?> GetLessonByIdAsync(int lessonId);
         Task<IEnumerable<LessonDetail>> GetLessonsByTeacherAndDateAsync(int teacherId, DateTime scheduledDate);
@@ -1816,7 +1980,7 @@ namespace MusicSchool.Data.Interfaces
 
 ```
 
-## File: MusicSchool.Interfaces\ILessonBundleAggregateService.cs
+## File: MusicSchool.Interfaces\ILessonBundleAggregateDataAccessObject.cs
 
 ```csharp
 using MusicSchool.Data.Models;
@@ -1824,11 +1988,31 @@ using MusicSchool.Models;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface ILessonBundleAggregateService
+    public interface ILessonBundleAggregateDataAccessObject
     {
         Task<int> SaveNewBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters);
         Task<IEnumerable<LessonBundleWithQuarterDetail>> GetBundleByIdAsync(int bundleId);
         Task<IEnumerable<LessonBundleDetail>> GetBundleByStudentIdAsync(int bundleId);
+    }
+}
+
+```
+
+## File: MusicSchool.Interfaces\ILessonBundleDataAccessObject.cs
+
+```csharp
+using MusicSchool.Data.Models;
+using MusicSchool.Models;
+using System.Data;
+
+namespace MusicSchool.Data.Interfaces
+{
+    public interface ILessonBundleDataAccessObject
+    {
+        Task<LessonBundle?> GetBundleAsync(int id);
+        Task<IEnumerable<LessonBundle>> GetByStudentAsync(int studentId);
+        Task<int> InsertAsync(LessonBundle bundle, IDbTransaction tx);
+        Task<bool> UpdateAsync(LessonBundle bundle);
     }
 }
 
@@ -1853,21 +2037,35 @@ namespace MusicSchool.Data.Interfaces
 
 ```
 
-## File: MusicSchool.Interfaces\ILessonBundleService.cs
+## File: MusicSchool.Interfaces\ILessonDataAccessObject.cs
 
 ```csharp
 using MusicSchool.Data.Models;
-using MusicSchool.Models;
 using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface ILessonBundleService
+    public interface ILessonDataAccessObject
     {
-        Task<LessonBundle?> GetBundleAsync(int id);
-        Task<IEnumerable<LessonBundle>> GetByStudentAsync(int studentId);
-        Task<int> InsertAsync(LessonBundle bundle, IDbTransaction tx);
-        Task<bool> UpdateAsync(LessonBundle bundle);
+        Task<Lesson?> GetLessonAsync(int id);
+        Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId);
+        Task<IEnumerable<Lesson>> GetByStatusAsync(string status);
+
+        /// <summary>Inserts outside of a transaction (existing callers).</summary>
+        Task<int> InsertAsync(Lesson lesson);
+
+        /// <summary>Inserts within an existing transaction.</summary>
+        Task<int> InsertAsync(Lesson lesson, IDbTransaction tx);
+
+        Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
+            string? cancelledBy, string? cancellationReason, DateTime? completedAt,
+            string? note = null);
+
+        /// <summary>
+        /// Moves a cancelled lesson to a new date/time and resets it to Scheduled,
+        /// clearing CancelledBy, CancellationReason and CreditForfeited.
+        /// </summary>
+        Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime);
     }
 }
 
@@ -1901,35 +2099,19 @@ namespace MusicSchool.Data.Interfaces
 
 ```
 
-## File: MusicSchool.Interfaces\ILessonService.cs
+## File: MusicSchool.Interfaces\ILessonTypeDataAccessObject.cs
 
 ```csharp
 using MusicSchool.Data.Models;
-using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface ILessonService
+    public interface ILessonTypeDataAccessObject
     {
-        Task<Lesson?> GetLessonAsync(int id);
-        Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId);
-        Task<IEnumerable<Lesson>> GetByStatusAsync(string status);
-
-        /// <summary>Inserts outside of a transaction (existing callers).</summary>
-        Task<int> InsertAsync(Lesson lesson);
-
-        /// <summary>Inserts within an existing transaction.</summary>
-        Task<int> InsertAsync(Lesson lesson, IDbTransaction tx);
-
-        Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
-            string? cancelledBy, string? cancellationReason, DateTime? completedAt,
-            string? note = null);
-
-        /// <summary>
-        /// Moves a cancelled lesson to a new date/time and resets it to Scheduled,
-        /// clearing CancelledBy, CancellationReason and CreditForfeited.
-        /// </summary>
-        Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime);
+        Task<LessonType?> GetLessonTypeAsync(int id);
+        Task<IEnumerable<LessonType>> GetAllActiveAsync();
+        Task<int> InsertAsync(LessonType lessonType);
+        Task<bool> UpdateAsync(LessonType lessonType);
     }
 }
 
@@ -1953,19 +2135,126 @@ namespace MusicSchool.Data.Interfaces
 
 ```
 
-## File: MusicSchool.Interfaces\ILessonTypeService.cs
+## File: MusicSchool.Interfaces\IPaymentDataAccessObject.cs
 
 ```csharp
 using MusicSchool.Data.Models;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface ILessonTypeService
+    public interface IPaymentDataAccessObject
     {
-        Task<LessonType?> GetLessonTypeAsync(int id);
-        Task<IEnumerable<LessonType>> GetAllActiveAsync();
-        Task<int> InsertAsync(LessonType lessonType);
-        Task<bool> UpdateAsync(LessonType lessonType);
+        Task<Payment?> GetPaymentAsync(int id);
+        Task<IEnumerable<Payment>> GetByAccountHolderAsync(int accountHolderId);
+
+        /// <summary>Inserts a new payment row and returns the new PaymentID.</summary>
+        Task<int> InsertAsync(Payment payment);
+
+        /// <summary>Updates the UnallocatedAmount on an existing payment row.</summary>
+        Task<bool> UpdateUnallocatedAsync(int paymentId, decimal unallocatedAmount);
+
+        Task<IEnumerable<PaymentAllocation>> GetAllocationsByPaymentAsync(int paymentId);
+        Task<IEnumerable<PaymentAllocation>> GetAllocationsByInvoiceAsync(int invoiceId);
+
+        /// <summary>Inserts a PaymentAllocation row.</summary>
+        Task InsertAllocationAsync(PaymentAllocation allocation);
+
+        /// <summary>
+        /// Returns the sum of all unallocated amounts across all payments
+        /// for the given account holder.
+        /// </summary>
+        Task<decimal> GetTotalUnallocatedAsync(int accountHolderId);
+    }
+}
+
+```
+
+## File: MusicSchool.Interfaces\IPaymentRepository.cs
+
+```csharp
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Data.Interfaces
+{
+    public interface IPaymentRepository
+    {
+        Task<Payment?> GetPaymentAsync(int id);
+        Task<IEnumerable<Payment>> GetByAccountHolderAsync(int accountHolderId);
+        Task<IEnumerable<PaymentAllocation>> GetAllocationsByPaymentAsync(int paymentId);
+        Task<IEnumerable<PaymentAllocation>> GetAllocationsByInvoiceAsync(int invoiceId);
+
+        /// <summary>
+        /// Records a new payment and immediately runs the allocation engine:
+        /// links the payment to as many outstanding invoices (oldest-first) as
+        /// the amount covers, marks those invoices as Paid, and stores any
+        /// remainder as UnallocatedAmount on the Payment row.
+        ///
+        /// Also sweeps existing unallocated amounts from prior payments so
+        /// they contribute toward the next invoice when accumulated funds are
+        /// sufficient.
+        ///
+        /// Returns the new PaymentID, or null on failure.
+        /// </summary>
+        Task<int?> AddPaymentAsync(Payment payment);
+
+        /// <summary>
+        /// Creates a QuickPay payment exactly equal to the invoice amount,
+        /// links it to that invoice, and marks the invoice Paid.
+        /// Returns the new PaymentID, or null on failure.
+        /// </summary>
+        Task<int?> QuickPayInvoiceAsync(int invoiceId, DateTime paymentDate);
+    }
+}
+
+```
+
+## File: MusicSchool.Interfaces\IScheduledSlotAggregateDataAccessObject.cs
+
+```csharp
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Data.Interfaces
+{
+    public interface IScheduledSlotAggregateDataAccessObject
+    {
+        /// <summary>
+        /// Finds the student's active bundle with remaining credits, inserts the slot,
+        /// and generates all future Lesson rows atomically in a single transaction.
+        /// Returns the new SlotID.
+        /// Throws <see cref="InvalidOperationException"/> when no usable bundle exists.
+        /// </summary>
+        Task<int> SaveNewSlotWithLessonsAsync(ScheduledSlot slot);
+    }
+}
+
+```
+
+## File: MusicSchool.Interfaces\IScheduledSlotDataAccessObject.cs
+
+```csharp
+using MusicSchool.Data.Models;
+using System.Data;
+
+namespace MusicSchool.Data.Interfaces
+{
+    public interface IScheduledSlotDataAccessObject
+    {
+        Task<ScheduledSlot?> GetSlotAsync(int id);
+        Task<IEnumerable<ScheduledSlot>> GetActiveByStudentAsync(int studentId);
+        Task<IEnumerable<ScheduledSlot>> GetActiveByTeacherAsync(int teacherId);
+
+        /// <summary>Inserts outside of a transaction (existing callers).</summary>
+        Task<int> InsertAsync(ScheduledSlot slot);
+
+        /// <summary>Inserts within an existing transaction.</summary>
+        Task<int> InsertAsync(ScheduledSlot slot, IDbConnection connection, IDbTransaction tx);
+
+        Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo);
+
+        /// <summary>
+        /// Opens a connection (if not already open), begins a transaction,
+        /// invokes <paramref name="work"/>, and commits. Rolls back on exception.
+        /// </summary>
     }
 }
 
@@ -1997,33 +2286,19 @@ namespace MusicSchool.Data.Interfaces
 
 ```
 
-## File: MusicSchool.Interfaces\IScheduledSlotService.cs
+## File: MusicSchool.Interfaces\IStudentDataAccessObject.cs
 
 ```csharp
 using MusicSchool.Data.Models;
-using System.Data;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IScheduledSlotService
+    public interface IStudentDataAccessObject
     {
-        Task<ScheduledSlot?> GetSlotAsync(int id);
-        Task<IEnumerable<ScheduledSlot>> GetActiveByStudentAsync(int studentId);
-        Task<IEnumerable<ScheduledSlot>> GetActiveByTeacherAsync(int teacherId);
-
-        /// <summary>Inserts outside of a transaction (existing callers).</summary>
-        Task<int> InsertAsync(ScheduledSlot slot);
-
-        /// <summary>Inserts within an existing transaction.</summary>
-        Task<int> InsertAsync(ScheduledSlot slot, IDbTransaction tx);
-
-        Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo);
-
-        /// <summary>
-        /// Opens a connection (if not already open), begins a transaction,
-        /// invokes <paramref name="work"/>, and commits. Rolls back on exception.
-        /// </summary>
-        Task ExecuteInTransactionAsync(Func<IDbTransaction, IDbConnection, Task> work);
+        Task<Student?> GetStudentAsync(int id);
+        Task<IEnumerable<Student>> GetByAccountHolderAsync(int accountHolderId);
+        Task<int> InsertAsync(Student student);
+        Task<bool> UpdateAsync(Student student);
     }
 }
 
@@ -2047,19 +2322,19 @@ namespace MusicSchool.Data.Interfaces
 
 ```
 
-## File: MusicSchool.Interfaces\IStudentService.cs
+## File: MusicSchool.Interfaces\ITeacherDataAccessObject.cs
 
 ```csharp
 using MusicSchool.Data.Models;
 
 namespace MusicSchool.Data.Interfaces
 {
-    public interface IStudentService
+    public interface ITeacherDataAccessObject
     {
-        Task<Student?> GetStudentAsync(int id);
-        Task<IEnumerable<Student>> GetByAccountHolderAsync(int accountHolderId);
-        Task<int> InsertAsync(Student student);
-        Task<bool> UpdateAsync(Student student);
+        Task<Teacher?> GetTeacherAsync(int id);
+        Task<IEnumerable<Teacher>> GetAllActiveAsync();
+        Task<int> InsertAsync(Teacher teacher);
+        Task<bool> UpdateAsync(Teacher teacher);
     }
 }
 
@@ -2078,24 +2353,6 @@ namespace MusicSchool.Data.Interfaces
         Task<IEnumerable<Teacher>> GetAllActiveAsync();
         Task<int?> AddTeacherAsync(Teacher teacher);
         Task<bool> UpdateTeacherAsync(Teacher teacher);
-    }
-}
-
-```
-
-## File: MusicSchool.Interfaces\ITeacherService.cs
-
-```csharp
-using MusicSchool.Data.Models;
-
-namespace MusicSchool.Data.Interfaces
-{
-    public interface ITeacherService
-    {
-        Task<Teacher?> GetTeacherAsync(int id);
-        Task<IEnumerable<Teacher>> GetAllActiveAsync();
-        Task<int> InsertAsync(Teacher teacher);
-        Task<bool> UpdateAsync(Teacher teacher);
     }
 }
 
@@ -2623,6 +2880,84 @@ namespace MusicSchool.Data.Models
 
 ```
 
+## File: MusicSchool.Models\Payment.cs
+
+```csharp
+using System;
+
+namespace MusicSchool.Data.Models
+{
+    /// <summary>
+    /// Valid values for <see cref="Payment.Source"/>.
+    /// </summary>
+    public static class PaymentSource
+    {
+        public const string Manual   = "Manual";   // Teacher entered an amount
+        public const string QuickPay = "QuickPay"; // Teacher clicked "Paid" on an invoice
+    }
+
+    /// <summary>
+    /// Records a payment received from an account holder.
+    /// A payment may be fully allocated (all linked to invoices),
+    /// partially allocated (some unallocated remainder), or fully unallocated.
+    ///
+    /// The allocation engine distributes the amount against the oldest
+    /// outstanding invoices first (chronological DueDate order).
+    /// Any remainder below the next invoice's amount is stored as unallocated
+    /// on this row (UnallocatedAmount) and is reconsidered when further
+    /// payments arrive for the same account holder.
+    /// </summary>
+    public class Payment
+    {
+        public int       PaymentID       { get; set; }
+        public int       AccountHolderID { get; set; }
+
+        /// <summary>Total rand amount received.</summary>
+        public decimal   Amount          { get; set; }
+
+        /// <summary>Portion not yet linked to any invoice.</summary>
+        public decimal   UnallocatedAmount { get; set; }
+
+        public DateTime  PaymentDate     { get; set; }
+
+        /// <summary>See <see cref="PaymentSource"/> for valid values.</summary>
+        public string    Source          { get; set; } = PaymentSource.Manual;
+
+        public string?   Reference       { get; set; }
+        public string?   Notes           { get; set; }
+        public DateTime  CreatedAt       { get; set; }
+    }
+}
+
+```
+
+## File: MusicSchool.Models\PaymentAllocation.cs
+
+```csharp
+using System;
+
+namespace MusicSchool.Data.Models
+{
+    /// <summary>
+    /// Links a <see cref="Payment"/> to an <see cref="Invoice"/>.
+    /// One payment can cover many invoices; one invoice can be covered by many payments
+    /// (when unallocated amounts from earlier payments accumulate to reach the invoice total).
+    /// </summary>
+    public class PaymentAllocation
+    {
+        public int     AllocationID { get; set; }
+        public int     PaymentID    { get; set; }
+        public int     InvoiceID    { get; set; }
+
+        /// <summary>Portion of this payment applied to this invoice.</summary>
+        public decimal AmountApplied { get; set; }
+
+        public DateTime CreatedAt   { get; set; }
+    }
+}
+
+```
+
 ## File: MusicSchool.Models\ScheduledSlot.cs
 
 ```csharp
@@ -2724,70 +3059,7 @@ namespace MusicSchool.Data.Models
 
 ```
 
-## File: MusicSchool.Repositories\AccountHolderRepository.cs
-
-```csharp
-
-using Microsoft.Extensions.Logging;
-using MusicSchool.Data.Interfaces;
-using MusicSchool.Data.Models;
-
-namespace MusicSchool.Data.Implementations
-{
-    public class AccountHolderRepository : IAccountHolderRepository
-    {
-        private readonly IAccountHolderService _accountHolderService;
-        private readonly ILogger<AccountHolderRepository> _logger;
-
-        public AccountHolderRepository(IAccountHolderService accountHolderService, ILogger<AccountHolderRepository> logger)
-        {
-            _accountHolderService = accountHolderService;
-            _logger = logger;
-        }
-
-        public async Task<AccountHolder?> GetAccountHolderAsync(int id)
-        {
-            return await _accountHolderService.GetAccountHolderAsync(id);
-        }
-
-        public async Task<IEnumerable<AccountHolder>> GetByTeacherAsync(int teacherId)
-        {
-            return await _accountHolderService.GetByTeacherAsync(teacherId);
-        }
-
-        public async Task<int?> AddAccountHolderAsync(AccountHolder accountHolder)
-        {
-            try
-            {
-                return await _accountHolderService.InsertAsync(accountHolder);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to insert AccountHolder {FirstName} {LastName}",
-                    accountHolder.FirstName, accountHolder.LastName);
-                return null;
-            }
-        }
-
-        public async Task<bool> UpdateAccountHolderAsync(AccountHolder accountHolder)
-        {
-            try
-            {
-                return await _accountHolderService.UpdateAsync(accountHolder);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update AccountHolderID {AccountHolderID}",
-                    accountHolder.AccountHolderID);
-                return false;
-            }
-        }
-    }
-}
-
-```
-
-## File: MusicSchool.Repositories\AccountHolderService.cs
+## File: MusicSchool.Repositories\AccountHolderDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -2797,11 +3069,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class AccountHolderService : IAccountHolderService
+    public class AccountHolderDataAccessObject : IAccountHolderDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public AccountHolderService(IDbConnection connection)
+        public AccountHolderDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -2878,7 +3150,70 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\BundleQuarterService.cs
+## File: MusicSchool.Repositories\AccountHolderRepository.cs
+
+```csharp
+
+using Microsoft.Extensions.Logging;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Data.Implementations
+{
+    public class AccountHolderRepository : IAccountHolderRepository
+    {
+        private readonly IAccountHolderDataAccessObject _accountHolderService;
+        private readonly ILogger<AccountHolderRepository> _logger;
+
+        public AccountHolderRepository(IAccountHolderDataAccessObject accountHolderService, ILogger<AccountHolderRepository> logger)
+        {
+            _accountHolderService = accountHolderService;
+            _logger = logger;
+        }
+
+        public async Task<AccountHolder?> GetAccountHolderAsync(int id)
+        {
+            return await _accountHolderService.GetAccountHolderAsync(id);
+        }
+
+        public async Task<IEnumerable<AccountHolder>> GetByTeacherAsync(int teacherId)
+        {
+            return await _accountHolderService.GetByTeacherAsync(teacherId);
+        }
+
+        public async Task<int?> AddAccountHolderAsync(AccountHolder accountHolder)
+        {
+            try
+            {
+                return await _accountHolderService.InsertAsync(accountHolder);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to insert AccountHolder {FirstName} {LastName}",
+                    accountHolder.FirstName, accountHolder.LastName);
+                return null;
+            }
+        }
+
+        public async Task<bool> UpdateAccountHolderAsync(AccountHolder accountHolder)
+        {
+            try
+            {
+                return await _accountHolderService.UpdateAsync(accountHolder);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update AccountHolderID {AccountHolderID}",
+                    accountHolder.AccountHolderID);
+                return false;
+            }
+        }
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories\BundleQuarterDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -2888,11 +3223,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class BundleQuarterService : IBundleQuarterService
+    public class BundleQuarterDataAccessObject : IBundleQuarterDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public BundleQuarterService(IDbConnection connection)
+        public BundleQuarterDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -2972,18 +3307,21 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\ExtraLessonAggregateService.cs
+## File: MusicSchool.Repositories\ExtraLessonAggregateDataAccessObject.cs
 
 ```csharp
 using Dapper;
 using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
 using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class ExtraLessonAggregateService : IExtraLessonAggregateService
+    public class ExtraLessonAggregateDataAccessObject : IExtraLessonAggregateDataAccessObject
     {
         private readonly IDbConnection _connection;
+        private readonly IExtraLessonDataAccessObject _extraLessonService;
+        private readonly IInvoiceDataAccessObject _invoiceService;
 
         public static readonly string SELECT_EXTRA_LESSON_DETAIL_QRY = @"
             SELECT el.ExtraLessonID,
@@ -3029,9 +3367,14 @@ namespace MusicSchool.Data.Implementations
               AND el.ScheduledDate = @ScheduledDate
             ORDER BY el.ScheduledTime;";
 
-        public ExtraLessonAggregateService(IDbConnection connection)
+        public ExtraLessonAggregateDataAccessObject(
+            IDbConnection connection,
+            IExtraLessonDataAccessObject extraLessonService,
+            IInvoiceDataAccessObject invoiceService)
         {
             _connection = connection;
+            _extraLessonService = extraLessonService;
+            _invoiceService = invoiceService;
         }
 
         public async Task<ExtraLessonDetail?> GetExtraLessonByIdAsync(int extraLessonId)
@@ -3048,73 +3391,14 @@ namespace MusicSchool.Data.Implementations
                 SELECT_EXTRA_LESSONS_BY_TEACHER_DATE_QRY,
                 new { TeacherID = teacherId, ScheduledDate = scheduledDate });
         }
-    }
-}
-
-```
-
-## File: MusicSchool.Repositories\ExtraLessonRepository.cs
-
-```csharp
-using Dapper;
-using Microsoft.Extensions.Logging;
-using MusicSchool.Data.Interfaces;
-using MusicSchool.Data.Models;
-using System.Data;
-
-namespace MusicSchool.Data.Implementations
-{
-    public class ExtraLessonRepository : IExtraLessonRepository
-    {
-        private readonly IExtraLessonAggregateService _aggregateService;
-        private readonly IExtraLessonService _extraLessonService;
-        private readonly IInvoiceService _invoiceService;
-        private readonly IDbConnection _connection;
-        private readonly ILogger<ExtraLessonRepository> _logger;
-
-        public ExtraLessonRepository(
-            IExtraLessonAggregateService aggregateService,
-            IExtraLessonService extraLessonService,
-            IInvoiceService invoiceService,
-            IDbConnection connection,
-            ILogger<ExtraLessonRepository> logger)
-        {
-            _aggregateService = aggregateService;
-            _extraLessonService = extraLessonService;
-            _invoiceService = invoiceService;
-            _connection = connection;
-            _logger = logger;
-        }
-
-        /// <summary>
-        /// Returns a single extra lesson with full context (student, teacher, lesson type).
-        /// </summary>
-        public async Task<ExtraLessonDetail?> GetExtraLessonAsync(int extraLessonId)
-        {
-            return await _aggregateService.GetExtraLessonByIdAsync(extraLessonId);
-        }
-
-        /// <summary>
-        /// Returns all extra lessons for a teacher on a given date, with full context.
-        /// </summary>
-        public async Task<IEnumerable<ExtraLessonDetail>> GetByTeacherAndDateAsync(
-            int teacherId, DateTime scheduledDate)
-        {
-            return await _aggregateService.GetExtraLessonsByTeacherAndDateAsync(teacherId, scheduledDate);
-        }
-
-        public async Task<IEnumerable<ExtraLesson>> GetByStudentAsync(int studentId)
-        {
-            return await _extraLessonService.GetByStudentAsync(studentId);
-        }
 
         /// <summary>
         /// Inserts the ExtraLesson and a corresponding Invoice atomically.
         /// The Invoice is a single one-off row (InstallmentNumber = 1) for the full
         /// PriceCharged amount, due on the day of the lesson.
-        /// Returns the new ExtraLessonID, or null if the operation fails.
+        /// Returns the new ExtraLessonID.
         /// </summary>
-        public async Task<int?> AddExtraLessonAsync(ExtraLesson extraLesson)
+        public async Task<int> SaveNewExtraLessonAsync(ExtraLesson extraLesson)
         {
             if (_connection.State != ConnectionState.Open)
                 _connection.Open();
@@ -3154,31 +3438,10 @@ namespace MusicSchool.Data.Implementations
                 transaction.Commit();
                 return extraLessonId;
             }
-            catch (Exception ex)
+            catch
             {
                 transaction.Rollback();
-                _logger.LogError(ex,
-                    "Failed to insert ExtraLesson + Invoice for StudentID {StudentID} on {ScheduledDate}",
-                    extraLesson.StudentID, extraLesson.ScheduledDate);
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Updates the status on an extra lesson row.
-        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
-        /// </summary>
-        public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status, string? note = null)
-        {
-            try
-            {
-                return await _extraLessonService.UpdateStatusAsync(extraLessonId, status, note);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to update status for ExtraLessonID {ExtraLessonID}", extraLessonId);
-                return false;
+                throw;
             }
         }
     }
@@ -3186,7 +3449,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\ExtraLessonService.cs
+## File: MusicSchool.Repositories\ExtraLessonDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -3196,11 +3459,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class ExtraLessonService : IExtraLessonService
+    public class ExtraLessonDataAccessObject : IExtraLessonDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public ExtraLessonService(IDbConnection connection)
+        public ExtraLessonDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -3286,77 +3549,86 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\InvoiceRepository.cs
+## File: MusicSchool.Repositories\ExtraLessonRepository.cs
 
 ```csharp
 using Microsoft.Extensions.Logging;
 using MusicSchool.Data.Interfaces;
 using MusicSchool.Data.Models;
-using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class InvoiceRepository : IInvoiceRepository
+    public class ExtraLessonRepository : IExtraLessonRepository
     {
-        private readonly IInvoiceService _invoiceService;
-        private readonly ILogger<InvoiceRepository> _logger;
+        private readonly IExtraLessonAggregateDataAccessObject _aggregateService;
+        private readonly IExtraLessonDataAccessObject _extraLessonService;
+        private readonly ILogger<ExtraLessonRepository> _logger;
 
-        public InvoiceRepository(IInvoiceService invoiceService, ILogger<InvoiceRepository> logger)
+        public ExtraLessonRepository(
+            IExtraLessonAggregateDataAccessObject aggregateService,
+            IExtraLessonDataAccessObject extraLessonService,
+            ILogger<ExtraLessonRepository> logger)
         {
-            _invoiceService = invoiceService;
+            _aggregateService = aggregateService;
+            _extraLessonService = extraLessonService;
             _logger = logger;
         }
 
-        public async Task<Invoice?> GetInvoiceAsync(int id)
+        /// <summary>
+        /// Returns a single extra lesson with full context (student, teacher, lesson type).
+        /// </summary>
+        public async Task<ExtraLessonDetail?> GetExtraLessonAsync(int extraLessonId)
         {
-            return await _invoiceService.GetInvoiceAsync(id);
-        }
-
-        public async Task<IEnumerable<Invoice>> GetByBundleAsync(int bundleId)
-        {
-            return await _invoiceService.GetByBundleAsync(bundleId);
-        }
-
-        public async Task<IEnumerable<Invoice>> GetByAccountHolderAsync(int accountHolderId)
-        {
-            return await _invoiceService.GetByAccountHolderAsync(accountHolderId);
-        }
-
-        public async Task<IEnumerable<Invoice>> GetOutstandingByAccountHolderAsync(int accountHolderId)
-        {
-            return await _invoiceService.GetOutstandingByAccountHolderAsync(accountHolderId);
+            return await _aggregateService.GetExtraLessonByIdAsync(extraLessonId);
         }
 
         /// <summary>
-        /// Saves all 12 instalment rows for a bundle atomically.
-        /// The application layer is responsible for calculating the Amount
-        /// and setting the DueDate for each instalment before calling this method.
+        /// Returns all extra lessons for a teacher on a given date, with full context.
         /// </summary>
-        public async Task<bool> AddInvoiceInstalmentsAsync(IEnumerable<Invoice> invoices, IDbTransaction tx, IDbConnection connection)
+        public async Task<IEnumerable<ExtraLessonDetail>> GetByTeacherAndDateAsync(
+            int teacherId, DateTime scheduledDate)
+        {
+            return await _aggregateService.GetExtraLessonsByTeacherAndDateAsync(teacherId, scheduledDate);
+        }
+
+        public async Task<IEnumerable<ExtraLesson>> GetByStudentAsync(int studentId)
+        {
+            return await _extraLessonService.GetByStudentAsync(studentId);
+        }
+
+        /// <summary>
+        /// Inserts the ExtraLesson and a corresponding Invoice atomically.
+        /// Returns the new ExtraLessonID, or null if the operation fails.
+        /// </summary>
+        public async Task<int?> AddExtraLessonAsync(ExtraLesson extraLesson)
         {
             try
             {
-                await _invoiceService.InsertBatchAsync(invoices, tx, connection);
-                return true;
+                return await _aggregateService.SaveNewExtraLessonAsync(extraLesson);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "Failed to insert invoice instalments for BundleID {BundleID}",
-                    invoices.FirstOrDefault()?.BundleID);
-                return false;
+                    "Failed to insert ExtraLesson + Invoice for StudentID {StudentID} on {ScheduledDate}",
+                    extraLesson.StudentID, extraLesson.ScheduledDate);
+                return null;
             }
         }
 
-        public async Task<bool> UpdateInvoiceStatusAsync(int invoiceId, string status, DateOnly? paidDate)
+        /// <summary>
+        /// Updates the status on an extra lesson row.
+        /// <paramref name="note"/> is optional; when null the existing Notes value is preserved.
+        /// </summary>
+        public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status, string? note = null)
         {
             try
             {
-                return await _invoiceService.UpdateStatusAsync(invoiceId, status, paidDate);
+                return await _extraLessonService.UpdateStatusAsync(extraLessonId, status, note);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to update status for InvoiceID {InvoiceID}", invoiceId);
+                _logger.LogError(ex,
+                    "Failed to update status for ExtraLessonID {ExtraLessonID}", extraLessonId);
                 return false;
             }
         }
@@ -3365,7 +3637,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\InvoiceService.cs
+## File: MusicSchool.Repositories\InvoiceDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -3375,11 +3647,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class InvoiceService : IInvoiceService
+    public class InvoiceDataAccessObject : IInvoiceDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public InvoiceService(IDbConnection connection)
+        public InvoiceDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -3523,7 +3795,86 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\LessonAggregateService.cs
+## File: MusicSchool.Repositories\InvoiceRepository.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+using System.Data;
+
+namespace MusicSchool.Data.Implementations
+{
+    public class InvoiceRepository : IInvoiceRepository
+    {
+        private readonly IInvoiceDataAccessObject _invoiceService;
+        private readonly ILogger<InvoiceRepository> _logger;
+
+        public InvoiceRepository(IInvoiceDataAccessObject invoiceService, ILogger<InvoiceRepository> logger)
+        {
+            _invoiceService = invoiceService;
+            _logger = logger;
+        }
+
+        public async Task<Invoice?> GetInvoiceAsync(int id)
+        {
+            return await _invoiceService.GetInvoiceAsync(id);
+        }
+
+        public async Task<IEnumerable<Invoice>> GetByBundleAsync(int bundleId)
+        {
+            return await _invoiceService.GetByBundleAsync(bundleId);
+        }
+
+        public async Task<IEnumerable<Invoice>> GetByAccountHolderAsync(int accountHolderId)
+        {
+            return await _invoiceService.GetByAccountHolderAsync(accountHolderId);
+        }
+
+        public async Task<IEnumerable<Invoice>> GetOutstandingByAccountHolderAsync(int accountHolderId)
+        {
+            return await _invoiceService.GetOutstandingByAccountHolderAsync(accountHolderId);
+        }
+
+        /// <summary>
+        /// Saves all 12 instalment rows for a bundle atomically.
+        /// The application layer is responsible for calculating the Amount
+        /// and setting the DueDate for each instalment before calling this method.
+        /// </summary>
+        public async Task<bool> AddInvoiceInstalmentsAsync(IEnumerable<Invoice> invoices, IDbTransaction tx, IDbConnection connection)
+        {
+            try
+            {
+                await _invoiceService.InsertBatchAsync(invoices, tx, connection);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to insert invoice instalments for BundleID {BundleID}",
+                    invoices.FirstOrDefault()?.BundleID);
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateInvoiceStatusAsync(int invoiceId, string status, DateOnly? paidDate)
+        {
+            try
+            {
+                return await _invoiceService.UpdateStatusAsync(invoiceId, status, paidDate);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update status for InvoiceID {InvoiceID}", invoiceId);
+                return false;
+            }
+        }
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories\LessonAggregateDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -3532,7 +3883,7 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class LessonAggregateService : ILessonAggregateService
+    public class LessonAggregateDataAccessObject : ILessonAggregateDataAccessObject
     {
         private readonly IDbConnection _connection;
 
@@ -3596,7 +3947,7 @@ namespace MusicSchool.Data.Implementations
               AND l.ScheduledDate  = @ScheduledDate
             ORDER BY l.ScheduledTime;";
 
-        public LessonAggregateService(IDbConnection connection)
+        public LessonAggregateDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -3620,7 +3971,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\LessonBundleAggregateService.cs
+## File: MusicSchool.Repositories\LessonBundleAggregateDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -3631,12 +3982,12 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class LessonBundleAggregateService : ILessonBundleAggregateService
+    public class LessonBundleAggregateDataAccessObject : ILessonBundleAggregateDataAccessObject
     {
         private readonly IDbConnection _connection;
-        private readonly ILessonBundleService _lessonBundleService;
-        private readonly IBundleQuarterService _bundleQuarterService;
-        private readonly IInvoiceService _invoiceService;
+        private readonly ILessonBundleDataAccessObject _lessonBundleService;
+        private readonly IBundleQuarterDataAccessObject _bundleQuarterService;
+        private readonly IInvoiceDataAccessObject _invoiceService;
 
         public static readonly string SELECT_BUNDLE_WITH_QUARTERS_QRY = @"
             SELECT lb.BundleID,
@@ -3687,11 +4038,11 @@ namespace MusicSchool.Data.Implementations
             WHERE s.StudentID = @StudentID
             ORDER BY lb.BundleID;";
 
-        public LessonBundleAggregateService(
+        public LessonBundleAggregateDataAccessObject(
             IDbConnection connection,
-            ILessonBundleService lessonBundleService,
-            IBundleQuarterService bundleQuarterService,
-            IInvoiceService invoiceService)
+            ILessonBundleDataAccessObject lessonBundleService,
+            IBundleQuarterDataAccessObject bundleQuarterService,
+            IInvoiceDataAccessObject invoiceService)
         {
             _connection = connection;
             _lessonBundleService = lessonBundleService;
@@ -3794,83 +4145,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\LessonBundleRepository.cs
-
-```csharp
-using Microsoft.Extensions.Logging;
-using MusicSchool.Data.Interfaces;
-using MusicSchool.Data.Models;
-using MusicSchool.Models;
-
-namespace MusicSchool.Data.Implementations
-{
-    public class LessonBundleRepository : ILessonBundleRepository
-    {
-        private readonly ILessonBundleAggregateService _aggregateService;
-        private readonly ILessonBundleService _lessonBundleService;
-        private readonly ILogger<LessonBundleRepository> _logger;
-
-        public LessonBundleRepository(
-            ILessonBundleAggregateService aggregateService,
-            ILessonBundleService lessonBundleService,
-            ILogger<LessonBundleRepository> logger)
-        {
-            _aggregateService = aggregateService;
-            _lessonBundleService = lessonBundleService;
-            _logger = logger;
-        }
-
-        /// <summary>
-        /// Returns the bundle with all four quarters as flat detail rows.
-        /// </summary>
-        public async Task<IEnumerable<LessonBundleWithQuarterDetail>> GetBundleAsync(int bundleId)
-        {
-            return await _aggregateService.GetBundleByIdAsync(bundleId);
-        }
-
-        public async Task<IEnumerable<LessonBundleDetail>> GetByStudentAsync(int studentId)
-        {
-            return await _aggregateService.GetBundleByStudentIdAsync(studentId);
-        }
-
-        /// <summary>
-        /// Saves the bundle and its 4 quarters atomically.
-        /// The application layer is responsible for building the quarter list
-        /// before calling this method.
-        /// </summary>
-        public async Task<int?> AddBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters)
-        {
-            try
-            {
-                return await _aggregateService.SaveNewBundleAsync(bundle, quarters);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to save LessonBundle for StudentID {StudentID}",
-                    bundle.StudentID);
-                return null;
-            }
-        }
-
-        public async Task<bool> UpdateBundleAsync(LessonBundle bundle)
-        {
-            try
-            {
-                return await _lessonBundleService.UpdateAsync(bundle);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update BundleID {BundleID}", bundle.BundleID);
-                return false;
-            }
-        }
-    }
-}
-
-```
-
-## File: MusicSchool.Repositories\LessonBundleService.cs
+## File: MusicSchool.Repositories\LessonBundleDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -3880,11 +4155,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class LessonBundleService : ILessonBundleService
+    public class LessonBundleDataAccessObject : ILessonBundleDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public LessonBundleService(IDbConnection connection)
+        public LessonBundleDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -3972,132 +4247,74 @@ ORDER BY StudentID";
 
 ```
 
-## File: MusicSchool.Repositories\LessonRepository.cs
+## File: MusicSchool.Repositories\LessonBundleRepository.cs
 
 ```csharp
 using Microsoft.Extensions.Logging;
 using MusicSchool.Data.Interfaces;
 using MusicSchool.Data.Models;
+using MusicSchool.Models;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class LessonRepository : ILessonRepository
+    public class LessonBundleRepository : ILessonBundleRepository
     {
-        private readonly ILessonAggregateService _aggregateService;
-        private readonly ILessonService _lessonService;
-        private readonly IBundleQuarterService _bundleQuarterService;
-        private readonly ILogger<LessonRepository> _logger;
+        private readonly ILessonBundleAggregateDataAccessObject _aggregateService;
+        private readonly ILessonBundleDataAccessObject _lessonBundleService;
+        private readonly ILogger<LessonBundleRepository> _logger;
 
-        public LessonRepository(
-            ILessonAggregateService aggregateService,
-            ILessonService lessonService,
-            IBundleQuarterService bundleQuarterService,
-            ILogger<LessonRepository> logger)
+        public LessonBundleRepository(
+            ILessonBundleAggregateDataAccessObject aggregateService,
+            ILessonBundleDataAccessObject lessonBundleService,
+            ILogger<LessonBundleRepository> logger)
         {
             _aggregateService = aggregateService;
-            _lessonService = lessonService;
-            _bundleQuarterService = bundleQuarterService;
+            _lessonBundleService = lessonBundleService;
             _logger = logger;
         }
 
-        public async Task<LessonDetail?> GetLessonAsync(int lessonId)
-            => await _aggregateService.GetLessonByIdAsync(lessonId);
+        /// <summary>
+        /// Returns the bundle with all four quarters as flat detail rows.
+        /// </summary>
+        public async Task<IEnumerable<LessonBundleWithQuarterDetail>> GetBundleAsync(int bundleId)
+        {
+            return await _aggregateService.GetBundleByIdAsync(bundleId);
+        }
 
-        public async Task<IEnumerable<LessonDetail>> GetByTeacherAndDateAsync(
-            int teacherId, DateTime scheduledDate)
-            => await _aggregateService.GetLessonsByTeacherAndDateAsync(teacherId, scheduledDate);
+        public async Task<IEnumerable<LessonBundleDetail>> GetByStudentAsync(int studentId)
+        {
+            return await _aggregateService.GetBundleByStudentIdAsync(studentId);
+        }
 
-        public async Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId)
-            => await _lessonService.GetByBundleAsync(bundleId);
-
-        public async Task<int?> AddLessonAsync(Lesson lesson)
+        /// <summary>
+        /// Saves the bundle and its 4 quarters atomically.
+        /// The application layer is responsible for building the quarter list
+        /// before calling this method.
+        /// </summary>
+        public async Task<int?> AddBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters)
         {
             try
             {
-                return await _lessonService.InsertAsync(lesson);
+                return await _aggregateService.SaveNewBundleAsync(bundle, quarters);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "Failed to insert Lesson for BundleID {BundleID} on {ScheduledDate}",
-                    lesson.BundleID, lesson.ScheduledDate);
+                    "Failed to save LessonBundle for StudentID {StudentID}",
+                    bundle.StudentID);
                 return null;
             }
         }
 
-        /// <summary>
-        /// Updates the lesson status and keeps BundleQuarter.LessonsUsed in sync:
-        ///   Completed / Forfeited → +1 (credit consumed)
-        ///   CancelledTeacher / CancelledStudent → -1 only if the previous status
-        ///   had already consumed a credit (i.e. was Completed or Forfeited).
-        /// The delta approach is atomic — no separate read is needed.
-        /// </summary>
-        public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status,
-            bool creditForfeited, string? cancelledBy, string? cancellationReason,
-            DateTime? completedAt, string? note = null)
+        public async Task<bool> UpdateBundleAsync(LessonBundle bundle)
         {
             try
             {
-                // 1. Read current status so we know whether to adjust the quarter.
-                var lesson = await _lessonService.GetLessonAsync(lessonId);
-                if (lesson is null) return false;
-
-                // 2. Update the lesson row.
-                var updated = await _lessonService.UpdateStatusAsync(
-                    lessonId, status, creditForfeited,
-                    cancelledBy, cancellationReason, completedAt, note);
-
-                if (!updated) return false;
-
-                // 3. Adjust BundleQuarter.LessonsUsed.
-                //    Credit is consumed when status moves TO Completed or Forfeited.
-                //    Credit is released when status moves FROM Completed or Forfeited
-                //    to anything that doesn't consume a credit.
-                bool previousConsumed = lesson.Status == LessonStatus.Completed
-                                     || lesson.Status == LessonStatus.Forfeited;
-                bool newConsumed = status == LessonStatus.Completed
-                                || status == LessonStatus.Forfeited;
-
-                int delta = (newConsumed ? 1 : 0) - (previousConsumed ? 1 : 0);
-
-                if (delta != 0)
-                    await _bundleQuarterService.AdjustLessonsUsedAsync(lessonId, delta);
-
-                return true;
+                return await _lessonBundleService.UpdateAsync(bundle);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to update status for LessonID {LessonID}", lessonId);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Moves a cancelled lesson to a new date/time and resets it to Scheduled.
-        /// No credit adjustment is needed — cancelled lessons never consumed a credit.
-        /// </summary>
-        public async Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime)
-        {
-            try
-            {
-                // Guard: only allow rescheduling of cancelled lessons.
-                var lesson = await _lessonService.GetLessonAsync(lessonId);
-                if (lesson is null) return false;
-
-                if (lesson.Status != LessonStatus.CancelledTeacher
-                    && lesson.Status != LessonStatus.CancelledStudent)
-                {
-                    _logger.LogWarning(
-                        "RescheduleLessonAsync rejected: LessonID {LessonID} has status {Status}.",
-                        lessonId, lesson.Status);
-                    return false;
-                }
-
-                return await _lessonService.RescheduleLessonAsync(lessonId, newDate, newTime);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to reschedule LessonID {LessonID}", lessonId);
+                _logger.LogError(ex, "Failed to update BundleID {BundleID}", bundle.BundleID);
                 return false;
             }
         }
@@ -4106,7 +4323,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\LessonService.cs
+## File: MusicSchool.Repositories\LessonDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -4116,11 +4333,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class LessonService : ILessonService
+    public class LessonDataAccessObject : ILessonDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public LessonService(IDbConnection connection)
+        public LessonDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -4271,7 +4488,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\LessonTypeRepository.cs
+## File: MusicSchool.Repositories\LessonRepository.cs
 
 ```csharp
 using Microsoft.Extensions.Logging;
@@ -4280,51 +4497,123 @@ using MusicSchool.Data.Models;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class LessonTypeRepository : ILessonTypeRepository
+    public class LessonRepository : ILessonRepository
     {
-        private readonly ILessonTypeService _lessonTypeService;
-        private readonly ILogger<LessonTypeRepository> _logger;
+        private readonly ILessonAggregateDataAccessObject _aggregateService;
+        private readonly ILessonDataAccessObject _lessonService;
+        private readonly IBundleQuarterDataAccessObject _bundleQuarterService;
+        private readonly ILogger<LessonRepository> _logger;
 
-        public LessonTypeRepository(ILessonTypeService lessonTypeService, ILogger<LessonTypeRepository> logger)
+        public LessonRepository(
+            ILessonAggregateDataAccessObject aggregateService,
+            ILessonDataAccessObject lessonService,
+            IBundleQuarterDataAccessObject bundleQuarterService,
+            ILogger<LessonRepository> logger)
         {
-            _lessonTypeService = lessonTypeService;
+            _aggregateService = aggregateService;
+            _lessonService = lessonService;
+            _bundleQuarterService = bundleQuarterService;
             _logger = logger;
         }
 
-        public async Task<LessonType?> GetLessonTypeAsync(int id)
-        {
-            return await _lessonTypeService.GetLessonTypeAsync(id);
-        }
+        public async Task<LessonDetail?> GetLessonAsync(int lessonId)
+            => await _aggregateService.GetLessonByIdAsync(lessonId);
 
-        public async Task<IEnumerable<LessonType>> GetAllActiveAsync()
-        {
-            return await _lessonTypeService.GetAllActiveAsync();
-        }
+        public async Task<IEnumerable<LessonDetail>> GetByTeacherAndDateAsync(
+            int teacherId, DateTime scheduledDate)
+            => await _aggregateService.GetLessonsByTeacherAndDateAsync(teacherId, scheduledDate);
 
-        public async Task<int?> AddLessonTypeAsync(LessonType lessonType)
+        public async Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId)
+            => await _lessonService.GetByBundleAsync(bundleId);
+
+        public async Task<int?> AddLessonAsync(Lesson lesson)
         {
             try
             {
-                return await _lessonTypeService.InsertAsync(lessonType);
+                return await _lessonService.InsertAsync(lesson);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to insert LessonType {DurationMinutes}min",
-                    lessonType.DurationMinutes);
+                _logger.LogError(ex,
+                    "Failed to insert Lesson for BundleID {BundleID} on {ScheduledDate}",
+                    lesson.BundleID, lesson.ScheduledDate);
                 return null;
             }
         }
 
-        public async Task<bool> UpdateLessonTypeAsync(LessonType lessonType)
+        /// <summary>
+        /// Updates the lesson status and keeps BundleQuarter.LessonsUsed in sync:
+        ///   Completed / Forfeited → +1 (credit consumed)
+        ///   CancelledTeacher / CancelledStudent → -1 only if the previous status
+        ///   had already consumed a credit (i.e. was Completed or Forfeited).
+        /// The delta approach is atomic — no separate read is needed.
+        /// </summary>
+        public async Task<bool> UpdateLessonStatusAsync(int lessonId, string status,
+            bool creditForfeited, string? cancelledBy, string? cancellationReason,
+            DateTime? completedAt, string? note = null)
         {
             try
             {
-                return await _lessonTypeService.UpdateAsync(lessonType);
+                // 1. Read current status so we know whether to adjust the quarter.
+                var lesson = await _lessonService.GetLessonAsync(lessonId);
+                if (lesson is null) return false;
+
+                // 2. Update the lesson row.
+                var updated = await _lessonService.UpdateStatusAsync(
+                    lessonId, status, creditForfeited,
+                    cancelledBy, cancellationReason, completedAt, note);
+
+                if (!updated) return false;
+
+                // 3. Adjust BundleQuarter.LessonsUsed.
+                //    Credit is consumed when status moves TO Completed or Forfeited.
+                //    Credit is released when status moves FROM Completed or Forfeited
+                //    to anything that doesn't consume a credit.
+                bool previousConsumed = lesson.Status == LessonStatus.Completed
+                                     || lesson.Status == LessonStatus.Forfeited;
+                bool newConsumed = status == LessonStatus.Completed
+                                || status == LessonStatus.Forfeited;
+
+                int delta = (newConsumed ? 1 : 0) - (previousConsumed ? 1 : 0);
+
+                if (delta != 0)
+                    await _bundleQuarterService.AdjustLessonsUsedAsync(lessonId, delta);
+
+                return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to update LessonTypeID {LessonTypeID}",
-                    lessonType.LessonTypeID);
+                _logger.LogError(ex, "Failed to update status for LessonID {LessonID}", lessonId);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Moves a cancelled lesson to a new date/time and resets it to Scheduled.
+        /// No credit adjustment is needed — cancelled lessons never consumed a credit.
+        /// </summary>
+        public async Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime)
+        {
+            try
+            {
+                // Guard: only allow rescheduling of cancelled lessons.
+                var lesson = await _lessonService.GetLessonAsync(lessonId);
+                if (lesson is null) return false;
+
+                if (lesson.Status != LessonStatus.CancelledTeacher
+                    && lesson.Status != LessonStatus.CancelledStudent)
+                {
+                    _logger.LogWarning(
+                        "RescheduleLessonAsync rejected: LessonID {LessonID} has status {Status}.",
+                        lessonId, lesson.Status);
+                    return false;
+                }
+
+                return await _lessonService.RescheduleLessonAsync(lessonId, newDate, newTime);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to reschedule LessonID {LessonID}", lessonId);
                 return false;
             }
         }
@@ -4333,7 +4622,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\LessonTypeService.cs
+## File: MusicSchool.Repositories\LessonTypeDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -4343,11 +4632,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class LessonTypeService : ILessonTypeService
+    public class LessonTypeDataAccessObject : ILessonTypeDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public LessonTypeService(IDbConnection connection)
+        public LessonTypeDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -4407,6 +4696,68 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
+## File: MusicSchool.Repositories\LessonTypeRepository.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Data.Implementations
+{
+    public class LessonTypeRepository : ILessonTypeRepository
+    {
+        private readonly ILessonTypeDataAccessObject _lessonTypeService;
+        private readonly ILogger<LessonTypeRepository> _logger;
+
+        public LessonTypeRepository(ILessonTypeDataAccessObject lessonTypeService, ILogger<LessonTypeRepository> logger)
+        {
+            _lessonTypeService = lessonTypeService;
+            _logger = logger;
+        }
+
+        public async Task<LessonType?> GetLessonTypeAsync(int id)
+        {
+            return await _lessonTypeService.GetLessonTypeAsync(id);
+        }
+
+        public async Task<IEnumerable<LessonType>> GetAllActiveAsync()
+        {
+            return await _lessonTypeService.GetAllActiveAsync();
+        }
+
+        public async Task<int?> AddLessonTypeAsync(LessonType lessonType)
+        {
+            try
+            {
+                return await _lessonTypeService.InsertAsync(lessonType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to insert LessonType {DurationMinutes}min",
+                    lessonType.DurationMinutes);
+                return null;
+            }
+        }
+
+        public async Task<bool> UpdateLessonTypeAsync(LessonType lessonType)
+        {
+            try
+            {
+                return await _lessonTypeService.UpdateAsync(lessonType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update LessonTypeID {LessonTypeID}",
+                    lessonType.LessonTypeID);
+                return false;
+            }
+        }
+    }
+}
+
+```
+
 ## File: MusicSchool.Repositories\MusicSchool.Repositories.csproj
 
 ```xml
@@ -4432,139 +4783,492 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\ScheduledSlotRepository.cs
+## File: MusicSchool.Repositories\PaymentDataAccessObject.cs
 
 ```csharp
-using Microsoft.Extensions.Logging;
+using Dapper;
 using MusicSchool.Data.Interfaces;
 using MusicSchool.Data.Models;
+using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class ScheduledSlotRepository : IScheduledSlotRepository
+    public class PaymentDataAccessObject : IPaymentDataAccessObject
     {
-        private readonly IScheduledSlotService _slotService;
-        private readonly ILessonBundleService _bundleService;
-        private readonly IBundleQuarterService _quarterService;
-        private readonly ILessonService _lessonService;
-        private readonly ILogger<ScheduledSlotRepository> _logger;
+        private readonly IDbConnection _connection;
 
-        public ScheduledSlotRepository(
-            IScheduledSlotService slotService,
-            ILessonBundleService bundleService,
-            IBundleQuarterService quarterService,
-            ILessonService lessonService,
-            ILogger<ScheduledSlotRepository> logger)
+        public PaymentDataAccessObject(IDbConnection connection)
         {
-            _slotService = slotService;
-            _bundleService = bundleService;
-            _quarterService = quarterService;
-            _lessonService = lessonService;
-            _logger = logger;
+            _connection = connection;
         }
 
-        public async Task<ScheduledSlot?> GetSlotAsync(int id)
-            => await _slotService.GetSlotAsync(id);
+        public async Task<Payment?> GetPaymentAsync(int id)
+        {
+            const string sql = @"
+                SELECT PaymentID, AccountHolderID, Amount, UnallocatedAmount,
+                       PaymentDate, Source, Reference, Notes, CreatedAt
+                FROM Payment
+                WHERE PaymentID = @PaymentID;";
 
-        public async Task<IEnumerable<ScheduledSlot>> GetActiveByStudentAsync(int studentId)
-            => await _slotService.GetActiveByStudentAsync(studentId);
+            return await _connection.QuerySingleOrDefaultAsync<Payment>(sql, new { PaymentID = id });
+        }
 
-        public async Task<IEnumerable<ScheduledSlot>> GetActiveByTeacherAsync(int teacherId)
-            => await _slotService.GetActiveByTeacherAsync(teacherId);
+        public async Task<IEnumerable<Payment>> GetByAccountHolderAsync(int accountHolderId)
+        {
+            const string sql = @"
+                SELECT PaymentID, AccountHolderID, Amount, UnallocatedAmount,
+                       PaymentDate, Source, Reference, Notes, CreatedAt
+                FROM Payment
+                WHERE AccountHolderID = @AccountHolderID
+                ORDER BY PaymentDate DESC, CreatedAt DESC;";
 
-        /// <summary>
-        /// Validates that the student has an active bundle with remaining credits,
-        /// inserts the slot, then generates all future Lesson rows up to the bundle's
-        /// EndDate — one per weekly occurrence matching the slot's DayOfWeek.
-        /// Everything runs in a single transaction; nothing is committed if any step fails.
-        /// Returns null if the student has no usable bundle, or on any error.
-        /// </summary>
-        public async Task<int?> AddSlotAsync(ScheduledSlot slot)
+            return await _connection.QueryAsync<Payment>(sql, new { AccountHolderID = accountHolderId });
+        }
+
+        public async Task<int> InsertAsync(Payment payment)
+        {
+            const string sql = @"
+                INSERT INTO Payment
+                    (AccountHolderID, Amount, UnallocatedAmount, PaymentDate,
+                     Source, Reference, Notes)
+                VALUES
+                    (@AccountHolderID, @Amount, @UnallocatedAmount, @PaymentDate,
+                     @Source, @Reference, @Notes);
+
+                SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+            return await _connection.ExecuteScalarAsync<int>(sql, payment);
+        }
+
+        public async Task<bool> UpdateUnallocatedAsync(int paymentId, decimal unallocatedAmount)
+        {
+            const string sql = @"
+                UPDATE Payment
+                SET UnallocatedAmount = @UnallocatedAmount
+                WHERE PaymentID = @PaymentID;";
+
+            var rows = await _connection.ExecuteAsync(sql,
+                new { PaymentID = paymentId, UnallocatedAmount = unallocatedAmount });
+            return rows > 0;
+        }
+
+        public async Task<IEnumerable<PaymentAllocation>> GetAllocationsByPaymentAsync(int paymentId)
+        {
+            const string sql = @"
+                SELECT AllocationID, PaymentID, InvoiceID, AmountApplied, CreatedAt
+                FROM PaymentAllocation
+                WHERE PaymentID = @PaymentID;";
+
+            return await _connection.QueryAsync<PaymentAllocation>(sql, new { PaymentID = paymentId });
+        }
+
+        public async Task<IEnumerable<PaymentAllocation>> GetAllocationsByInvoiceAsync(int invoiceId)
+        {
+            const string sql = @"
+                SELECT AllocationID, PaymentID, InvoiceID, AmountApplied, CreatedAt
+                FROM PaymentAllocation
+                WHERE InvoiceID = @InvoiceID;";
+
+            return await _connection.QueryAsync<PaymentAllocation>(sql, new { InvoiceID = invoiceId });
+        }
+
+        public async Task InsertAllocationAsync(PaymentAllocation allocation)
+        {
+            const string sql = @"
+                INSERT INTO PaymentAllocation (PaymentID, InvoiceID, AmountApplied)
+                VALUES (@PaymentID, @InvoiceID, @AmountApplied);";
+
+            await _connection.ExecuteAsync(sql, allocation);
+        }
+
+        public async Task<decimal> GetTotalUnallocatedAsync(int accountHolderId)
+        {
+            const string sql = @"
+                SELECT ISNULL(SUM(UnallocatedAmount), 0)
+                FROM Payment
+                WHERE AccountHolderID = @AccountHolderID
+                  AND UnallocatedAmount > 0;";
+
+            return await _connection.ExecuteScalarAsync<decimal>(sql,
+                new { AccountHolderID = accountHolderId });
+        }
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories\PaymentRepository.cs
+
+```csharp
+using Dapper;
+using Microsoft.Extensions.Logging;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+using System.Data;
+
+namespace MusicSchool.Data.Implementations
+{
+    /// <summary>
+    /// Orchestrates payment recording and the allocation engine.
+    ///
+    /// Allocation rules:
+    ///  1. Gather all outstanding (Pending/Overdue) invoices for the account holder,
+    ///     sorted by DueDate ascending (oldest-first).
+    ///  2. Pool the new payment with any existing unallocated amounts.
+    ///  3. Walk the invoice list:
+    ///       - If pool >= invoice.Amount: drain oldest unallocated payments into the
+    ///         invoice, mark it Paid, reduce pool.
+    ///       - Otherwise: stop.
+    ///  4. Persist updated UnallocatedAmount on every touched Payment row.
+    /// </summary>
+    public class PaymentRepository : IPaymentRepository
+    {
+        private readonly IPaymentDataAccessObject _paymentDao;
+        private readonly IInvoiceDataAccessObject _invoiceDao;
+        private readonly IDbConnection            _connection;
+        private readonly ILogger<PaymentRepository> _logger;
+
+        public PaymentRepository(
+            IPaymentDataAccessObject   paymentDao,
+            IInvoiceDataAccessObject   invoiceDao,
+            IDbConnection              connection,
+            ILogger<PaymentRepository> logger)
+        {
+            _paymentDao = paymentDao;
+            _invoiceDao = invoiceDao;
+            _connection = connection;
+            _logger     = logger;
+        }
+
+        public Task<Payment?> GetPaymentAsync(int id)
+            => _paymentDao.GetPaymentAsync(id);
+
+        public Task<IEnumerable<Payment>> GetByAccountHolderAsync(int accountHolderId)
+            => _paymentDao.GetByAccountHolderAsync(accountHolderId);
+
+        public Task<IEnumerable<PaymentAllocation>> GetAllocationsByPaymentAsync(int paymentId)
+            => _paymentDao.GetAllocationsByPaymentAsync(paymentId);
+
+        public Task<IEnumerable<PaymentAllocation>> GetAllocationsByInvoiceAsync(int invoiceId)
+            => _paymentDao.GetAllocationsByInvoiceAsync(invoiceId);
+
+        // ── Add payment + run allocation engine ───────────────────────────────
+
+        public async Task<int?> AddPaymentAsync(Payment payment)
         {
             try
             {
-                // 1. Find the student's active bundle that still has remaining credits.
-                //    "Active" means IsActive = true, not yet expired, and at least one
-                //    quarter still has lessons remaining.
-                var bundles = await _bundleService.GetByStudentAsync(slot.StudentID);
+                if (_connection.State != ConnectionState.Open)
+                    _connection.Open();
 
-                LessonBundle? bundle = null;
-
-                foreach (var b in bundles.Where(b => b.IsActive && b.EndDate >= DateTime.Today))
+                using var tx = _connection.BeginTransaction();
+                try
                 {
-                    var quartersl = (await _quarterService.GetByBundleAsync(b.BundleID)).ToList();
-                    if (quartersl.Any(q => q.LessonsUsed < q.LessonsAllocated))
-                    {
-                        bundle = b;
-                        break;
-                    }
+                    // Start fully unallocated; engine will reduce it.
+                    payment.UnallocatedAmount = payment.Amount;
+                    var paymentId = await InsertPaymentInTxAsync(payment, tx);
+
+                    await RunAllocationEngineAsync(payment.AccountHolderID, tx);
+
+                    tx.Commit();
+                    return paymentId;
                 }
-
-                if (bundle is null)
+                catch
                 {
-                    _logger.LogWarning(
-                        "AddSlotAsync rejected: StudentID {StudentID} has no active bundle with remaining credits.",
-                        slot.StudentID);
-                    return null;
+                    tx.Rollback();
+                    throw;
                 }
-
-                var quarters = (await _quarterService.GetByBundleAsync(bundle.BundleID)).ToList();
-
-                // 2. Insert the slot and generate lessons in one transaction.
-                await _slotService.ExecuteInTransactionAsync(async (tx, conn) =>
-                {
-                    var slotId = await _slotService.InsertAsync(slot, tx);
-                    slot.SlotID = slotId;
-
-                    // Generate one Lesson per weekly occurrence from the slot's EffectiveFrom
-                    // through the bundle's EndDate. EffectiveFrom is authoritative — do not
-                    // clamp to today, as slots may be created retroactively or in advance.
-                    var lessonDates = GetOccurrences(slot.EffectiveFrom.Date, bundle.EndDate, slot.DayOfWeek);
-
-                    foreach (var date in lessonDates)
-                    {
-                        var quarter = quarters.FirstOrDefault(q =>
-                            date >= q.QuarterStartDate && date <= q.QuarterEndDate);
-
-                        if (quarter is null) continue;
-
-                        await _lessonService.InsertAsync(new Lesson
-                        {
-                            SlotID          = slotId,
-                            BundleID        = bundle.BundleID,
-                            QuarterID       = quarter.QuarterID,
-                            ScheduledDate   = date,
-                            ScheduledTime   = slot.SlotTime,
-                            Status          = LessonStatus.Scheduled,
-                            CreditForfeited = false,
-                        }, tx);
-                    }
-                });
-
-                return slot.SlotID;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "Failed to insert ScheduledSlot for StudentID {StudentID}", slot.StudentID);
+                    "Failed to add payment for AccountHolderID {AccountHolderID}",
+                    payment.AccountHolderID);
                 return null;
             }
         }
 
-        /// <summary>
-        /// Closes a slot by setting EffectiveTo and IsActive = false.
-        /// Call AddSlotAsync afterwards to open the replacement slot.
-        /// </summary>
-        public async Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo)
+        public async Task<int?> QuickPayInvoiceAsync(int invoiceId, DateTime paymentDate)
         {
             try
             {
-                return await _slotService.CloseSlotAsync(slotId, effectiveTo);
+                var invoice = await _invoiceDao.GetInvoiceAsync(invoiceId);
+                if (invoice is null)
+                {
+                    _logger.LogWarning("QuickPay: InvoiceID {InvoiceID} not found", invoiceId);
+                    return null;
+                }
+
+                if (_connection.State != ConnectionState.Open)
+                    _connection.Open();
+
+                using var tx = _connection.BeginTransaction();
+                try
+                {
+                    var payment = new Payment
+                    {
+                        AccountHolderID   = invoice.AccountHolderID,
+                        Amount            = invoice.Amount,
+                        UnallocatedAmount = 0,
+                        PaymentDate       = paymentDate,
+                        Source            = PaymentSource.QuickPay,
+                        Notes             = $"Quick-pay for Invoice #{invoiceId}"
+                    };
+
+                    var paymentId = await InsertPaymentInTxAsync(payment, tx);
+                    await AllocateToInvoiceAsync(paymentId, invoice, invoice.Amount, tx);
+
+                    tx.Commit();
+                    return paymentId;
+                }
+                catch
+                {
+                    tx.Rollback();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to close SlotID {SlotID}", slotId);
-                return false;
+                _logger.LogError(ex, "QuickPay failed for InvoiceID {InvoiceID}", invoiceId);
+                return null;
+            }
+        }
+
+        // ── Private helpers ───────────────────────────────────────────────────
+
+        private async Task<int> InsertPaymentInTxAsync(Payment payment, IDbTransaction tx)
+        {
+            const string sql = @"
+                INSERT INTO Payment
+                    (AccountHolderID, Amount, UnallocatedAmount, PaymentDate,
+                     Source, Reference, Notes)
+                VALUES
+                    (@AccountHolderID, @Amount, @UnallocatedAmount, @PaymentDate,
+                     @Source, @Reference, @Notes);
+                SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+            return await _connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql, payment, tx));
+        }
+
+        /// <summary>
+        /// Loads all unallocated payments and outstanding invoices for the account,
+        /// then greedily allocates the pooled funds to invoices (oldest DueDate first).
+        /// </summary>
+        private async Task RunAllocationEngineAsync(int accountHolderId, IDbTransaction tx)
+        {
+            // Outstanding invoices, oldest first.
+            const string invoiceSql = @"
+                SELECT InvoiceID, BundleID, ExtraLessonID, AccountHolderID,
+                       InstallmentNumber, Amount, DueDate, PaidDate, Status, Notes, CreatedAt
+                FROM Invoice
+                WHERE AccountHolderID = @AccountHolderID
+                  AND Status IN ('Pending', 'Overdue')
+                ORDER BY DueDate ASC, InvoiceID ASC;";
+
+            var invoices = (await _connection.QueryAsync<Invoice>(
+                new CommandDefinition(invoiceSql, new { AccountHolderID = accountHolderId }, tx))).ToList();
+
+            if (invoices.Count == 0) return;
+
+            // Payments with remaining unallocated amounts, oldest first.
+            const string paymentSql = @"
+                SELECT PaymentID, AccountHolderID, Amount, UnallocatedAmount,
+                       PaymentDate, Source, Reference, Notes, CreatedAt
+                FROM Payment
+                WHERE AccountHolderID = @AccountHolderID
+                  AND UnallocatedAmount > 0
+                ORDER BY PaymentDate ASC, PaymentID ASC;";
+
+            var payments = (await _connection.QueryAsync<Payment>(
+                new CommandDefinition(paymentSql, new { AccountHolderID = accountHolderId }, tx))).ToList();
+
+            if (payments.Count == 0) return;
+
+            foreach (var invoice in invoices)
+            {
+                // How much of this invoice is already covered?
+                const string coveredSql = @"
+                    SELECT ISNULL(SUM(AmountApplied), 0)
+                    FROM PaymentAllocation
+                    WHERE InvoiceID = @InvoiceID;";
+
+                var alreadyCovered = await _connection.ExecuteScalarAsync<decimal>(
+                    new CommandDefinition(coveredSql, new { InvoiceID = invoice.InvoiceID }, tx));
+
+                var needed = invoice.Amount - alreadyCovered;
+                if (needed <= 0) continue;
+
+                var pool = payments.Sum(p => p.UnallocatedAmount);
+                if (pool < needed) break; // Insufficient funds for the next invoice — stop.
+
+                // Drain payments into this invoice.
+                var remaining = needed;
+                foreach (var pmt in payments.Where(p => p.UnallocatedAmount > 0))
+                {
+                    if (remaining <= 0) break;
+
+                    var take = Math.Min(pmt.UnallocatedAmount, remaining);
+                    pmt.UnallocatedAmount -= take;
+                    remaining -= take;
+
+                    const string allocSql = @"
+                        INSERT INTO PaymentAllocation (PaymentID, InvoiceID, AmountApplied)
+                        VALUES (@PaymentID, @InvoiceID, @AmountApplied);";
+
+                    await _connection.ExecuteAsync(new CommandDefinition(allocSql,
+                        new { PaymentID = pmt.PaymentID, InvoiceID = invoice.InvoiceID, AmountApplied = take },
+                        tx));
+                }
+
+                // Mark the invoice Paid.
+                const string paidSql = @"
+                    UPDATE Invoice SET Status = 'Paid', PaidDate = @PaidDate
+                    WHERE InvoiceID = @InvoiceID;";
+
+                await _connection.ExecuteAsync(new CommandDefinition(paidSql,
+                    new { InvoiceID = invoice.InvoiceID, PaidDate = DateTime.Today }, tx));
+            }
+
+            // Persist updated UnallocatedAmount on all touched payments.
+            const string updateSql = @"
+                UPDATE Payment SET UnallocatedAmount = @UnallocatedAmount
+                WHERE PaymentID = @PaymentID;";
+
+            foreach (var pmt in payments)
+            {
+                await _connection.ExecuteAsync(new CommandDefinition(updateSql,
+                    new { PaymentID = pmt.PaymentID, UnallocatedAmount = pmt.UnallocatedAmount }, tx));
+            }
+        }
+
+        /// <summary>QuickPay direct allocation (exact-match amount).</summary>
+        private async Task AllocateToInvoiceAsync(
+            int paymentId, Invoice invoice, decimal amount, IDbTransaction tx)
+        {
+            const string allocSql = @"
+                INSERT INTO PaymentAllocation (PaymentID, InvoiceID, AmountApplied)
+                VALUES (@PaymentID, @InvoiceID, @AmountApplied);";
+
+            await _connection.ExecuteAsync(new CommandDefinition(allocSql,
+                new { PaymentID = paymentId, InvoiceID = invoice.InvoiceID, AmountApplied = amount }, tx));
+
+            const string paidSql = @"
+                UPDATE Invoice SET Status = 'Paid', PaidDate = @PaidDate
+                WHERE InvoiceID = @InvoiceID;";
+
+            await _connection.ExecuteAsync(new CommandDefinition(paidSql,
+                new { InvoiceID = invoice.InvoiceID, PaidDate = DateTime.Today }, tx));
+        }
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories\ScheduledSlotAggregateDataAccessObject.cs
+
+```csharp
+using Dapper;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+using System.Data;
+
+namespace MusicSchool.Data.Implementations
+{
+    public class ScheduledSlotAggregateDataAccessObject : IScheduledSlotAggregateDataAccessObject
+    {
+        private readonly IDbConnection _connection;
+        private readonly IScheduledSlotDataAccessObject _slotService;
+        private readonly ILessonBundleDataAccessObject _bundleService;
+        private readonly IBundleQuarterDataAccessObject _quarterService;
+        private readonly ILessonDataAccessObject _lessonService;
+
+        public ScheduledSlotAggregateDataAccessObject(
+            IDbConnection connection,
+            IScheduledSlotDataAccessObject slotService,
+            ILessonBundleDataAccessObject bundleService,
+            IBundleQuarterDataAccessObject quarterService,
+            ILessonDataAccessObject lessonService)
+        {
+            _connection = connection;
+            _slotService = slotService;
+            _bundleService = bundleService;
+            _quarterService = quarterService;
+            _lessonService = lessonService;
+        }
+
+        /// <summary>
+        /// Finds the student's active bundle with remaining credits, inserts the slot,
+        /// then generates all future Lesson rows up to the bundle's EndDate — one per
+        /// weekly occurrence matching the slot's DayOfWeek — all in a single transaction.
+        /// Returns the new SlotID, or throws if the student has no usable bundle.
+        /// </summary>
+        public async Task<int> SaveNewSlotWithLessonsAsync(ScheduledSlot slot)
+        {
+            // 1. Find the student's active bundle that still has remaining credits.
+            //    "Active" means IsActive = true, not yet expired, and at least one
+            //    quarter still has lessons remaining.
+            var bundles = await _bundleService.GetByStudentAsync(slot.StudentID);
+
+            LessonBundle? bundle = null;
+
+            foreach (var b in bundles.Where(b => b.IsActive && b.EndDate >= DateTime.Today))
+            {
+                var bundleQuarters = (await _quarterService.GetByBundleAsync(b.BundleID)).ToList();
+                if (bundleQuarters.Any(q => q.LessonsUsed < q.LessonsAllocated))
+                {
+                    bundle = b;
+                    break;
+                }
+            }
+
+            if (bundle is null)
+                throw new InvalidOperationException(
+                    $"StudentID {slot.StudentID} has no active bundle with remaining credits.");
+
+            var quarters = (await _quarterService.GetByBundleAsync(bundle.BundleID)).ToList();
+
+            // 2. Insert the slot and generate lessons in one transaction.
+            if (_connection.State != ConnectionState.Open)
+                _connection.Open();
+
+            using var tx = _connection.BeginTransaction();
+            try
+            {
+                var slotId = await _slotService.InsertAsync(slot, _connection, tx);
+                slot.SlotID = slotId;
+
+                // Generate one Lesson per weekly occurrence from the slot's EffectiveFrom
+                // through the bundle's EndDate. EffectiveFrom is authoritative — do not
+                // clamp to today, as slots may be created retroactively or in advance.
+                var lessonDates = GetOccurrences(slot.EffectiveFrom.Date, bundle.EndDate, slot.DayOfWeek);
+
+                foreach (var date in lessonDates)
+                {
+                    var quarter = quarters.FirstOrDefault(q =>
+                        date >= q.QuarterStartDate && date <= q.QuarterEndDate);
+
+                    if (quarter is null) continue;
+
+                    await _lessonService.InsertAsync(new Lesson
+                    {
+                        SlotID          = slotId,
+                        BundleID        = bundle.BundleID,
+                        QuarterID       = quarter.QuarterID,
+                        ScheduledDate   = date,
+                        ScheduledTime   = slot.SlotTime,
+                        Status          = LessonStatus.Scheduled,
+                        CreditForfeited = false,
+                    }, tx);
+                }
+
+                tx.Commit();
+                return slotId;
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
             }
         }
 
@@ -4602,7 +5306,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\ScheduledSlotService.cs
+## File: MusicSchool.Repositories\ScheduledSlotDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -4612,11 +5316,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class ScheduledSlotService : IScheduledSlotService
+    public class ScheduledSlotDataAccessObject : IScheduledSlotDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public ScheduledSlotService(IDbConnection connection)
+        public ScheduledSlotDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -4682,9 +5386,11 @@ namespace MusicSchool.Data.Implementations
         }
 
         public async Task<int> InsertAsync(ScheduledSlot slot)
-            => await InsertAsync(slot);
+        {
+            return await InsertAsync(slot, _connection, null);
+        }
 
-        public async Task<int> InsertAsync(ScheduledSlot slot, IDbTransaction tx)
+        public async Task<int> InsertAsync(ScheduledSlot slot, IDbConnection connection, IDbTransaction tx)
         {
             const string sql = @"
                 INSERT INTO ScheduledSlot
@@ -4696,7 +5402,7 @@ namespace MusicSchool.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(
+            return await connection.ExecuteScalarAsync<int>(
                 new CommandDefinition(sql, slot, tx));
         }
 
@@ -4712,34 +5418,12 @@ namespace MusicSchool.Data.Implementations
                 new { SlotID = slotId, EffectiveTo = effectiveTo });
             return rowsAffected > 0;
         }
-
-        /// <summary>
-        /// Opens the connection if needed, begins a transaction, runs <paramref name="work"/>,
-        /// and commits. Rolls back on any exception.
-        /// </summary>
-        public async Task ExecuteInTransactionAsync(Func<IDbTransaction, IDbConnection, Task> work)
-        {
-            if (_connection.State != ConnectionState.Open)
-                _connection.Open();
-
-            using var tx = _connection.BeginTransaction();
-            try
-            {
-                await work(tx, _connection);
-                tx.Commit();
-            }
-            catch
-            {
-                tx.Rollback();
-                throw;
-            }
-        }
     }
 }
 
 ```
 
-## File: MusicSchool.Repositories\StudentRepository.cs
+## File: MusicSchool.Repositories\ScheduledSlotRepository.cs
 
 ```csharp
 using Microsoft.Extensions.Logging;
@@ -4748,50 +5432,71 @@ using MusicSchool.Data.Models;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class StudentRepository : IStudentRepository
+    public class ScheduledSlotRepository : IScheduledSlotRepository
     {
-        private readonly IStudentService _studentService;
-        private readonly ILogger<StudentRepository> _logger;
+        private readonly IScheduledSlotAggregateDataAccessObject _aggregateService;
+        private readonly IScheduledSlotDataAccessObject _slotService;
+        private readonly ILogger<ScheduledSlotRepository> _logger;
 
-        public StudentRepository(IStudentService studentService, ILogger<StudentRepository> logger)
+        public ScheduledSlotRepository(
+            IScheduledSlotAggregateDataAccessObject aggregateService,
+            IScheduledSlotDataAccessObject slotService,
+            ILogger<ScheduledSlotRepository> logger)
         {
-            _studentService = studentService;
+            _aggregateService = aggregateService;
+            _slotService = slotService;
             _logger = logger;
         }
 
-        public async Task<Student?> GetStudentAsync(int id)
-        {
-            return await _studentService.GetStudentAsync(id);
-        }
+        public async Task<ScheduledSlot?> GetSlotAsync(int id)
+            => await _slotService.GetSlotAsync(id);
 
-        public async Task<IEnumerable<Student>> GetByAccountHolderAsync(int accountHolderId)
-        {
-            return await _studentService.GetByAccountHolderAsync(accountHolderId);
-        }
+        public async Task<IEnumerable<ScheduledSlot>> GetActiveByStudentAsync(int studentId)
+            => await _slotService.GetActiveByStudentAsync(studentId);
 
-        public async Task<int?> AddStudentAsync(Student student)
+        public async Task<IEnumerable<ScheduledSlot>> GetActiveByTeacherAsync(int teacherId)
+            => await _slotService.GetActiveByTeacherAsync(teacherId);
+
+        /// <summary>
+        /// Validates that the student has an active bundle with remaining credits,
+        /// inserts the slot, then generates all future Lesson rows up to the bundle's
+        /// EndDate — one per weekly occurrence matching the slot's DayOfWeek.
+        /// Everything runs in a single transaction; nothing is committed if any step fails.
+        /// Returns null if the student has no usable bundle, or on any error.
+        /// </summary>
+        public async Task<int?> AddSlotAsync(ScheduledSlot slot)
         {
             try
             {
-                return await _studentService.InsertAsync(student);
+                return await _aggregateService.SaveNewSlotWithLessonsAsync(slot);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Business rule violation (no active bundle) — warn rather than error.
+                _logger.LogWarning(ex.Message);
+                return null;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to insert Student {FirstName} {LastName}",
-                    student.FirstName, student.LastName);
+                _logger.LogError(ex,
+                    "Failed to insert ScheduledSlot for StudentID {StudentID}", slot.StudentID);
                 return null;
             }
         }
 
-        public async Task<bool> UpdateStudentAsync(Student student)
+        /// <summary>
+        /// Closes a slot by setting EffectiveTo and IsActive = false.
+        /// Call AddSlotAsync afterwards to open the replacement slot.
+        /// </summary>
+        public async Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo)
         {
             try
             {
-                return await _studentService.UpdateAsync(student);
+                return await _slotService.CloseSlotAsync(slotId, effectiveTo);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to update StudentID {StudentID}", student.StudentID);
+                _logger.LogError(ex, "Failed to close SlotID {SlotID}", slotId);
                 return false;
             }
         }
@@ -4800,7 +5505,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\StudentService.cs
+## File: MusicSchool.Repositories\StudentDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -4810,11 +5515,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class StudentService : IStudentService
+    public class StudentDataAccessObject : IStudentDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public StudentService(IDbConnection connection)
+        public StudentDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -4888,7 +5593,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\TeacherRepository.cs
+## File: MusicSchool.Repositories\StudentRepository.cs
 
 ```csharp
 using Microsoft.Extensions.Logging;
@@ -4897,49 +5602,50 @@ using MusicSchool.Data.Models;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class TeacherRepository : ITeacherRepository
+    public class StudentRepository : IStudentRepository
     {
-        private readonly ITeacherService _teacherService;
-        private readonly ILogger<TeacherRepository> _logger;
+        private readonly IStudentDataAccessObject _studentService;
+        private readonly ILogger<StudentRepository> _logger;
 
-        public TeacherRepository(ITeacherService teacherService, ILogger<TeacherRepository> logger)
+        public StudentRepository(IStudentDataAccessObject studentService, ILogger<StudentRepository> logger)
         {
-            _teacherService = teacherService;
+            _studentService = studentService;
             _logger = logger;
         }
 
-        public async Task<Teacher?> GetTeacherAsync(int id)
+        public async Task<Student?> GetStudentAsync(int id)
         {
-            return await _teacherService.GetTeacherAsync(id);
+            return await _studentService.GetStudentAsync(id);
         }
 
-        public async Task<IEnumerable<Teacher>> GetAllActiveAsync()
+        public async Task<IEnumerable<Student>> GetByAccountHolderAsync(int accountHolderId)
         {
-            return await _teacherService.GetAllActiveAsync();
+            return await _studentService.GetByAccountHolderAsync(accountHolderId);
         }
 
-        public async Task<int?> AddTeacherAsync(Teacher teacher)
+        public async Task<int?> AddStudentAsync(Student student)
         {
             try
             {
-                return await _teacherService.InsertAsync(teacher);
+                return await _studentService.InsertAsync(student);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to insert Teacher {Name}", teacher.Name);
+                _logger.LogError(ex, "Failed to insert Student {FirstName} {LastName}",
+                    student.FirstName, student.LastName);
                 return null;
             }
         }
 
-        public async Task<bool> UpdateTeacherAsync(Teacher teacher)
+        public async Task<bool> UpdateStudentAsync(Student student)
         {
             try
             {
-                return await _teacherService.UpdateAsync(teacher);
+                return await _studentService.UpdateAsync(student);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to update TeacherID {TeacherID}", teacher.TeacherID);
+                _logger.LogError(ex, "Failed to update StudentID {StudentID}", student.StudentID);
                 return false;
             }
         }
@@ -4948,7 +5654,7 @@ namespace MusicSchool.Data.Implementations
 
 ```
 
-## File: MusicSchool.Repositories\TeacherService.cs
+## File: MusicSchool.Repositories\TeacherDataAccessObject.cs
 
 ```csharp
 using Dapper;
@@ -4958,11 +5664,11 @@ using System.Data;
 
 namespace MusicSchool.Data.Implementations
 {
-    public class TeacherService : ITeacherService
+    public class TeacherDataAccessObject : ITeacherDataAccessObject
     {
         private readonly IDbConnection _connection;
 
-        public TeacherService(IDbConnection connection)
+        public TeacherDataAccessObject(IDbConnection connection)
         {
             _connection = connection;
         }
@@ -5024,6 +5730,93 @@ namespace MusicSchool.Data.Implementations
         }
     }
 }
+
+```
+
+## File: MusicSchool.Repositories\TeacherRepository.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Data.Implementations
+{
+    public class TeacherRepository : ITeacherRepository
+    {
+        private readonly ITeacherDataAccessObject _teacherService;
+        private readonly ILogger<TeacherRepository> _logger;
+
+        public TeacherRepository(ITeacherDataAccessObject teacherService, ILogger<TeacherRepository> logger)
+        {
+            _teacherService = teacherService;
+            _logger = logger;
+        }
+
+        public async Task<Teacher?> GetTeacherAsync(int id)
+        {
+            return await _teacherService.GetTeacherAsync(id);
+        }
+
+        public async Task<IEnumerable<Teacher>> GetAllActiveAsync()
+        {
+            return await _teacherService.GetAllActiveAsync();
+        }
+
+        public async Task<int?> AddTeacherAsync(Teacher teacher)
+        {
+            try
+            {
+                return await _teacherService.InsertAsync(teacher);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to insert Teacher {Name}", teacher.Name);
+                return null;
+            }
+        }
+
+        public async Task<bool> UpdateTeacherAsync(Teacher teacher)
+        {
+            try
+            {
+                return await _teacherService.UpdateAsync(teacher);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update TeacherID {TeacherID}", teacher.TeacherID);
+                return false;
+            }
+        }
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\MusicSchool.Repositories.Tests.csproj
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
 
 ```
 
@@ -6754,25 +7547,24 @@ else
 
 ```razor
 @page "/invoices"
-
 @using MusicSchool.Data.Models
-@using MusicSchool.Web.Shared
-
 @inject TeacherService TeacherSvc
 @inject AccountHolderService AccountHolderSvc
 @inject InvoiceService InvoiceSvc
+@inject PaymentService PaymentSvc
 @inject ISnackbar Snackbar
 
 <PageTitle>Invoices — Music School</PageTitle>
 
 <div class="page-header">
     <MudText Typo="Typo.h5">Invoices</MudText>
-    <MudText Typo="Typo.body2" Color="Color.Secondary">Manage monthly instalments for lesson bundles</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">View invoices and record payments</MudText>
 </div>
 
+<!-- ── Filters ─────────────────────────────────────────────────────────── -->
 <MudPaper Class="pa-3 mb-4" Elevation="1">
     <MudGrid>
-        <MudItem xs="12" sm="4">
+        <MudItem xs="12" sm="6" md="4">
             <MudSelect @bind-Value="_selectedTeacherId" Label="Teacher"
                        @bind-Value:after="OnTeacherChanged" Clearable="true">
                 @foreach (var t in _teachers)
@@ -6781,9 +7573,9 @@ else
                 }
             </MudSelect>
         </MudItem>
-        <MudItem xs="12" sm="4">
+        <MudItem xs="12" sm="6" md="4">
             <MudSelect @bind-Value="_selectedAccountHolderId" Label="Account Holder"
-                       @bind-Value:after="LoadInvoices"
+                       @bind-Value:after="OnAccountHolderChanged"
                        Disabled="_accountHolders.Count == 0" Clearable="true">
                 @foreach (var ah in _accountHolders)
                 {
@@ -6791,13 +7583,14 @@ else
                 }
             </MudSelect>
         </MudItem>
-        <MudItem xs="12" sm="4">
-            <MudSelect @bind-Value="_statusFilter" Label="Status Filter"
-                       @bind-Value:after="ApplyFilter" Clearable="true">
-                <MudSelectItem Value="@("Pending")">Pending</MudSelectItem>
-                <MudSelectItem Value="@("Paid")">Paid</MudSelectItem>
-                <MudSelectItem Value="@("Overdue")">Overdue</MudSelectItem>
-                <MudSelectItem Value="@("Void")">Void</MudSelectItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect @bind-Value="_statusFilter" Label="Status" Clearable="true"
+                       @bind-Value:after="ApplyFilter">
+                <MudSelectItem Value="@("")">All</MudSelectItem>
+                <MudSelectItem Value="@InvoiceStatus.Pending">Pending</MudSelectItem>
+                <MudSelectItem Value="@InvoiceStatus.Overdue">Overdue</MudSelectItem>
+                <MudSelectItem Value="@InvoiceStatus.Paid">Paid</MudSelectItem>
+                <MudSelectItem Value="@InvoiceStatus.Void">Void</MudSelectItem>
             </MudSelect>
         </MudItem>
     </MudGrid>
@@ -6805,132 +7598,307 @@ else
 
 @if (_loading)
 {
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
 }
 
-@if (_filteredInvoices.Any())
+@if (_selectedAccountHolderId > 0)
 {
-    <!-- Summary cards -->
-    <MudGrid Class="mb-4">
-        <MudItem xs="6" sm="3">
-            <MudPaper Class="pa-3 stats-card" Elevation="1">
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Total</MudText>
-                <MudText Typo="Typo.h6">R @_filteredInvoices.Sum(i => i.Amount).ToString("N2")</MudText>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="6" sm="3">
-            <MudPaper Class="pa-3 stats-card" Elevation="1">
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Paid</MudText>
-                <MudText Typo="Typo.h6" Style="color:#2E7D32;">
-                    R @_filteredInvoices.Where(i => i.Status == InvoiceStatus.Paid).Sum(i => i.Amount).ToString("N2")
-                </MudText>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="6" sm="3">
-            <MudPaper Class="pa-3 stats-card" Elevation="1">
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Outstanding</MudText>
-                <MudText Typo="Typo.h6" Style="color:#F57F17;">
-                    R @_filteredInvoices.Where(i => i.Status == InvoiceStatus.Pending || i.Status == InvoiceStatus.Overdue).Sum(i => i.Amount).ToString("N2")
-                </MudText>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="6" sm="3">
-            <MudPaper Class="pa-3 stats-card" Elevation="1">
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Overdue</MudText>
-                <MudText Typo="Typo.h6" Style="color:#C62828;">
-                    R @_filteredInvoices.Where(i => i.Status == InvoiceStatus.Overdue).Sum(i => i.Amount).ToString("N2")
-                </MudText>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+    <!-- ── Invoice table ──────────────────────────────────────────────── -->
+    <MudPaper Elevation="1" Class="mb-4">
+        <MudTable Items="_filteredInvoices"
+                  Hover="true" Dense="false" Loading="_loading" Elevation="0">
+            <ToolBarContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center"
+                          Justify="Justify.SpaceBetween" Style="width:100%">
+                    <MudText Typo="Typo.h6">
+                        Invoices
+                        @if (!string.IsNullOrEmpty(_statusFilter))
+                        {
+                            <span style="font-weight:400; font-size:0.85rem; color:#78797A;">
+                                &nbsp;— @_statusFilter
+                            </span>
+                        }
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.AddCard"
+                               OnClick="OpenRecordPaymentDialog">
+                        Record Payment
+                    </MudButton>
+                </MudStack>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh><MudTableSortLabel SortBy="new Func<Invoice, object>(x => x.DueDate)">Due Date</MudTableSortLabel></MudTh>
+                <MudTh>Description</MudTh>
+                <MudTh><MudTableSortLabel SortBy="new Func<Invoice, object>(x => x.Amount)">Amount</MudTableSortLabel></MudTh>
+                <MudTh>Paid Date</MudTh>
+                <MudTh><MudTableSortLabel SortBy="new Func<Invoice, object>(x => x.Status)">Status</MudTableSortLabel></MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Due Date">@context.DueDate.ToString("yyyy MMM dd")</MudTd>
+                <MudTd DataLabel="Description">
+                    @if (context.BundleID.HasValue)
+                    {
+                        <span>Bundle #@context.BundleID — Instalment @context.InstallmentNumber</span>
+                    }
+                    else if (context.ExtraLessonID.HasValue)
+                    {
+                        <span>Extra Lesson #@context.ExtraLessonID</span>
+                    }
+                    else
+                    {
+                        <span>Invoice #@context.InvoiceID</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Amount">R @context.Amount.ToString("N2")</MudTd>
+                <MudTd DataLabel="Paid Date">@(context.PaidDate?.ToString("yyyy MMM dd") ?? "—")</MudTd>
+                <MudTd DataLabel="Status"><StatusChip Status="@context.Status" /></MudTd>
+                <MudTd DataLabel="Actions">
+                    @if (context.Status is InvoiceStatus.Pending or InvoiceStatus.Overdue)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.CheckCircle"
+                                   OnClick="@(() => QuickPay(context))"
+                                   Style="margin-right:4px;">
+                            Paid
+                        </MudButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.Block"
+                                       Size="Size.Small" Color="Color.Default"
+                                       Title="Void invoice"
+                                       OnClick="@(() => VoidInvoice(context))" />
+                    }
+                </MudTd>
+            </RowTemplate>
+            <FooterContent>
+                <MudTd colspan="2" Style="font-weight:600;">Total Invoiced</MudTd>
+                <MudTd Style="font-weight:600;">R @_allInvoices.Sum(i => i.Amount).ToString("N2")</MudTd>
+                <MudTd colspan="3"></MudTd>
+            </FooterContent>
+            <NoRecordsContent>
+                <MudText Class="pa-3" Color="Color.Secondary">No invoices found for this account holder.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+
+    <!-- ── Unallocated payments ───────────────────────────────────────── -->
+    @if (UnallocatedPayments.Count > 0)
+    {
+        <MudPaper Elevation="1" Class="mb-4" Style="border-left: 4px solid #F3D395;">
+            <MudTable Items="UnallocatedPayments" Hover="true" Dense="true" Elevation="0">
+                <ToolBarContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Pending"
+                                 Style="color:#F3D395;" Size="Size.Small" />
+                        <MudText Typo="Typo.h6">Unallocated Payments</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">
+                            R @TotalUnallocated.ToString("N2") pending allocation
+                        </MudChip>
+                    </MudStack>
+                </ToolBarContent>
+                <HeaderContent>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Total Paid</MudTh>
+                    <MudTh>Unallocated</MudTh>
+                    <MudTh>Reference</MudTh>
+                    <MudTh>Notes</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.PaymentDate.ToString("yyyy MMM dd")</MudTd>
+                    <MudTd>R @context.Amount.ToString("N2")</MudTd>
+                    <MudTd>
+                        <MudText Style="font-weight:600; color:#E65100;">
+                            R @context.UnallocatedAmount.ToString("N2")
+                        </MudText>
+                    </MudTd>
+                    <MudTd>@(context.Reference ?? "—")</MudTd>
+                    <MudTd>@(context.Notes ?? "—")</MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudAlert Severity="Severity.Info" Class="ma-3" Dense="true" Icon="@Icons.Material.Filled.Info">
+                These amounts will be automatically applied when they accumulate to cover
+                the next outstanding invoice (R @(NextPendingInvoiceAmount ?? "—")).
+            </MudAlert>
+        </MudPaper>
+    }
+
+    <!-- ── Full payment history ───────────────────────────────────────── -->
+    @if (_payments.Count > 0)
+    {
+        <MudPaper Elevation="1">
+            <MudTable Items="_payments" Hover="true" Dense="true" Elevation="0">
+                <ToolBarContent>
+                    <MudText Typo="Typo.h6">Payment History</MudText>
+                </ToolBarContent>
+                <HeaderContent>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Amount</MudTh>
+                    <MudTh>Unallocated</MudTh>
+                    <MudTh>Source</MudTh>
+                    <MudTh>Reference</MudTh>
+                    <MudTh>Notes</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.PaymentDate.ToString("yyyy MMM dd")</MudTd>
+                    <MudTd>R @context.Amount.ToString("N2")</MudTd>
+                    <MudTd>
+                        @if (context.UnallocatedAmount > 0)
+                        {
+                            <MudText Style="color:#E65100;">R @context.UnallocatedAmount.ToString("N2")</MudText>
+                        }
+                        else
+                        {
+                            <MudText Color="Color.Secondary">—</MudText>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(context.Source == PaymentSource.QuickPay ? Color.Primary : Color.Default)">
+                            @context.Source
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>@(context.Reference ?? "—")</MudTd>
+                    <MudTd>@(context.Notes ?? "—")</MudTd>
+                </RowTemplate>
+                <FooterContent>
+                    <MudTd colspan="1" Style="font-weight:600;">Total Received</MudTd>
+                    <MudTd Style="font-weight:600;">R @_payments.Sum(p => p.Amount).ToString("N2")</MudTd>
+                    <MudTd colspan="4"></MudTd>
+                </FooterContent>
+            </MudTable>
+        </MudPaper>
+    }
+}
+else if (!_loading)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+        Select a teacher and account holder to view invoices and record payments.
+    </MudAlert>
 }
 
-<MudPaper Elevation="1">
-    <MudTable Items="_filteredInvoices" Hover="true" Dense="false" Loading="_loading"
-              GroupBy="_groupByBundle">
-        <HeaderContent>
-            <MudTh>Instalment #</MudTh>
-            <MudTh>Amount</MudTh>
-            <MudTh>Due Date</MudTh>
-            <MudTh>Paid Date</MudTh>
-            <MudTh>Status</MudTh>
-            <MudTh>Actions</MudTh>
-        </HeaderContent>
-        <GroupHeaderTemplate>
-            <MudTh colspan="6" Style="padding:8px 16px; background:#F0F2F5;">
-                <MudText Typo="Typo.subtitle2">Bundle #@context.Key</MudText>
-            </MudTh>
-        </GroupHeaderTemplate>
-        <RowTemplate>
-            <MudTd>Instalment @context.InstallmentNumber of 12</MudTd>
-            <MudTd>R @context.Amount.ToString("N2")</MudTd>
-            <MudTd>@context.DueDate.ToString("yyyy MMM dd")</MudTd>
-            <MudTd>@(context.PaidDate?.ToString("yyyy MMM dd") ?? "—")</MudTd>
-            <MudTd><StatusChip Status="@context.Status" /></MudTd>
-            <MudTd>
-                @if (context.Status == InvoiceStatus.Pending || context.Status == InvoiceStatus.Overdue)
-                {
-                    <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
-                                   Color="Color.Success" Title="Mark Paid"
-                                   OnClick="@(() => OpenMarkPaidDialog(context))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Warning" Size="Size.Small"
-                                   Color="Color.Warning" Title="Mark Overdue"
-                                   OnClick="@(() => QuickUpdateStatus(context, InvoiceStatus.Overdue))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small"
-                                   Color="Color.Error" Title="Void"
-                                   OnClick="@(() => QuickUpdateStatus(context, InvoiceStatus.Void))" />
-                }
-                else if (context.Status == InvoiceStatus.Paid)
-                {
-                    <MudIconButton Icon="@Icons.Material.Filled.Undo" Size="Size.Small"
-                                   Color="Color.Default" Title="Revert to Pending"
-                                   OnClick="@(() => QuickUpdateStatus(context, InvoiceStatus.Pending))" />
-                }
-            </MudTd>
-        </RowTemplate>
-        <NoRecordsContent>
-            <MudText>@(_selectedAccountHolderId == 0 ? "Select an account holder to view invoices." : "No invoices found.")</MudText>
-        </NoRecordsContent>
-    </MudTable>
-</MudPaper>
-
-<!-- Mark Paid Dialog -->
-<MudDialog @ref="_markPaidDialog" Options="_dialogOptions">
-    <TitleContent><MudText Typo="Typo.h6">Mark Invoice as Paid</MudText></TitleContent>
+<!-- ── Record Payment Dialog ─────────────────────────────────────────────── -->
+<MudDialog @ref="_recordPaymentDialog" Options="_dialogOptions">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.AddCard" Style="color:#F3D395;" />
+            <MudText Typo="Typo.h6">Record Payment</MudText>
+        </MudStack>
+    </TitleContent>
     <DialogContent>
-        <MudText Class="mb-3">
-            Instalment #@_invoiceToPay?.InstallmentNumber — R@_invoiceToPay?.Amount.ToString("N2")
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            Enter the amount received. The system will automatically link it to outstanding
+            invoices starting from the oldest due date.
         </MudText>
-        <MudDatePicker @bind-Date="_paidDate" Label="Payment Date" Required="true" DateFormat="yyyy/MM/dd" />
+        <MudForm @ref="_paymentForm">
+            <MudNumericField @bind-Value="_newPayment.Amount"
+                             Label="Amount Received"
+                             Required="true"
+                             RequiredError="Amount is required"
+                             Min="0.01m"
+                             Format="N2"
+                             Adornment="Adornment.Start"
+                             AdornmentText="R"
+                             Class="mb-3" />
+            <MudDatePicker @bind-Date="_paymentDatePicker"
+                           Label="Payment Date"
+                           Required="true"
+                           DateFormat="yyyy/MM/dd"
+                           Class="mb-3" />
+            <MudTextField @bind-Value="_newPayment.Reference"
+                          Label="Reference (optional)"
+                          HelperText="e.g. EFT reference or cheque number"
+                          Class="mb-3" />
+            <MudTextField @bind-Value="_newPayment.Notes"
+                          Label="Notes (optional)"
+                          Lines="2" />
+        </MudForm>
+
+        @if (_pendingInvoices.Count > 0)
+        {
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                Outstanding invoices that will be covered (oldest first):
+            </MudText>
+            @foreach (var row in PreviewAllocations())
+            {
+                <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-1">
+                    <MudText Typo="Typo.body2">
+                        @row.Invoice.DueDate.ToString("yyyy MMM dd")
+                        @if (row.Invoice.BundleID.HasValue)
+                        {
+                            <span> · Instalment @row.Invoice.InstallmentNumber</span>
+                        }
+                    </MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudText Typo="Typo.body2">R @row.Invoice.Amount.ToString("N2")</MudText>
+                        @if (row.Covered)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                     Size="Size.Small" Color="Color.Success" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.RadioButtonUnchecked"
+                                     Size="Size.Small" Color="Color.Default" />
+                        }
+                    </MudStack>
+                </MudStack>
+            }
+            @if (_newPayment.Amount + _payments.Sum(p => p.UnallocatedAmount)
+                             < _pendingInvoices.Sum(i => i.Amount))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Warning" Class="mt-2">
+                    Any amount not covering a full invoice will be held as unallocated.
+                </MudText>
+            }
+        }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => _markPaidDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmMarkPaid">Mark Paid</MudButton>
+        <MudButton OnClick="@(() => _recordPaymentDialog!.CloseAsync(DialogResult.Cancel()))">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="ConfirmRecordPayment">
+            Save Payment
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     private bool _loading;
+
     private List<Teacher> _teachers = [];
     private List<AccountHolder> _accountHolders = [];
+    private int _selectedTeacherId;
+    private int _selectedAccountHolderId;
+    private string _statusFilter = string.Empty;
+
     private List<Invoice> _allInvoices = [];
     private List<Invoice> _filteredInvoices = [];
-    private int _selectedTeacherId, _selectedAccountHolderId;
-    private string? _statusFilter;
+    private List<Invoice> _pendingInvoices = [];
+    private List<Payment> _payments = [];
 
-    private MudDialog? _markPaidDialog;
+    // Computed properties — no @{ } blocks needed in markup
+    private List<Payment> UnallocatedPayments =>
+        _payments.Where(p => p.UnallocatedAmount > 0).ToList();
+
+    private decimal TotalUnallocated =>
+        _payments.Sum(p => p.UnallocatedAmount);
+
+    private string? NextPendingInvoiceAmount =>
+        _allInvoices
+            .Where(i => i.Status is InvoiceStatus.Pending or InvoiceStatus.Overdue)
+            .OrderBy(i => i.DueDate)
+            .FirstOrDefault()
+            ?.Amount.ToString("N2");
+
+    // Record payment dialog
+    private MudDialog? _recordPaymentDialog;
+    private MudForm? _paymentForm;
+    private Payment _newPayment = new();
+    private DateTime? _paymentDatePicker = DateTime.Today;
+
     private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
-    private Invoice? _invoiceToPay;
-    private DateTime? _paidDate;
-
-    private TableGroupDefinition<Invoice> _groupByBundle = new()
-    {
-        GroupName = "Bundle",
-        Indentation = false,
-        Expandable = true,
-        IsInitiallyExpanded = true,
-        Selector = i => i.BundleID
-    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -6938,77 +7906,133 @@ else
         if (_teachers.Any())
         {
             _selectedTeacherId = _teachers.First().TeacherID;
-
             await OnTeacherChanged();
-
             StateHasChanged();
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-            StateHasChanged();
+        if (firstRender) StateHasChanged();
     }
 
     private async Task OnTeacherChanged()
     {
         _accountHolders = _selectedTeacherId > 0
-            ? await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId) : [];
-        _allInvoices = [];
-        _filteredInvoices = [];
+            ? await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId)
+            : [];
+        _allInvoices = _filteredInvoices = _pendingInvoices = [];
+        _payments = [];
         _selectedAccountHolderId = 0;
     }
 
-    private async Task LoadInvoices()
+    private async Task OnAccountHolderChanged()
     {
-        if (_selectedAccountHolderId > 0)
+        if (_selectedAccountHolderId <= 0)
         {
-            _loading = true;
-            _allInvoices = await InvoiceSvc.GetByAccountHolderAsync(_selectedAccountHolderId);
-            ApplyFilter();
-            _loading = false;
+            _allInvoices = _filteredInvoices = _pendingInvoices = [];
+            _payments = [];
+            return;
         }
-        else
-        {
-            _allInvoices = [];
-            _filteredInvoices = [];
-        }
+        await RefreshData();
     }
 
     private void ApplyFilter()
     {
         _filteredInvoices = string.IsNullOrEmpty(_statusFilter)
-            ? [.. _allInvoices]
-            : [.. _allInvoices.Where(i => i.Status == _statusFilter)];
+            ? [.. _allInvoices.OrderByDescending(i => i.DueDate)]
+            : [.. _allInvoices.Where(i => i.Status == _statusFilter)
+                              .OrderByDescending(i => i.DueDate)];
     }
 
-    private async Task QuickUpdateStatus(Invoice invoice, string status)
+    private async Task RefreshData()
     {
-        var result = await InvoiceSvc.UpdateInvoiceStatusAsync(invoice.InvoiceID, status, null);
-        if (result) { Snackbar.Add("Invoice updated.", Severity.Success); await LoadInvoices(); }
-        else Snackbar.Add("Failed.", Severity.Error);
+        if (_selectedAccountHolderId <= 0) return;
+        _loading = true;
+        var invoiceTask = InvoiceSvc.GetByAccountHolderAsync(_selectedAccountHolderId);
+        var paymentTask = PaymentSvc.GetByAccountHolderAsync(_selectedAccountHolderId);
+        await Task.WhenAll(invoiceTask, paymentTask);
+        _allInvoices = await invoiceTask;
+        _payments = await paymentTask;
+        _pendingInvoices = [.. _allInvoices
+            .Where(i => i.Status is InvoiceStatus.Pending or InvoiceStatus.Overdue)
+            .OrderBy(i => i.DueDate)];
+        ApplyFilter();
+        _loading = false;
     }
 
-    private async Task OpenMarkPaidDialog(Invoice invoice)
+    // ── Preview helper ─────────────────────────────────────────────────────
+
+    private record InvoicePreviewRow(Invoice Invoice, bool Covered);
+
+    private List<InvoicePreviewRow> PreviewAllocations()
     {
-        _invoiceToPay = invoice;
-        _paidDate = DateTime.Today;
-        await _markPaidDialog!.ShowAsync();
+        var pool = _newPayment.Amount + _payments.Sum(p => p.UnallocatedAmount);
+        var rows = new List<InvoicePreviewRow>();
+        foreach (var inv in _pendingInvoices)
+        {
+            bool covered = pool >= inv.Amount;
+            if (covered) pool -= inv.Amount;
+            rows.Add(new InvoicePreviewRow(inv, covered));
+        }
+        return rows;
     }
 
-    private async Task ConfirmMarkPaid()
+    // ── Record Payment ─────────────────────────────────────────────────────
+
+    private async Task OpenRecordPaymentDialog()
     {
-        if (_invoiceToPay is null || _paidDate is null) return;
-        var paidDate = DateOnly.FromDateTime(_paidDate.Value);
-        var result = await InvoiceSvc.UpdateInvoiceStatusAsync(_invoiceToPay.InvoiceID, InvoiceStatus.Paid, paidDate);
+        _newPayment = new Payment { AccountHolderID = _selectedAccountHolderId };
+        _paymentDatePicker = DateTime.Today;
+        await _recordPaymentDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmRecordPayment()
+    {
+        await _paymentForm!.Validate();
+        if (!_paymentForm.IsValid) return;
+
+        _newPayment.AccountHolderID = _selectedAccountHolderId;
+        _newPayment.PaymentDate = _paymentDatePicker ?? DateTime.Today;
+        _newPayment.Source = PaymentSource.Manual;
+
+        var result = await PaymentSvc.AddPaymentAsync(_newPayment);
+        if (result.HasValue)
+        {
+            Snackbar.Add("Payment recorded and invoices updated.", Severity.Success);
+            await _recordPaymentDialog!.CloseAsync(DialogResult.Ok(true));
+            await RefreshData();
+        }
+        else
+        {
+            Snackbar.Add("Failed to record payment.", Severity.Error);
+        }
+    }
+
+    // ── Quick Pay ──────────────────────────────────────────────────────────
+
+    private async Task QuickPay(Invoice invoice)
+    {
+        var result = await PaymentSvc.QuickPayInvoiceAsync(invoice.InvoiceID, DateTime.Today);
+        if (result.HasValue)
+        {
+            Snackbar.Add($"Invoice marked as paid — R {invoice.Amount:N2}", Severity.Success);
+            await RefreshData();
+        }
+        else Snackbar.Add("Failed to record payment.", Severity.Error);
+    }
+
+    // ── Void ──────────────────────────────────────────────────────────────
+
+    private async Task VoidInvoice(Invoice invoice)
+    {
+        var result = await InvoiceSvc.UpdateInvoiceStatusAsync(invoice.InvoiceID, InvoiceStatus.Void, null);
         if (result)
         {
-            Snackbar.Add("Marked as paid.", Severity.Success);
-            await _markPaidDialog!.CloseAsync(DialogResult.Ok(true));
-            await LoadInvoices();
+            Snackbar.Add("Invoice voided.", Severity.Success);
+            await RefreshData();
         }
-        else Snackbar.Add("Failed.", Severity.Error);
+        else Snackbar.Add("Failed to void invoice.", Severity.Error);
     }
 }
 
@@ -9121,6 +10145,92 @@ else
 }
 ```
 
+## File: MusicSchool.Web\Services\PaymentService.cs
+
+```csharp
+using MusicSchool.Data.Models;
+using System.Net.Http.Json;
+using MusicSchool.Models.TransferModels;
+
+namespace MusicSchool.Services
+{
+    /// <summary>
+    /// Client-side service for the Payment API endpoints.
+    /// Register in Program.cs: builder.Services.AddScoped<PaymentService>();
+    /// </summary>
+    public class PaymentService
+    {
+        private readonly HttpClient _http;
+
+        public PaymentService(HttpClient http) => _http = http;
+
+        private async Task<T?> GetAsync<T>(string url)
+        {
+            try
+            {
+                var response = await _http.GetFromJsonAsync<ResponseBase<T>>(url);
+                return response is not null ? response.Data : default;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[PaymentService.GetAsync] {url} — {ex.Message}");
+                return default;
+            }
+        }
+
+        private async Task<T?> PostAsync<T>(string url, object body)
+        {
+            try
+            {
+                var httpResponse = await _http.PostAsJsonAsync(url, body);
+                httpResponse.EnsureSuccessStatusCode();
+                var response = await httpResponse.Content.ReadFromJsonAsync<ResponseBase<T>>();
+                return response is not null ? response.Data : default;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[PaymentService.PostAsync] {url} — {ex.Message}");
+                return default;
+            }
+        }
+
+        /// <summary>Returns all payments for an account holder, newest first.</summary>
+        public async Task<List<Payment>> GetByAccountHolderAsync(int accountHolderId)
+        {
+            var result = await GetAsync<IEnumerable<Payment>>(
+                $"Payment/GetByAccountHolder?accountHolderId={accountHolderId}");
+            return result?.ToList() ?? [];
+        }
+
+        /// <summary>
+        /// Records a manual payment and runs the allocation engine.
+        /// Returns the new PaymentID on success, null on failure.
+        /// </summary>
+        public async Task<int?> AddPaymentAsync(Payment payment)
+            => await PostAsync<int?>("Payment/Add", payment);
+
+        /// <summary>
+        /// Creates a payment exactly equal to the invoice amount and marks it paid.
+        /// Returns the new PaymentID on success, null on failure.
+        /// </summary>
+        public async Task<int?> QuickPayInvoiceAsync(int invoiceId, DateTime paymentDate)
+        {
+            var url = $"Payment/QuickPay?invoiceId={invoiceId}&paymentDate={paymentDate:yyyy-MM-dd}";
+            return await PostAsync<int?>(url, new { });
+        }
+
+        /// <summary>Returns allocation detail rows for a specific payment.</summary>
+        public async Task<List<PaymentAllocation>> GetAllocationsAsync(int paymentId)
+        {
+            var result = await GetAsync<IEnumerable<PaymentAllocation>>(
+                $"Payment/GetAllocations?paymentId={paymentId}");
+            return result?.ToList() ?? [];
+        }
+    }
+}
+
+```
+
 ## File: MusicSchool.Web\Services\Services.cs
 
 ```csharp
@@ -9799,6 +10909,7 @@ builder.Services.AddScoped<ScheduledSlotService>();
 builder.Services.AddScoped<LessonService>();
 builder.Services.AddScoped<ExtraLessonService>();
 builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<PaymentService>();
 
 // Catch any unhandled exception and write it to the browser console instead of
 // crashing the JS debug adapter with exit code 0xffffffff.

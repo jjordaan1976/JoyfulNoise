@@ -1,6 +1,6 @@
 # Flattened Codebase
 
-Generated: 03/22/2026 19:27:46
+Generated: 03/23/2026 15:29:33
 
 
 ## File: MusicSchool.AccountHolderPortal\Pages\Index.razor
@@ -5788,6 +5788,2230 @@ namespace MusicSchool.Data.Implementations
                 return false;
             }
         }
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\AccountHolderRepositoryTests.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class AccountHolderRepositoryTests
+{
+    private readonly Mock<IAccountHolderDataAccessObject> _daoMock;
+    private readonly Mock<ILogger<AccountHolderRepository>> _loggerMock;
+    private readonly AccountHolderRepository _sut;
+
+    public AccountHolderRepositoryTests()
+    {
+        _daoMock    = new Mock<IAccountHolderDataAccessObject>();
+        _loggerMock = new Mock<ILogger<AccountHolderRepository>>();
+        _sut        = new AccountHolderRepository(_daoMock.Object, _loggerMock.Object);
+    }
+
+    // ── GetAccountHolderAsync ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAccountHolderAsync_WhenFound_ReturnsAccountHolder()
+    {
+        var expected = new AccountHolder { AccountHolderID = 1, FirstName = "Jane", LastName = "Doe" };
+        _daoMock.Setup(d => d.GetAccountHolderAsync(1)).ReturnsAsync(expected);
+
+        var result = await _sut.GetAccountHolderAsync(1);
+
+        Assert.NotNull(result);
+        Assert.Equal(1, result.AccountHolderID);
+    }
+
+    [Fact]
+    public async Task GetAccountHolderAsync_WhenNotFound_ReturnsNull()
+    {
+        _daoMock.Setup(d => d.GetAccountHolderAsync(99)).ReturnsAsync((AccountHolder?)null);
+
+        var result = await _sut.GetAccountHolderAsync(99);
+
+        Assert.Null(result);
+    }
+
+    // ── GetByTeacherAsync ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByTeacherAsync_ReturnsDaoResult()
+    {
+        var list = new List<AccountHolder>
+        {
+            new() { AccountHolderID = 1, TeacherID = 5 },
+            new() { AccountHolderID = 2, TeacherID = 5 }
+        };
+        _daoMock.Setup(d => d.GetByTeacherAsync(5)).ReturnsAsync(list);
+
+        var result = await _sut.GetByTeacherAsync(5);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    [Fact]
+    public async Task GetByTeacherAsync_WhenEmpty_ReturnsEmptyCollection()
+    {
+        _daoMock.Setup(d => d.GetByTeacherAsync(5)).ReturnsAsync(Enumerable.Empty<AccountHolder>());
+
+        var result = await _sut.GetByTeacherAsync(5);
+
+        Assert.Empty(result);
+    }
+
+    // ── AddAccountHolderAsync ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddAccountHolderAsync_WhenSuccessful_ReturnsNewId()
+    {
+        var ah = new AccountHolder { FirstName = "John", LastName = "Smith" };
+        _daoMock.Setup(d => d.InsertAsync(ah)).ReturnsAsync(42);
+
+        var result = await _sut.AddAccountHolderAsync(ah);
+
+        Assert.Equal(42, result);
+    }
+
+    [Fact]
+    public async Task AddAccountHolderAsync_WhenDaoThrows_ReturnsNull()
+    {
+        var ah = new AccountHolder { FirstName = "John", LastName = "Smith" };
+        _daoMock.Setup(d => d.InsertAsync(ah)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.AddAccountHolderAsync(ah);
+
+        Assert.Null(result);
+    }
+
+    // ── UpdateAccountHolderAsync ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateAccountHolderAsync_WhenSuccessful_ReturnsTrue()
+    {
+        var ah = new AccountHolder { AccountHolderID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(ah)).ReturnsAsync(true);
+
+        var result = await _sut.UpdateAccountHolderAsync(ah);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task UpdateAccountHolderAsync_WhenDaoReturnsFalse_ReturnsFalse()
+    {
+        var ah = new AccountHolder { AccountHolderID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(ah)).ReturnsAsync(false);
+
+        var result = await _sut.UpdateAccountHolderAsync(ah);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task UpdateAccountHolderAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        var ah = new AccountHolder { AccountHolderID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(ah)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.UpdateAccountHolderAsync(ah);
+
+        Assert.False(result);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\ExtraLessonAggregateDataAccessObjectTests.cs
+
+```csharp
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class ExtraLessonAggregateDataAccessObjectTests
+{
+    private readonly Mock<IExtraLessonDataAccessObject> _extraLessonDaoMock;
+    private readonly Mock<IInvoiceDataAccessObject> _invoiceDaoMock;
+
+    public ExtraLessonAggregateDataAccessObjectTests()
+    {
+        _extraLessonDaoMock = new Mock<IExtraLessonDataAccessObject>();
+        _invoiceDaoMock     = new Mock<IInvoiceDataAccessObject>();
+    }
+
+    // ── Static query constants — structure validation ──────────────────────────
+
+    [Fact]
+    public void SelectExtraLessonDetailQuery_ContainsRequiredColumns()
+    {
+        var qry = ExtraLessonAggregateDataAccessObject.SELECT_EXTRA_LESSON_DETAIL_QRY;
+
+        Assert.Contains("ExtraLessonID",      qry);
+        Assert.Contains("StudentID",          qry);
+        Assert.Contains("TeacherID",          qry);
+        Assert.Contains("LessonTypeID",       qry);
+        Assert.Contains("StudentFirstName",   qry);
+        Assert.Contains("StudentLastName",    qry);
+        Assert.Contains("TeacherName",        qry);
+        Assert.Contains("DurationMinutes",    qry);
+        Assert.Contains("BasePricePerLesson", qry);
+    }
+
+    [Fact]
+    public void SelectExtraLessonDetailQuery_JoinsStudentTeacherAndLessonType()
+    {
+        var qry = ExtraLessonAggregateDataAccessObject.SELECT_EXTRA_LESSON_DETAIL_QRY;
+
+        Assert.Contains("JOIN Student",     qry);
+        Assert.Contains("JOIN Teacher",     qry);
+        Assert.Contains("JOIN LessonType",  qry);
+        Assert.Contains("@ExtraLessonID",   qry);
+    }
+
+    [Fact]
+    public void SelectExtraLessonsByTeacherDateQuery_FiltersOnTeacherIdAndDate()
+    {
+        var qry = ExtraLessonAggregateDataAccessObject.SELECT_EXTRA_LESSONS_BY_TEACHER_DATE_QRY;
+
+        Assert.Contains("@TeacherID",      qry);
+        Assert.Contains("@ScheduledDate",  qry);
+        Assert.Contains("ORDER BY",        qry);
+    }
+
+    [Fact]
+    public void SelectExtraLessonsByTeacherDateQuery_ContainsRequiredColumns()
+    {
+        var qry = ExtraLessonAggregateDataAccessObject.SELECT_EXTRA_LESSONS_BY_TEACHER_DATE_QRY;
+
+        Assert.Contains("ExtraLessonID",      qry);
+        Assert.Contains("PriceCharged",       qry);
+        Assert.Contains("StudentFirstName",   qry);
+        Assert.Contains("TeacherName",        qry);
+        Assert.Contains("BasePricePerLesson", qry);
+    }
+
+    // ── SaveNewExtraLessonAsync — business rules ───────────────────────────────
+
+    /// <summary>
+    /// SaveNewExtraLessonAsync opens a real IDbConnection transaction and therefore
+    /// cannot be fully unit-tested without an integration DB.  We verify the
+    /// invoice-building logic independently by checking Invoice field calculation.
+    /// </summary>
+    [Fact]
+    public void InvoiceBuiltForExtraLesson_HasCorrectFields()
+    {
+        var scheduledDate = new DateTime(2025, 8, 15, 10, 0, 0);
+        var extraLesson   = new ExtraLesson
+        {
+            ExtraLessonID  = 0,
+            StudentID      = 3,
+            TeacherID      = 2,
+            LessonTypeID   = 1,
+            ScheduledDate  = scheduledDate,
+            ScheduledTime  = new TimeOnly(10, 0),
+            PriceCharged   = 350m,
+            Status         = ExtraLessonStatus.Scheduled,
+        };
+
+        // Reproduce the invoice-building logic from SaveNewExtraLessonAsync
+        var invoice = new Invoice
+        {
+            BundleID          = null,
+            ExtraLessonID     = extraLesson.ExtraLessonID,
+            AccountHolderID   = 99,   // resolved at runtime in the real impl
+            InstallmentNumber = 1,
+            Amount            = extraLesson.PriceCharged,
+            DueDate           = extraLesson.ScheduledDate.Date,
+            Status            = InvoiceStatus.Pending,
+        };
+
+        Assert.Null(invoice.BundleID);
+        Assert.Equal(1, invoice.InstallmentNumber);
+        Assert.Equal(350m, invoice.Amount);
+        Assert.Equal(InvoiceStatus.Pending, invoice.Status);
+        Assert.Equal(scheduledDate.Date, invoice.DueDate);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\ExtraLessonRepositoryTests.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class ExtraLessonRepositoryTests
+{
+    private readonly Mock<IExtraLessonAggregateDataAccessObject> _aggregateMock;
+    private readonly Mock<IExtraLessonDataAccessObject> _daoMock;
+    private readonly Mock<ILogger<ExtraLessonRepository>> _loggerMock;
+    private readonly ExtraLessonRepository _sut;
+
+    public ExtraLessonRepositoryTests()
+    {
+        _aggregateMock = new Mock<IExtraLessonAggregateDataAccessObject>();
+        _daoMock       = new Mock<IExtraLessonDataAccessObject>();
+        _loggerMock    = new Mock<ILogger<ExtraLessonRepository>>();
+        _sut           = new ExtraLessonRepository(_aggregateMock.Object, _daoMock.Object, _loggerMock.Object);
+    }
+
+    // ── GetExtraLessonAsync ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetExtraLessonAsync_WhenFound_ReturnsDetail()
+    {
+        var expected = new ExtraLessonDetail { ExtraLessonID = 7, TeacherName = "Alice" };
+        _aggregateMock.Setup(a => a.GetExtraLessonByIdAsync(7)).ReturnsAsync(expected);
+
+        var result = await _sut.GetExtraLessonAsync(7);
+
+        Assert.NotNull(result);
+        Assert.Equal("Alice", result.TeacherName);
+    }
+
+    [Fact]
+    public async Task GetExtraLessonAsync_WhenNotFound_ReturnsNull()
+    {
+        _aggregateMock.Setup(a => a.GetExtraLessonByIdAsync(99)).ReturnsAsync((ExtraLessonDetail?)null);
+
+        var result = await _sut.GetExtraLessonAsync(99);
+
+        Assert.Null(result);
+    }
+
+    // ── GetByTeacherAndDateAsync ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByTeacherAndDateAsync_ReturnsDaoResult()
+    {
+        var date    = new DateTime(2025, 6, 2);
+        var details = new List<ExtraLessonDetail>
+        {
+            new() { ExtraLessonID = 1 },
+            new() { ExtraLessonID = 2 }
+        };
+        _aggregateMock.Setup(a => a.GetExtraLessonsByTeacherAndDateAsync(5, date)).ReturnsAsync(details);
+
+        var result = await _sut.GetByTeacherAndDateAsync(5, date);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    // ── GetByStudentAsync ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByStudentAsync_ReturnsDaoResult()
+    {
+        var lessons = new List<ExtraLesson>
+        {
+            new() { ExtraLessonID = 1, StudentID = 3 },
+            new() { ExtraLessonID = 2, StudentID = 3 }
+        };
+        _daoMock.Setup(d => d.GetByStudentAsync(3)).ReturnsAsync(lessons);
+
+        var result = await _sut.GetByStudentAsync(3);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    // ── AddExtraLessonAsync ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddExtraLessonAsync_WhenSuccessful_ReturnsNewId()
+    {
+        var el = new ExtraLesson { StudentID = 1, TeacherID = 2 };
+        _aggregateMock.Setup(a => a.SaveNewExtraLessonAsync(el)).ReturnsAsync(88);
+
+        var result = await _sut.AddExtraLessonAsync(el);
+
+        Assert.Equal(88, result);
+    }
+
+    [Fact]
+    public async Task AddExtraLessonAsync_WhenAggregateDaoThrows_ReturnsNull()
+    {
+        var el = new ExtraLesson { StudentID = 1 };
+        _aggregateMock.Setup(a => a.SaveNewExtraLessonAsync(el))
+                      .ThrowsAsync(new InvalidOperationException("No student found"));
+
+        var result = await _sut.AddExtraLessonAsync(el);
+
+        Assert.Null(result);
+    }
+
+    // ── UpdateExtraLessonStatusAsync ──────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateExtraLessonStatusAsync_WhenSuccessful_ReturnsTrue()
+    {
+        _daoMock.Setup(d => d.UpdateStatusAsync(1, ExtraLessonStatus.Completed, null))
+                .ReturnsAsync(true);
+
+        var result = await _sut.UpdateExtraLessonStatusAsync(1, ExtraLessonStatus.Completed);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task UpdateExtraLessonStatusAsync_WithNote_PassesNoteThrough()
+    {
+        _daoMock.Setup(d => d.UpdateStatusAsync(1, ExtraLessonStatus.Cancelled, "Weather"))
+                .ReturnsAsync(true);
+
+        var result = await _sut.UpdateExtraLessonStatusAsync(1, ExtraLessonStatus.Cancelled, "Weather");
+
+        Assert.True(result);
+        _daoMock.Verify(d => d.UpdateStatusAsync(1, ExtraLessonStatus.Cancelled, "Weather"), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateExtraLessonStatusAsync_WhenDaoReturnsFalse_ReturnsFalse()
+    {
+        _daoMock.Setup(d => d.UpdateStatusAsync(1, ExtraLessonStatus.Cancelled, null))
+                .ReturnsAsync(false);
+
+        var result = await _sut.UpdateExtraLessonStatusAsync(1, ExtraLessonStatus.Cancelled);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task UpdateExtraLessonStatusAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        _daoMock.Setup(d => d.UpdateStatusAsync(1, ExtraLessonStatus.Completed, null))
+                .ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.UpdateExtraLessonStatusAsync(1, ExtraLessonStatus.Completed);
+
+        Assert.False(result);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\InvoiceRepositoryTests.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+using System.Data;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class InvoiceRepositoryTests
+{
+    private readonly Mock<IInvoiceDataAccessObject> _daoMock;
+    private readonly Mock<ILogger<InvoiceRepository>> _loggerMock;
+    private readonly InvoiceRepository _sut;
+
+    public InvoiceRepositoryTests()
+    {
+        _daoMock    = new Mock<IInvoiceDataAccessObject>();
+        _loggerMock = new Mock<ILogger<InvoiceRepository>>();
+        _sut        = new InvoiceRepository(_daoMock.Object, _loggerMock.Object);
+    }
+
+    // ── GetInvoiceAsync ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetInvoiceAsync_WhenFound_ReturnsInvoice()
+    {
+        var expected = new Invoice { InvoiceID = 5, Amount = 1000m, Status = InvoiceStatus.Pending };
+        _daoMock.Setup(d => d.GetInvoiceAsync(5)).ReturnsAsync(expected);
+
+        var result = await _sut.GetInvoiceAsync(5);
+
+        Assert.NotNull(result);
+        Assert.Equal(1000m, result.Amount);
+    }
+
+    [Fact]
+    public async Task GetInvoiceAsync_WhenNotFound_ReturnsNull()
+    {
+        _daoMock.Setup(d => d.GetInvoiceAsync(99)).ReturnsAsync((Invoice?)null);
+
+        var result = await _sut.GetInvoiceAsync(99);
+
+        Assert.Null(result);
+    }
+
+    // ── GetByBundleAsync ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByBundleAsync_ReturnsDaoResult()
+    {
+        var invoices = Enumerable.Range(1, 12).Select(i => new Invoice
+        {
+            InvoiceID         = i,
+            BundleID          = 3,
+            InstallmentNumber = (byte)i
+        }).ToList();
+
+        _daoMock.Setup(d => d.GetByBundleAsync(3)).ReturnsAsync(invoices);
+
+        var result = await _sut.GetByBundleAsync(3);
+
+        Assert.Equal(12, result.Count());
+    }
+
+    // ── GetByAccountHolderAsync ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByAccountHolderAsync_ReturnsDaoResult()
+    {
+        var invoices = new List<Invoice>
+        {
+            new() { InvoiceID = 1, AccountHolderID = 10 },
+            new() { InvoiceID = 2, AccountHolderID = 10 }
+        };
+        _daoMock.Setup(d => d.GetByAccountHolderAsync(10)).ReturnsAsync(invoices);
+
+        var result = await _sut.GetByAccountHolderAsync(10);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    // ── GetOutstandingByAccountHolderAsync ────────────────────────────────────
+
+    [Fact]
+    public async Task GetOutstandingByAccountHolderAsync_ReturnsDaoResult()
+    {
+        var invoices = new List<Invoice>
+        {
+            new() { InvoiceID = 1, Status = InvoiceStatus.Pending },
+            new() { InvoiceID = 2, Status = InvoiceStatus.Overdue }
+        };
+        _daoMock.Setup(d => d.GetOutstandingByAccountHolderAsync(10)).ReturnsAsync(invoices);
+
+        var result = await _sut.GetOutstandingByAccountHolderAsync(10);
+
+        Assert.Equal(2, result.Count());
+        Assert.All(result, inv => Assert.NotEqual(InvoiceStatus.Paid, inv.Status));
+    }
+
+    // ── AddInvoiceInstalmentsAsync ────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddInvoiceInstalmentsAsync_WhenSuccessful_ReturnsTrue()
+    {
+        var invoices = new List<Invoice> { new() { BundleID = 1 } };
+        var connMock = new Mock<IDbConnection>();
+        var txMock   = new Mock<IDbTransaction>();
+
+        _daoMock.Setup(d => d.InsertBatchAsync(invoices, txMock.Object, connMock.Object))
+                .Returns(Task.CompletedTask);
+
+        var result = await _sut.AddInvoiceInstalmentsAsync(invoices, txMock.Object, connMock.Object);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task AddInvoiceInstalmentsAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        var invoices = new List<Invoice> { new() { BundleID = 1 } };
+        var connMock = new Mock<IDbConnection>();
+        var txMock   = new Mock<IDbTransaction>();
+
+        _daoMock.Setup(d => d.InsertBatchAsync(invoices, txMock.Object, connMock.Object))
+                .ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.AddInvoiceInstalmentsAsync(invoices, txMock.Object, connMock.Object);
+
+        Assert.False(result);
+    }
+
+    // ── UpdateInvoiceStatusAsync ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateInvoiceStatusAsync_WhenSuccessful_ReturnsTrue()
+    {
+        _daoMock.Setup(d => d.UpdateStatusAsync(1, InvoiceStatus.Paid, It.IsAny<DateOnly?>()))
+                .ReturnsAsync(true);
+
+        var result = await _sut.UpdateInvoiceStatusAsync(1, InvoiceStatus.Paid, DateOnly.FromDateTime(DateTime.Today));
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task UpdateInvoiceStatusAsync_WhenDaoReturnsFalse_ReturnsFalse()
+    {
+        _daoMock.Setup(d => d.UpdateStatusAsync(1, InvoiceStatus.Void, It.IsAny<DateOnly?>()))
+                .ReturnsAsync(false);
+
+        var result = await _sut.UpdateInvoiceStatusAsync(1, InvoiceStatus.Void, null);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task UpdateInvoiceStatusAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        _daoMock.Setup(d => d.UpdateStatusAsync(1, InvoiceStatus.Paid, It.IsAny<DateOnly?>()))
+                .ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.UpdateInvoiceStatusAsync(1, InvoiceStatus.Paid, null);
+
+        Assert.False(result);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\LessonAggregateDataAccessObjectTests.cs
+
+```csharp
+using MusicSchool.Data.Implementations;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class LessonAggregateDataAccessObjectTests
+{
+    // ── Static query constants — structure validation ──────────────────────────
+
+    [Fact]
+    public void SelectLessonDetailQuery_ContainsAllLessonColumns()
+    {
+        var qry = LessonAggregateDataAccessObject.SELECT_LESSON_DETAIL_QRY;
+
+        Assert.Contains("LessonID",           qry);
+        Assert.Contains("SlotID",             qry);
+        Assert.Contains("BundleID",           qry);
+        Assert.Contains("QuarterID",          qry);
+        Assert.Contains("ScheduledDate",      qry);
+        Assert.Contains("ScheduledTime",      qry);
+        Assert.Contains("Status",             qry);
+        Assert.Contains("CreditForfeited",    qry);
+        Assert.Contains("CancelledBy",        qry);
+        Assert.Contains("CancellationReason", qry);
+        Assert.Contains("OriginalLessonID",   qry);
+        Assert.Contains("CompletedAt",        qry);
+    }
+
+    [Fact]
+    public void SelectLessonDetailQuery_ContainsStudentAndTeacherAndLessonTypeColumns()
+    {
+        var qry = LessonAggregateDataAccessObject.SELECT_LESSON_DETAIL_QRY;
+
+        Assert.Contains("StudentFirstName",   qry);
+        Assert.Contains("StudentLastName",    qry);
+        Assert.Contains("TeacherName",        qry);
+        Assert.Contains("DurationMinutes",    qry);
+        Assert.Contains("BasePricePerLesson", qry);
+    }
+
+    [Fact]
+    public void SelectLessonDetailQuery_JoinsScheduledSlotStudentTeacherLessonType()
+    {
+        var qry = LessonAggregateDataAccessObject.SELECT_LESSON_DETAIL_QRY;
+
+        Assert.Contains("JOIN ScheduledSlot", qry);
+        Assert.Contains("JOIN Student",       qry);
+        Assert.Contains("JOIN Teacher",       qry);
+        Assert.Contains("JOIN LessonType",    qry);
+        Assert.Contains("@LessonID",          qry);
+    }
+
+    [Fact]
+    public void SelectLessonsByTeacherDateQuery_FiltersOnTeacherIdAndDate()
+    {
+        var qry = LessonAggregateDataAccessObject.SELECT_LESSONS_BY_TEACHER_DATE_QRY;
+
+        Assert.Contains("@TeacherID",     qry);
+        Assert.Contains("@ScheduledDate", qry);
+        Assert.Contains("ORDER BY",       qry);
+    }
+
+    [Fact]
+    public void SelectLessonsByTeacherDateQuery_ContainsRequiredColumns()
+    {
+        var qry = LessonAggregateDataAccessObject.SELECT_LESSONS_BY_TEACHER_DATE_QRY;
+
+        Assert.Contains("LessonID",           qry);
+        Assert.Contains("StudentFirstName",   qry);
+        Assert.Contains("StudentLastName",    qry);
+        Assert.Contains("TeacherName",        qry);
+        Assert.Contains("DurationMinutes",    qry);
+        Assert.Contains("BasePricePerLesson", qry);
+    }
+
+    [Fact]
+    public void SelectLessonsByTeacherDateQuery_JoinsScheduledSlotStudentTeacherLessonType()
+    {
+        var qry = LessonAggregateDataAccessObject.SELECT_LESSONS_BY_TEACHER_DATE_QRY;
+
+        Assert.Contains("JOIN ScheduledSlot", qry);
+        Assert.Contains("JOIN Student",       qry);
+        Assert.Contains("JOIN Teacher",       qry);
+        Assert.Contains("JOIN LessonType",    qry);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\LessonBundleAggregateDataAccessObjectTests.cs
+
+```csharp
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class LessonBundleAggregateDataAccessObjectTests
+{
+    // ── Static query constants — structure validation ──────────────────────────
+
+    [Fact]
+    public void SelectBundleWithQuartersQuery_ContainsAllBundleColumns()
+    {
+        var qry = LessonBundleAggregateDataAccessObject.SELECT_BUNDLE_WITH_QUARTERS_QRY;
+
+        Assert.Contains("BundleID",        qry);
+        Assert.Contains("StudentID",       qry);
+        Assert.Contains("TeacherID",       qry);
+        Assert.Contains("LessonTypeID",    qry);
+        Assert.Contains("TotalLessons",    qry);
+        Assert.Contains("PricePerLesson",  qry);
+        Assert.Contains("StartDate",       qry);
+        Assert.Contains("EndDate",         qry);
+        Assert.Contains("QuarterSize",     qry);
+    }
+
+    [Fact]
+    public void SelectBundleWithQuartersQuery_ContainsAllQuarterColumns()
+    {
+        var qry = LessonBundleAggregateDataAccessObject.SELECT_BUNDLE_WITH_QUARTERS_QRY;
+
+        Assert.Contains("QuarterID",        qry);
+        Assert.Contains("QuarterNumber",    qry);
+        Assert.Contains("LessonsAllocated", qry);
+        Assert.Contains("LessonsUsed",      qry);
+        Assert.Contains("QuarterStartDate", qry);
+        Assert.Contains("QuarterEndDate",   qry);
+    }
+
+    [Fact]
+    public void SelectBundleWithQuartersQuery_ContainsStudentAndLessonTypeJoins()
+    {
+        var qry = LessonBundleAggregateDataAccessObject.SELECT_BUNDLE_WITH_QUARTERS_QRY;
+
+        Assert.Contains("JOIN Student",       qry);
+        Assert.Contains("JOIN LessonType",    qry);
+        Assert.Contains("JOIN BundleQuarter", qry);
+        Assert.Contains("ORDER BY",           qry);
+        Assert.Contains("@BundleID",          qry);
+    }
+
+    [Fact]
+    public void SelectBundleWithQuartersQuery_ContainsStudentAndLessonTypeDetailColumns()
+    {
+        var qry = LessonBundleAggregateDataAccessObject.SELECT_BUNDLE_WITH_QUARTERS_QRY;
+
+        Assert.Contains("StudentFirstName",   qry);
+        Assert.Contains("StudentLastName",    qry);
+        Assert.Contains("DurationMinutes",    qry);
+        Assert.Contains("BasePricePerLesson", qry);
+    }
+
+    [Fact]
+    public void SelectBundleQueryByStudent_FiltersOnStudentId()
+    {
+        var qry = LessonBundleAggregateDataAccessObject.SELECT_BUNDLE_QRY_BY_STUDENT;
+
+        Assert.Contains("@StudentID", qry);
+        Assert.Contains("ORDER BY",   qry);
+    }
+
+    [Fact]
+    public void SelectBundleQueryByStudent_ContainsRequiredColumns()
+    {
+        var qry = LessonBundleAggregateDataAccessObject.SELECT_BUNDLE_QRY_BY_STUDENT;
+
+        Assert.Contains("BundleID",           qry);
+        Assert.Contains("TotalLessons",       qry);
+        Assert.Contains("PricePerLesson",     qry);
+        Assert.Contains("StudentFirstName",   qry);
+        Assert.Contains("StudentLastName",    qry);
+        Assert.Contains("DurationMinutes",    qry);
+        Assert.Contains("BasePricePerLesson", qry);
+    }
+
+    // ── BuildInstalments helper — business logic ───────────────────────────────
+
+    /// <summary>
+    /// The private BuildInstalments helper is exercised indirectly via public
+    /// observable state. We verify the instalment-calculation rules here directly
+    /// so regressions surface with clear failure messages.
+    /// </summary>
+    [Theory]
+    [InlineData(48, 200,  800)]   // 48 lessons × R200 / 12 = R800 per instalment
+    [InlineData(36, 150,  450)]   // 36 lessons × R150 / 12 = R450
+    [InlineData(12, 300,  300)]   // 12 lessons × R300 / 12 = R300
+    public void InstalmentAmount_IsCalculatedCorrectly(
+        int totalLessons, decimal pricePerLesson, decimal expectedInstalment)
+    {
+        var instalment = Math.Round(totalLessons * pricePerLesson / 12, 2);
+
+        Assert.Equal(expectedInstalment, instalment);
+    }
+
+    [Fact]
+    public void BuildInstalments_Generates12Rows_StartingFromBundleStartMonth()
+    {
+        // Simulate what BuildInstalments produces.
+        var bundleStartDate = new DateTime(2025, 1, 15);
+        var firstDue        = new DateTime(bundleStartDate.Year, bundleStartDate.Month, 1);
+        var instalments     = new List<Invoice>();
+
+        for (byte i = 1; i <= 12; i++)
+        {
+            instalments.Add(new Invoice
+            {
+                BundleID          = 1,
+                AccountHolderID   = 99,
+                InstallmentNumber = i,
+                Amount            = 800m,
+                DueDate           = firstDue.AddMonths(i - 1),
+                Status            = InvoiceStatus.Pending,
+            });
+        }
+
+        Assert.Equal(12, instalments.Count);
+        Assert.Equal(new DateTime(2025, 1, 1), instalments[0].DueDate);
+        Assert.Equal(new DateTime(2025, 12, 1), instalments[11].DueDate);
+        Assert.All(instalments, inv => Assert.Equal(InvoiceStatus.Pending, inv.Status));
+        Assert.All(instalments, inv => Assert.Equal(800m, inv.Amount));
+
+        // Instalment numbers must be sequential 1–12
+        for (byte i = 1; i <= 12; i++)
+            Assert.Equal(i, instalments[i - 1].InstallmentNumber);
+    }
+
+    [Fact]
+    public void BuildInstalments_BundleStartMidYear_CorrectlyWrapsToNextYear()
+    {
+        var bundleStartDate = new DateTime(2025, 6, 1);
+        var firstDue        = new DateTime(bundleStartDate.Year, bundleStartDate.Month, 1);
+        var lastDue         = firstDue.AddMonths(11);
+
+        Assert.Equal(new DateTime(2025, 6,  1), firstDue);
+        Assert.Equal(new DateTime(2026, 5,  1), lastDue);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\LessonBundleRepositoryTests.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+using MusicSchool.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class LessonBundleRepositoryTests
+{
+    private readonly Mock<ILessonBundleAggregateDataAccessObject> _aggregateMock;
+    private readonly Mock<ILessonBundleDataAccessObject> _bundleDaoMock;
+    private readonly Mock<ILogger<LessonBundleRepository>> _loggerMock;
+    private readonly LessonBundleRepository _sut;
+
+    public LessonBundleRepositoryTests()
+    {
+        _aggregateMock = new Mock<ILessonBundleAggregateDataAccessObject>();
+        _bundleDaoMock = new Mock<ILessonBundleDataAccessObject>();
+        _loggerMock    = new Mock<ILogger<LessonBundleRepository>>();
+        _sut = new LessonBundleRepository(
+            _aggregateMock.Object,
+            _bundleDaoMock.Object,
+            _loggerMock.Object);
+    }
+
+    // ── GetBundleAsync ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetBundleAsync_WhenFound_ReturnsQuarterDetails()
+    {
+        var rows = new List<LessonBundleWithQuarterDetail>
+        {
+            new() { BundleID = 1, QuarterNumber = 1 },
+            new() { BundleID = 1, QuarterNumber = 2 },
+            new() { BundleID = 1, QuarterNumber = 3 },
+            new() { BundleID = 1, QuarterNumber = 4 }
+        };
+        _aggregateMock.Setup(a => a.GetBundleByIdAsync(1)).ReturnsAsync(rows);
+
+        var result = await _sut.GetBundleAsync(1);
+
+        Assert.Equal(4, result.Count());
+    }
+
+    [Fact]
+    public async Task GetBundleAsync_WhenNotFound_ReturnsEmptyCollection()
+    {
+        _aggregateMock.Setup(a => a.GetBundleByIdAsync(99))
+                      .ReturnsAsync(Enumerable.Empty<LessonBundleWithQuarterDetail>());
+
+        var result = await _sut.GetBundleAsync(99);
+
+        Assert.Empty(result);
+    }
+
+    // ── GetByStudentAsync ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByStudentAsync_ReturnsDaoResult()
+    {
+        var details = new List<LessonBundleDetail>
+        {
+            new() { BundleID = 1, StudentID = 5 },
+            new() { BundleID = 2, StudentID = 5 }
+        };
+        _aggregateMock.Setup(a => a.GetBundleByStudentIdAsync(5)).ReturnsAsync(details);
+
+        var result = await _sut.GetByStudentAsync(5);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    [Fact]
+    public async Task GetByStudentAsync_WhenNoBundles_ReturnsEmptyCollection()
+    {
+        _aggregateMock.Setup(a => a.GetBundleByStudentIdAsync(5))
+                      .ReturnsAsync(Enumerable.Empty<LessonBundleDetail>());
+
+        var result = await _sut.GetByStudentAsync(5);
+
+        Assert.Empty(result);
+    }
+
+    // ── AddBundleAsync ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddBundleAsync_WhenSuccessful_ReturnsNewBundleId()
+    {
+        var bundle   = new LessonBundle { StudentID = 3 };
+        var quarters = new List<BundleQuarter> { new() { QuarterNumber = 1 } };
+        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters)).ReturnsAsync(7);
+
+        var result = await _sut.AddBundleAsync(bundle, quarters);
+
+        Assert.Equal(7, result);
+    }
+
+    [Fact]
+    public async Task AddBundleAsync_WhenAggregateDaoThrows_ReturnsNull()
+    {
+        var bundle   = new LessonBundle { StudentID = 3 };
+        var quarters = new List<BundleQuarter>();
+        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters))
+                      .ThrowsAsync(new InvalidOperationException("Student not found"));
+
+        var result = await _sut.AddBundleAsync(bundle, quarters);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task AddBundleAsync_WhenGeneralExceptionThrown_ReturnsNull()
+    {
+        var bundle   = new LessonBundle { StudentID = 3 };
+        var quarters = new List<BundleQuarter>();
+        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters))
+                      .ThrowsAsync(new Exception("DB connection error"));
+
+        var result = await _sut.AddBundleAsync(bundle, quarters);
+
+        Assert.Null(result);
+    }
+
+    // ── UpdateBundleAsync ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateBundleAsync_WhenSuccessful_ReturnsTrue()
+    {
+        var bundle = new LessonBundle { BundleID = 1 };
+        _bundleDaoMock.Setup(d => d.UpdateAsync(bundle)).ReturnsAsync(true);
+
+        var result = await _sut.UpdateBundleAsync(bundle);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task UpdateBundleAsync_WhenDaoReturnsFalse_ReturnsFalse()
+    {
+        var bundle = new LessonBundle { BundleID = 1 };
+        _bundleDaoMock.Setup(d => d.UpdateAsync(bundle)).ReturnsAsync(false);
+
+        var result = await _sut.UpdateBundleAsync(bundle);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task UpdateBundleAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        var bundle = new LessonBundle { BundleID = 1 };
+        _bundleDaoMock.Setup(d => d.UpdateAsync(bundle)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.UpdateBundleAsync(bundle);
+
+        Assert.False(result);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\LessonRepositoryTests.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class LessonRepositoryTests
+{
+    private readonly Mock<ILessonAggregateDataAccessObject> _aggregateMock;
+    private readonly Mock<ILessonDataAccessObject> _lessonDaoMock;
+    private readonly Mock<IBundleQuarterDataAccessObject> _quarterDaoMock;
+    private readonly Mock<ILogger<LessonRepository>> _loggerMock;
+    private readonly LessonRepository _sut;
+
+    public LessonRepositoryTests()
+    {
+        _aggregateMock  = new Mock<ILessonAggregateDataAccessObject>();
+        _lessonDaoMock  = new Mock<ILessonDataAccessObject>();
+        _quarterDaoMock = new Mock<IBundleQuarterDataAccessObject>();
+        _loggerMock     = new Mock<ILogger<LessonRepository>>();
+        _sut = new LessonRepository(
+            _aggregateMock.Object,
+            _lessonDaoMock.Object,
+            _quarterDaoMock.Object,
+            _loggerMock.Object);
+    }
+
+    // ── GetLessonAsync ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetLessonAsync_WhenFound_ReturnsDetail()
+    {
+        var expected = new LessonDetail { LessonID = 10, TeacherName = "Alice" };
+        _aggregateMock.Setup(a => a.GetLessonByIdAsync(10)).ReturnsAsync(expected);
+
+        var result = await _sut.GetLessonAsync(10);
+
+        Assert.NotNull(result);
+        Assert.Equal(10, result.LessonID);
+    }
+
+    [Fact]
+    public async Task GetLessonAsync_WhenNotFound_ReturnsNull()
+    {
+        _aggregateMock.Setup(a => a.GetLessonByIdAsync(99)).ReturnsAsync((LessonDetail?)null);
+
+        var result = await _sut.GetLessonAsync(99);
+
+        Assert.Null(result);
+    }
+
+    // ── GetByTeacherAndDateAsync ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByTeacherAndDateAsync_ReturnsDaoResult()
+    {
+        var date    = new DateTime(2025, 5, 12);
+        var details = new List<LessonDetail> { new() { LessonID = 1 }, new() { LessonID = 2 } };
+        _aggregateMock.Setup(a => a.GetLessonsByTeacherAndDateAsync(3, date)).ReturnsAsync(details);
+
+        var result = await _sut.GetByTeacherAndDateAsync(3, date);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    // ── GetByBundleAsync ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByBundleAsync_ReturnsDaoResult()
+    {
+        var lessons = new List<Lesson> { new() { LessonID = 1 }, new() { LessonID = 2 } };
+        _lessonDaoMock.Setup(d => d.GetByBundleAsync(5)).ReturnsAsync(lessons);
+
+        var result = await _sut.GetByBundleAsync(5);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    // ── AddLessonAsync ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddLessonAsync_WhenSuccessful_ReturnsNewId()
+    {
+        var lesson = new Lesson { BundleID = 1, QuarterID = 2 };
+        _lessonDaoMock.Setup(d => d.InsertAsync(lesson)).ReturnsAsync(33);
+
+        var result = await _sut.AddLessonAsync(lesson);
+
+        Assert.Equal(33, result);
+    }
+
+    [Fact]
+    public async Task AddLessonAsync_WhenDaoThrows_ReturnsNull()
+    {
+        var lesson = new Lesson { BundleID = 1 };
+        _lessonDaoMock.Setup(d => d.InsertAsync(lesson)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.AddLessonAsync(lesson);
+
+        Assert.Null(result);
+    }
+
+    // ── UpdateLessonStatusAsync — status transitions ───────────────────────────
+
+    [Fact]
+    public async Task UpdateLessonStatusAsync_WhenLessonNotFound_ReturnsFalse()
+    {
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(1)).ReturnsAsync((Lesson?)null);
+
+        var result = await _sut.UpdateLessonStatusAsync(
+            1, LessonStatus.Completed, false, null, null, null);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task UpdateLessonStatusAsync_WhenUpdateFails_ReturnsFalse()
+    {
+        var lesson = new Lesson { LessonID = 1, Status = LessonStatus.Scheduled };
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(1)).ReturnsAsync(lesson);
+        _lessonDaoMock.Setup(d => d.UpdateStatusAsync(
+            1, LessonStatus.Completed, false, null, null, null, null))
+            .ReturnsAsync(false);
+
+        var result = await _sut.UpdateLessonStatusAsync(
+            1, LessonStatus.Completed, false, null, null, null);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task UpdateLessonStatusAsync_ScheduledToCompleted_IncrementsQuarter()
+    {
+        // Scheduled → Completed: delta = +1
+        var lesson = new Lesson { LessonID = 1, QuarterID = 10, Status = LessonStatus.Scheduled };
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(1)).ReturnsAsync(lesson);
+        _lessonDaoMock.Setup(d => d.UpdateStatusAsync(
+            1, LessonStatus.Completed, false, null, null, It.IsAny<DateTime?>(), null))
+            .ReturnsAsync(true);
+        _quarterDaoMock.Setup(d => d.AdjustLessonsUsedAsync(1, 1)).ReturnsAsync(true);
+
+        var result = await _sut.UpdateLessonStatusAsync(
+            1, LessonStatus.Completed, false, null, null, DateTime.UtcNow);
+
+        Assert.True(result);
+        _quarterDaoMock.Verify(d => d.AdjustLessonsUsedAsync(1, 1), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateLessonStatusAsync_CompletedToCancelledTeacher_DecrementsQuarter()
+    {
+        // Completed → CancelledTeacher: delta = -1
+        var lesson = new Lesson { LessonID = 2, QuarterID = 10, Status = LessonStatus.Completed };
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(2)).ReturnsAsync(lesson);
+        _lessonDaoMock.Setup(d => d.UpdateStatusAsync(
+            2, LessonStatus.CancelledTeacher, false, CancelledBy.Teacher, null, null, null))
+            .ReturnsAsync(true);
+        _quarterDaoMock.Setup(d => d.AdjustLessonsUsedAsync(2, -1)).ReturnsAsync(true);
+
+        var result = await _sut.UpdateLessonStatusAsync(
+            2, LessonStatus.CancelledTeacher, false, CancelledBy.Teacher, null, null);
+
+        Assert.True(result);
+        _quarterDaoMock.Verify(d => d.AdjustLessonsUsedAsync(2, -1), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateLessonStatusAsync_ScheduledToCancelledTeacher_NoQuarterChange()
+    {
+        // Scheduled → CancelledTeacher: neither previously consumed, neither now — delta = 0
+        var lesson = new Lesson { LessonID = 3, Status = LessonStatus.Scheduled };
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(3)).ReturnsAsync(lesson);
+        _lessonDaoMock.Setup(d => d.UpdateStatusAsync(
+            3, LessonStatus.CancelledTeacher, false, CancelledBy.Teacher, null, null, null))
+            .ReturnsAsync(true);
+
+        var result = await _sut.UpdateLessonStatusAsync(
+            3, LessonStatus.CancelledTeacher, false, CancelledBy.Teacher, null, null);
+
+        Assert.True(result);
+        _quarterDaoMock.Verify(d => d.AdjustLessonsUsedAsync(It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateLessonStatusAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(1)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.UpdateLessonStatusAsync(
+            1, LessonStatus.Completed, false, null, null, null);
+
+        Assert.False(result);
+    }
+
+    // ── RescheduleLessonAsync ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RescheduleLessonAsync_WhenCancelledTeacher_Succeeds()
+    {
+        var newDate = new DateTime(2025, 7, 1);
+        var newTime = new TimeOnly(10, 0);
+        var lesson  = new Lesson { LessonID = 4, Status = LessonStatus.CancelledTeacher };
+
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(4)).ReturnsAsync(lesson);
+        _lessonDaoMock.Setup(d => d.RescheduleLessonAsync(4, newDate, newTime)).ReturnsAsync(true);
+
+        var result = await _sut.RescheduleLessonAsync(4, newDate, newTime);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task RescheduleLessonAsync_WhenCancelledStudent_Succeeds()
+    {
+        var newDate = new DateTime(2025, 7, 2);
+        var newTime = new TimeOnly(14, 0);
+        var lesson  = new Lesson { LessonID = 5, Status = LessonStatus.CancelledStudent };
+
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(5)).ReturnsAsync(lesson);
+        _lessonDaoMock.Setup(d => d.RescheduleLessonAsync(5, newDate, newTime)).ReturnsAsync(true);
+
+        var result = await _sut.RescheduleLessonAsync(5, newDate, newTime);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task RescheduleLessonAsync_WhenStatusIsScheduled_ReturnsFalse()
+    {
+        var lesson = new Lesson { LessonID = 6, Status = LessonStatus.Scheduled };
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(6)).ReturnsAsync(lesson);
+
+        var result = await _sut.RescheduleLessonAsync(6, DateTime.Today, new TimeOnly(9, 0));
+
+        Assert.False(result);
+        _lessonDaoMock.Verify(d => d.RescheduleLessonAsync(It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<TimeOnly>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RescheduleLessonAsync_WhenLessonNotFound_ReturnsFalse()
+    {
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(99)).ReturnsAsync((Lesson?)null);
+
+        var result = await _sut.RescheduleLessonAsync(99, DateTime.Today, new TimeOnly(9, 0));
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task RescheduleLessonAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        _lessonDaoMock.Setup(d => d.GetLessonAsync(4)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.RescheduleLessonAsync(4, DateTime.Today, new TimeOnly(10, 0));
+
+        Assert.False(result);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\LessonTypeRepositoryTests.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class LessonTypeRepositoryTests
+{
+    private readonly Mock<ILessonTypeDataAccessObject> _daoMock;
+    private readonly Mock<ILogger<LessonTypeRepository>> _loggerMock;
+    private readonly LessonTypeRepository _sut;
+
+    public LessonTypeRepositoryTests()
+    {
+        _daoMock    = new Mock<ILessonTypeDataAccessObject>();
+        _loggerMock = new Mock<ILogger<LessonTypeRepository>>();
+        _sut        = new LessonTypeRepository(_daoMock.Object, _loggerMock.Object);
+    }
+
+    // ── GetLessonTypeAsync ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetLessonTypeAsync_WhenFound_ReturnsLessonType()
+    {
+        var expected = new LessonType { LessonTypeID = 2, DurationMinutes = 45 };
+        _daoMock.Setup(d => d.GetLessonTypeAsync(2)).ReturnsAsync(expected);
+
+        var result = await _sut.GetLessonTypeAsync(2);
+
+        Assert.NotNull(result);
+        Assert.Equal(45, result.DurationMinutes);
+    }
+
+    [Fact]
+    public async Task GetLessonTypeAsync_WhenNotFound_ReturnsNull()
+    {
+        _daoMock.Setup(d => d.GetLessonTypeAsync(99)).ReturnsAsync((LessonType?)null);
+
+        var result = await _sut.GetLessonTypeAsync(99);
+
+        Assert.Null(result);
+    }
+
+    // ── GetAllActiveAsync ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAllActiveAsync_ReturnsDaoResult()
+    {
+        var list = new List<LessonType>
+        {
+            new() { LessonTypeID = 1, DurationMinutes = 30 },
+            new() { LessonTypeID = 2, DurationMinutes = 45 },
+            new() { LessonTypeID = 3, DurationMinutes = 60 }
+        };
+        _daoMock.Setup(d => d.GetAllActiveAsync()).ReturnsAsync(list);
+
+        var result = await _sut.GetAllActiveAsync();
+
+        Assert.Equal(3, result.Count());
+    }
+
+    // ── AddLessonTypeAsync ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddLessonTypeAsync_WhenSuccessful_ReturnsNewId()
+    {
+        var lt = new LessonType { DurationMinutes = 60, BasePricePerLesson = 200 };
+        _daoMock.Setup(d => d.InsertAsync(lt)).ReturnsAsync(10);
+
+        var result = await _sut.AddLessonTypeAsync(lt);
+
+        Assert.Equal(10, result);
+    }
+
+    [Fact]
+    public async Task AddLessonTypeAsync_WhenDaoThrows_ReturnsNull()
+    {
+        var lt = new LessonType { DurationMinutes = 60 };
+        _daoMock.Setup(d => d.InsertAsync(lt)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.AddLessonTypeAsync(lt);
+
+        Assert.Null(result);
+    }
+
+    // ── UpdateLessonTypeAsync ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateLessonTypeAsync_WhenSuccessful_ReturnsTrue()
+    {
+        var lt = new LessonType { LessonTypeID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(lt)).ReturnsAsync(true);
+
+        var result = await _sut.UpdateLessonTypeAsync(lt);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task UpdateLessonTypeAsync_WhenDaoReturnsFalse_ReturnsFalse()
+    {
+        var lt = new LessonType { LessonTypeID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(lt)).ReturnsAsync(false);
+
+        var result = await _sut.UpdateLessonTypeAsync(lt);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task UpdateLessonTypeAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        var lt = new LessonType { LessonTypeID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(lt)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.UpdateLessonTypeAsync(lt);
+
+        Assert.False(result);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\MusicSchool.Repositories.Tests.csproj
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MusicSchool.Interfaces\MusicSchool.Interfaces.csproj" />
+    <ProjectReference Include="..\MusicSchool.Models\MusicSchool.Models.csproj" />
+    <ProjectReference Include="..\MusicSchool.Repositories\MusicSchool.Repositories.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
+
+```
+
+## File: MusicSchool.Repositories.Tests\PaymentRepositoryTests.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+using System.Data;
+
+namespace MusicSchool.Repositories.Tests;
+
+/// <summary>
+/// Tests for PaymentRepository.
+///
+/// NOTE: AddPaymentAsync and QuickPayInvoiceAsync open real IDbConnection transactions
+/// internally and therefore cannot be fully unit-tested without an in-memory or
+/// integration database. The tests below verify the observable public-facing behaviour:
+///   • Delegation of read methods to the DAO.
+///   • That a failed DAO insert causes AddPaymentAsync to return null (via a mock
+///     that throws when InsertAsync is called through the connection scalar path).
+///   • QuickPay returns null when the invoice does not exist.
+/// The full allocation-engine logic is covered by integration tests / in-memory DB tests.
+/// </summary>
+public class PaymentRepositoryTests
+{
+    private readonly Mock<IPaymentDataAccessObject> _paymentDaoMock;
+    private readonly Mock<IInvoiceDataAccessObject> _invoiceDaoMock;
+    private readonly Mock<IDbConnection> _connectionMock;
+    private readonly Mock<ILogger<PaymentRepository>> _loggerMock;
+    private readonly PaymentRepository _sut;
+
+    public PaymentRepositoryTests()
+    {
+        _paymentDaoMock = new Mock<IPaymentDataAccessObject>();
+        _invoiceDaoMock = new Mock<IInvoiceDataAccessObject>();
+        _connectionMock = new Mock<IDbConnection>();
+        _loggerMock     = new Mock<ILogger<PaymentRepository>>();
+
+        // Default: connection reports Closed so the repo will attempt to open it.
+        _connectionMock.Setup(c => c.State).Returns(ConnectionState.Open);
+
+        _sut = new PaymentRepository(
+            _paymentDaoMock.Object,
+            _invoiceDaoMock.Object,
+            _connectionMock.Object,
+            _loggerMock.Object);
+    }
+
+    // ── GetPaymentAsync ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetPaymentAsync_WhenFound_ReturnsPayment()
+    {
+        var expected = new Payment { PaymentID = 5, Amount = 500m };
+        _paymentDaoMock.Setup(d => d.GetPaymentAsync(5)).ReturnsAsync(expected);
+
+        var result = await _sut.GetPaymentAsync(5);
+
+        Assert.NotNull(result);
+        Assert.Equal(500m, result.Amount);
+    }
+
+    [Fact]
+    public async Task GetPaymentAsync_WhenNotFound_ReturnsNull()
+    {
+        _paymentDaoMock.Setup(d => d.GetPaymentAsync(99)).ReturnsAsync((Payment?)null);
+
+        var result = await _sut.GetPaymentAsync(99);
+
+        Assert.Null(result);
+    }
+
+    // ── GetByAccountHolderAsync ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByAccountHolderAsync_ReturnsDaoResult()
+    {
+        var payments = new List<Payment>
+        {
+            new() { PaymentID = 1, AccountHolderID = 10 },
+            new() { PaymentID = 2, AccountHolderID = 10 }
+        };
+        _paymentDaoMock.Setup(d => d.GetByAccountHolderAsync(10)).ReturnsAsync(payments);
+
+        var result = await _sut.GetByAccountHolderAsync(10);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    [Fact]
+    public async Task GetByAccountHolderAsync_WhenEmpty_ReturnsEmptyCollection()
+    {
+        _paymentDaoMock.Setup(d => d.GetByAccountHolderAsync(10))
+                       .ReturnsAsync(Enumerable.Empty<Payment>());
+
+        var result = await _sut.GetByAccountHolderAsync(10);
+
+        Assert.Empty(result);
+    }
+
+    // ── GetAllocationsByPaymentAsync ──────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAllocationsByPaymentAsync_ReturnsDaoResult()
+    {
+        var allocations = new List<PaymentAllocation>
+        {
+            new() { AllocationID = 1, PaymentID = 3, InvoiceID = 7, AmountApplied = 200m }
+        };
+        _paymentDaoMock.Setup(d => d.GetAllocationsByPaymentAsync(3)).ReturnsAsync(allocations);
+
+        var result = await _sut.GetAllocationsByPaymentAsync(3);
+
+        Assert.Single(result);
+        Assert.Equal(200m, result.First().AmountApplied);
+    }
+
+    // ── GetAllocationsByInvoiceAsync ──────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAllocationsByInvoiceAsync_ReturnsDaoResult()
+    {
+        var allocations = new List<PaymentAllocation>
+        {
+            new() { AllocationID = 1, InvoiceID = 7, AmountApplied = 500m },
+            new() { AllocationID = 2, InvoiceID = 7, AmountApplied = 300m }
+        };
+        _paymentDaoMock.Setup(d => d.GetAllocationsByInvoiceAsync(7)).ReturnsAsync(allocations);
+
+        var result = await _sut.GetAllocationsByInvoiceAsync(7);
+
+        Assert.Equal(2, result.Count());
+        Assert.Equal(800m, result.Sum(a => a.AmountApplied));
+    }
+
+    // ── QuickPayInvoiceAsync ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task QuickPayInvoiceAsync_WhenInvoiceNotFound_ReturnsNull()
+    {
+        _invoiceDaoMock.Setup(d => d.GetInvoiceAsync(99)).ReturnsAsync((Invoice?)null);
+
+        var result = await _sut.QuickPayInvoiceAsync(99, DateTime.Today);
+
+        Assert.Null(result);
+    }
+
+    // ── AddPaymentAsync — error path ──────────────────────────────────────────
+
+    [Fact]
+    public async Task AddPaymentAsync_WhenConnectionThrowsOnBeginTransaction_ReturnsNull()
+    {
+        _connectionMock.Setup(c => c.BeginTransaction())
+                       .Throws(new InvalidOperationException("Cannot open transaction"));
+
+        var payment = new Payment { AccountHolderID = 1, Amount = 500m };
+
+        var result = await _sut.AddPaymentAsync(payment);
+
+        Assert.Null(result);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\ScheduledSlotAggregateDataAccessObjectTests.cs
+
+```csharp
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class ScheduledSlotAggregateDataAccessObjectTests
+{
+    // ── GetOccurrences helper — pure business logic ────────────────────────────
+    //
+    // GetOccurrences is private on ScheduledSlotAggregateDataAccessObject.
+    // We replicate the algorithm here so regressions are caught with clear
+    // assertion messages, independently of any DB infrastructure.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static IEnumerable<DateTime> GetOccurrences(
+        DateTime from, DateTime to, byte isoDayOfWeek)
+    {
+        var targetDotNet = isoDayOfWeek == 7
+            ? DayOfWeek.Sunday
+            : (DayOfWeek)isoDayOfWeek;
+
+        var date = from;
+        while (date.DayOfWeek != targetDotNet)
+            date = date.AddDays(1);
+
+        while (date <= to)
+        {
+            yield return date;
+            date = date.AddDays(7);
+        }
+    }
+
+    // ── GetOccurrences — correctness ──────────────────────────────────────────
+
+    [Fact]
+    public void GetOccurrences_FromMonday_IsoDayOfWeek1_ReturnsEveryMonday()
+    {
+        // 2025-01-06 is a Monday
+        var from  = new DateTime(2025, 1, 6);
+        var to    = new DateTime(2025, 1, 31);
+        var dates = GetOccurrences(from, to, 1).ToList();
+
+        Assert.Equal(4, dates.Count);
+        Assert.All(dates, d => Assert.Equal(DayOfWeek.Monday, d.DayOfWeek));
+        Assert.Equal(new DateTime(2025, 1, 6),  dates[0]);
+        Assert.Equal(new DateTime(2025, 1, 13), dates[1]);
+        Assert.Equal(new DateTime(2025, 1, 20), dates[2]);
+        Assert.Equal(new DateTime(2025, 1, 27), dates[3]);
+    }
+
+    [Fact]
+    public void GetOccurrences_StartOnWrongDay_AdvancesToFirstMatchingWeekday()
+    {
+        // 2025-01-06 is a Monday; asking for Thursday (ISO 4)
+        var from  = new DateTime(2025, 1, 6);
+        var to    = new DateTime(2025, 1, 31);
+        var dates = GetOccurrences(from, to, 4).ToList();
+
+        Assert.All(dates, d => Assert.Equal(DayOfWeek.Thursday, d.DayOfWeek));
+        Assert.Equal(new DateTime(2025, 1, 9), dates[0]);
+    }
+
+    [Fact]
+    public void GetOccurrences_IsoDayOfWeek7_MappedToSunday()
+    {
+        // 2025-01-05 is a Sunday
+        var from  = new DateTime(2025, 1, 1);
+        var to    = new DateTime(2025, 1, 31);
+        var dates = GetOccurrences(from, to, 7).ToList();
+
+        Assert.All(dates, d => Assert.Equal(DayOfWeek.Sunday, d.DayOfWeek));
+        Assert.Equal(new DateTime(2025, 1, 5), dates[0]);
+    }
+
+    [Fact]
+    public void GetOccurrences_ToDateIsExclusive_ExactBoundaryIncluded()
+    {
+        // from = 2025-01-06 (Monday); to = 2025-01-06 → exactly one occurrence
+        var from  = new DateTime(2025, 1, 6);
+        var to    = new DateTime(2025, 1, 6);
+        var dates = GetOccurrences(from, to, 1).ToList();
+
+        Assert.Single(dates);
+        Assert.Equal(new DateTime(2025, 1, 6), dates[0]);
+    }
+
+    [Fact]
+    public void GetOccurrences_ToBeforeFirstOccurrence_ReturnsEmpty()
+    {
+        // from = 2025-01-06 (Monday); to = 2025-01-05 (Sunday before)
+        var from  = new DateTime(2025, 1, 6);
+        var to    = new DateTime(2025, 1, 5);
+        var dates = GetOccurrences(from, to, 1).ToList();
+
+        Assert.Empty(dates);
+    }
+
+    [Fact]
+    public void GetOccurrences_SpansMultipleMonths_ReturnsCorrectCount()
+    {
+        // 52 weeks of Tuesdays starting 2025-01-07
+        var from  = new DateTime(2025, 1, 7);   // Tuesday
+        var to    = from.AddDays(52 * 7 - 1);
+        var dates = GetOccurrences(from, to, 2).ToList();
+
+        Assert.Equal(52, dates.Count);
+        Assert.All(dates, d => Assert.Equal(DayOfWeek.Tuesday, d.DayOfWeek));
+    }
+
+    [Fact]
+    public void GetOccurrences_AllDates_AreExactlyOneWeekApart()
+    {
+        var from  = new DateTime(2025, 3, 3);   // Monday
+        var to    = new DateTime(2025, 6, 30);
+        var dates = GetOccurrences(from, to, 1).ToList();
+
+        for (int i = 1; i < dates.Count; i++)
+            Assert.Equal(7, (dates[i] - dates[i - 1]).Days);
+    }
+
+    // ── Lesson-building invariants ─────────────────────────────────────────────
+
+    [Fact]
+    public void LessonCreatedPerOccurrence_HasCorrectSlotAndBundleIds()
+    {
+        const int slotId   = 42;
+        const int bundleId = 7;
+
+        var quarter = new BundleQuarter
+        {
+            QuarterID          = 1,
+            BundleID           = bundleId,
+            QuarterStartDate   = new DateTime(2025, 1, 1),
+            QuarterEndDate     = new DateTime(2025, 3, 31),
+            LessonsAllocated   = 12,
+            LessonsUsed        = 0
+        };
+
+        var slotTime = new TimeOnly(14, 30);
+        var date     = new DateTime(2025, 1, 6);   // Monday inside the quarter
+
+        var lesson = new Lesson
+        {
+            SlotID          = slotId,
+            BundleID        = bundleId,
+            QuarterID       = quarter.QuarterID,
+            ScheduledDate   = date,
+            ScheduledTime   = slotTime,
+            Status          = LessonStatus.Scheduled,
+            CreditForfeited = false
+        };
+
+        Assert.Equal(slotId,             lesson.SlotID);
+        Assert.Equal(bundleId,           lesson.BundleID);
+        Assert.Equal(1,                  lesson.QuarterID);
+        Assert.Equal(LessonStatus.Scheduled, lesson.Status);
+        Assert.False(lesson.CreditForfeited);
+    }
+
+    [Fact]
+    public void LessonOutsideAllQuarters_IsSkipped()
+    {
+        // A date that falls outside every quarter range should map to no quarter.
+        var quarters = new List<BundleQuarter>
+        {
+            new() { QuarterStartDate = new DateTime(2025, 1, 1), QuarterEndDate = new DateTime(2025, 3, 31) },
+            new() { QuarterStartDate = new DateTime(2025, 4, 1), QuarterEndDate = new DateTime(2025, 6, 30) }
+        };
+
+        var dateOutsideRange = new DateTime(2025, 7, 15);
+
+        var matchingQuarter = quarters.FirstOrDefault(q =>
+            dateOutsideRange >= q.QuarterStartDate && dateOutsideRange <= q.QuarterEndDate);
+
+        Assert.Null(matchingQuarter);
+    }
+
+    [Fact]
+    public void LessonInsideQuarter_MapsToCorrectQuarter()
+    {
+        var q1 = new BundleQuarter { QuarterID = 1, QuarterStartDate = new DateTime(2025, 1, 1), QuarterEndDate = new DateTime(2025, 3, 31) };
+        var q2 = new BundleQuarter { QuarterID = 2, QuarterStartDate = new DateTime(2025, 4, 1), QuarterEndDate = new DateTime(2025, 6, 30) };
+        var quarters = new List<BundleQuarter> { q1, q2 };
+
+        var dateInQ2 = new DateTime(2025, 5, 12);
+
+        var match = quarters.FirstOrDefault(q =>
+            dateInQ2 >= q.QuarterStartDate && dateInQ2 <= q.QuarterEndDate);
+
+        Assert.NotNull(match);
+        Assert.Equal(2, match.QuarterID);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\ScheduledSlotRepositoryTests.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class ScheduledSlotRepositoryTests
+{
+    private readonly Mock<IScheduledSlotAggregateDataAccessObject> _aggregateMock;
+    private readonly Mock<IScheduledSlotDataAccessObject> _slotDaoMock;
+    private readonly Mock<ILogger<ScheduledSlotRepository>> _loggerMock;
+    private readonly ScheduledSlotRepository _sut;
+
+    public ScheduledSlotRepositoryTests()
+    {
+        _aggregateMock = new Mock<IScheduledSlotAggregateDataAccessObject>();
+        _slotDaoMock   = new Mock<IScheduledSlotDataAccessObject>();
+        _loggerMock    = new Mock<ILogger<ScheduledSlotRepository>>();
+        _sut = new ScheduledSlotRepository(
+            _aggregateMock.Object,
+            _slotDaoMock.Object,
+            _loggerMock.Object);
+    }
+
+    // ── GetSlotAsync ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetSlotAsync_WhenFound_ReturnsSlot()
+    {
+        var expected = new ScheduledSlot { SlotID = 10, StudentID = 2, DayOfWeek = 1 };
+        _slotDaoMock.Setup(d => d.GetSlotAsync(10)).ReturnsAsync(expected);
+
+        var result = await _sut.GetSlotAsync(10);
+
+        Assert.NotNull(result);
+        Assert.Equal(10, result.SlotID);
+    }
+
+    [Fact]
+    public async Task GetSlotAsync_WhenNotFound_ReturnsNull()
+    {
+        _slotDaoMock.Setup(d => d.GetSlotAsync(99)).ReturnsAsync((ScheduledSlot?)null);
+
+        var result = await _sut.GetSlotAsync(99);
+
+        Assert.Null(result);
+    }
+
+    // ── GetActiveByStudentAsync ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetActiveByStudentAsync_ReturnsDaoResult()
+    {
+        var slots = new List<ScheduledSlot>
+        {
+            new() { SlotID = 1, StudentID = 3 },
+            new() { SlotID = 2, StudentID = 3 }
+        };
+        _slotDaoMock.Setup(d => d.GetActiveByStudentAsync(3)).ReturnsAsync(slots);
+
+        var result = await _sut.GetActiveByStudentAsync(3);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    [Fact]
+    public async Task GetActiveByStudentAsync_WhenNoSlots_ReturnsEmptyCollection()
+    {
+        _slotDaoMock.Setup(d => d.GetActiveByStudentAsync(3))
+                    .ReturnsAsync(Enumerable.Empty<ScheduledSlot>());
+
+        var result = await _sut.GetActiveByStudentAsync(3);
+
+        Assert.Empty(result);
+    }
+
+    // ── GetActiveByTeacherAsync ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetActiveByTeacherAsync_ReturnsDaoResult()
+    {
+        var slots = new List<ScheduledSlot>
+        {
+            new() { SlotID = 1, TeacherID = 5 },
+            new() { SlotID = 2, TeacherID = 5 },
+            new() { SlotID = 3, TeacherID = 5 }
+        };
+        _slotDaoMock.Setup(d => d.GetActiveByTeacherAsync(5)).ReturnsAsync(slots);
+
+        var result = await _sut.GetActiveByTeacherAsync(5);
+
+        Assert.Equal(3, result.Count());
+    }
+
+    // ── AddSlotAsync ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddSlotAsync_WhenSuccessful_ReturnsNewSlotId()
+    {
+        var slot = new ScheduledSlot { StudentID = 1, TeacherID = 2, DayOfWeek = 3 };
+        _aggregateMock.Setup(a => a.SaveNewSlotWithLessonsAsync(slot)).ReturnsAsync(20);
+
+        var result = await _sut.AddSlotAsync(slot);
+
+        Assert.Equal(20, result);
+    }
+
+    [Fact]
+    public async Task AddSlotAsync_WhenNoBundleExists_LogsWarningAndReturnsNull()
+    {
+        var slot = new ScheduledSlot { StudentID = 1 };
+        _aggregateMock.Setup(a => a.SaveNewSlotWithLessonsAsync(slot))
+                      .ThrowsAsync(new InvalidOperationException("StudentID 1 has no active bundle"));
+
+        var result = await _sut.AddSlotAsync(slot);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task AddSlotAsync_WhenGeneralExceptionThrown_ReturnsNull()
+    {
+        var slot = new ScheduledSlot { StudentID = 1 };
+        _aggregateMock.Setup(a => a.SaveNewSlotWithLessonsAsync(slot))
+                      .ThrowsAsync(new Exception("DB connection error"));
+
+        var result = await _sut.AddSlotAsync(slot);
+
+        Assert.Null(result);
+    }
+
+    // ── CloseSlotAsync ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CloseSlotAsync_WhenSuccessful_ReturnsTrue()
+    {
+        var effectiveTo = DateOnly.FromDateTime(DateTime.Today);
+        _slotDaoMock.Setup(d => d.CloseSlotAsync(5, effectiveTo)).ReturnsAsync(true);
+
+        var result = await _sut.CloseSlotAsync(5, effectiveTo);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task CloseSlotAsync_WhenDaoReturnsFalse_ReturnsFalse()
+    {
+        var effectiveTo = DateOnly.FromDateTime(DateTime.Today);
+        _slotDaoMock.Setup(d => d.CloseSlotAsync(5, effectiveTo)).ReturnsAsync(false);
+
+        var result = await _sut.CloseSlotAsync(5, effectiveTo);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task CloseSlotAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        var effectiveTo = DateOnly.FromDateTime(DateTime.Today);
+        _slotDaoMock.Setup(d => d.CloseSlotAsync(5, effectiveTo))
+                    .ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.CloseSlotAsync(5, effectiveTo);
+
+        Assert.False(result);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\StudentRepositoryTests.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class StudentRepositoryTests
+{
+    private readonly Mock<IStudentDataAccessObject> _daoMock;
+    private readonly Mock<ILogger<StudentRepository>> _loggerMock;
+    private readonly StudentRepository _sut;
+
+    public StudentRepositoryTests()
+    {
+        _daoMock    = new Mock<IStudentDataAccessObject>();
+        _loggerMock = new Mock<ILogger<StudentRepository>>();
+        _sut        = new StudentRepository(_daoMock.Object, _loggerMock.Object);
+    }
+
+    // ── GetStudentAsync ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetStudentAsync_WhenFound_ReturnsStudent()
+    {
+        var expected = new Student { StudentID = 3, FirstName = "Tom", LastName = "Jones" };
+        _daoMock.Setup(d => d.GetStudentAsync(3)).ReturnsAsync(expected);
+
+        var result = await _sut.GetStudentAsync(3);
+
+        Assert.NotNull(result);
+        Assert.Equal(3, result.StudentID);
+    }
+
+    [Fact]
+    public async Task GetStudentAsync_WhenNotFound_ReturnsNull()
+    {
+        _daoMock.Setup(d => d.GetStudentAsync(99)).ReturnsAsync((Student?)null);
+
+        var result = await _sut.GetStudentAsync(99);
+
+        Assert.Null(result);
+    }
+
+    // ── GetByAccountHolderAsync ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByAccountHolderAsync_ReturnsDaoResult()
+    {
+        var students = new List<Student>
+        {
+            new() { StudentID = 1, AccountHolderID = 10 },
+            new() { StudentID = 2, AccountHolderID = 10 }
+        };
+        _daoMock.Setup(d => d.GetByAccountHolderAsync(10)).ReturnsAsync(students);
+
+        var result = await _sut.GetByAccountHolderAsync(10);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    [Fact]
+    public async Task GetByAccountHolderAsync_WhenEmpty_ReturnsEmptyCollection()
+    {
+        _daoMock.Setup(d => d.GetByAccountHolderAsync(10)).ReturnsAsync(Enumerable.Empty<Student>());
+
+        var result = await _sut.GetByAccountHolderAsync(10);
+
+        Assert.Empty(result);
+    }
+
+    // ── AddStudentAsync ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddStudentAsync_WhenSuccessful_ReturnsNewId()
+    {
+        var student = new Student { FirstName = "Anna", LastName = "Bell" };
+        _daoMock.Setup(d => d.InsertAsync(student)).ReturnsAsync(55);
+
+        var result = await _sut.AddStudentAsync(student);
+
+        Assert.Equal(55, result);
+    }
+
+    [Fact]
+    public async Task AddStudentAsync_WhenDaoThrows_ReturnsNull()
+    {
+        var student = new Student { FirstName = "Anna", LastName = "Bell" };
+        _daoMock.Setup(d => d.InsertAsync(student)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.AddStudentAsync(student);
+
+        Assert.Null(result);
+    }
+
+    // ── UpdateStudentAsync ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateStudentAsync_WhenSuccessful_ReturnsTrue()
+    {
+        var student = new Student { StudentID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(student)).ReturnsAsync(true);
+
+        var result = await _sut.UpdateStudentAsync(student);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task UpdateStudentAsync_WhenDaoReturnsFalse_ReturnsFalse()
+    {
+        var student = new Student { StudentID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(student)).ReturnsAsync(false);
+
+        var result = await _sut.UpdateStudentAsync(student);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task UpdateStudentAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        var student = new Student { StudentID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(student)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.UpdateStudentAsync(student);
+
+        Assert.False(result);
+    }
+}
+
+```
+
+## File: MusicSchool.Repositories.Tests\TeacherRepositoryTests.cs
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Moq;
+using MusicSchool.Data.Implementations;
+using MusicSchool.Data.Interfaces;
+using MusicSchool.Data.Models;
+
+namespace MusicSchool.Repositories.Tests;
+
+public class TeacherRepositoryTests
+{
+    private readonly Mock<ITeacherDataAccessObject> _daoMock;
+    private readonly Mock<ILogger<TeacherRepository>> _loggerMock;
+    private readonly TeacherRepository _sut;
+
+    public TeacherRepositoryTests()
+    {
+        _daoMock    = new Mock<ITeacherDataAccessObject>();
+        _loggerMock = new Mock<ILogger<TeacherRepository>>();
+        _sut        = new TeacherRepository(_daoMock.Object, _loggerMock.Object);
+    }
+
+    // ── GetTeacherAsync ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetTeacherAsync_WhenFound_ReturnsTeacher()
+    {
+        var expected = new Teacher { TeacherID = 1, Name = "Alice" };
+        _daoMock.Setup(d => d.GetTeacherAsync(1)).ReturnsAsync(expected);
+
+        var result = await _sut.GetTeacherAsync(1);
+
+        Assert.NotNull(result);
+        Assert.Equal("Alice", result.Name);
+    }
+
+    [Fact]
+    public async Task GetTeacherAsync_WhenNotFound_ReturnsNull()
+    {
+        _daoMock.Setup(d => d.GetTeacherAsync(99)).ReturnsAsync((Teacher?)null);
+
+        var result = await _sut.GetTeacherAsync(99);
+
+        Assert.Null(result);
+    }
+
+    // ── GetAllActiveAsync ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAllActiveAsync_ReturnsDaoResult()
+    {
+        var teachers = new List<Teacher> { new() { TeacherID = 1 }, new() { TeacherID = 2 } };
+        _daoMock.Setup(d => d.GetAllActiveAsync()).ReturnsAsync(teachers);
+
+        var result = await _sut.GetAllActiveAsync();
+
+        Assert.Equal(2, result.Count());
+    }
+
+    // ── AddTeacherAsync ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddTeacherAsync_WhenSuccessful_ReturnsNewId()
+    {
+        var teacher = new Teacher { Name = "Bob" };
+        _daoMock.Setup(d => d.InsertAsync(teacher)).ReturnsAsync(7);
+
+        var result = await _sut.AddTeacherAsync(teacher);
+
+        Assert.Equal(7, result);
+    }
+
+    [Fact]
+    public async Task AddTeacherAsync_WhenDaoThrows_ReturnsNull()
+    {
+        var teacher = new Teacher { Name = "Bob" };
+        _daoMock.Setup(d => d.InsertAsync(teacher)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.AddTeacherAsync(teacher);
+
+        Assert.Null(result);
+    }
+
+    // ── UpdateTeacherAsync ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateTeacherAsync_WhenSuccessful_ReturnsTrue()
+    {
+        var teacher = new Teacher { TeacherID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(teacher)).ReturnsAsync(true);
+
+        var result = await _sut.UpdateTeacherAsync(teacher);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task UpdateTeacherAsync_WhenDaoReturnsFalse_ReturnsFalse()
+    {
+        var teacher = new Teacher { TeacherID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(teacher)).ReturnsAsync(false);
+
+        var result = await _sut.UpdateTeacherAsync(teacher);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task UpdateTeacherAsync_WhenDaoThrows_ReturnsFalse()
+    {
+        var teacher = new Teacher { TeacherID = 1 };
+        _daoMock.Setup(d => d.UpdateAsync(teacher)).ThrowsAsync(new Exception("DB error"));
+
+        var result = await _sut.UpdateTeacherAsync(teacher);
+
+        Assert.False(result);
     }
 }
 

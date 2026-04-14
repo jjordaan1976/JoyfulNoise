@@ -1,14 +1,31 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
+using MusicSchool.Auth;
 using MusicSchool.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<MusicSchool.Web.App>("#app");
 
-builder.Services.AddScoped(sp => new HttpClient
+// Auth
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AuthenticationStateProvider, GoogleAuthStateProvider>();
+builder.Services.AddAuthorizationCore(options =>
 {
-    BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:64100/")
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
 });
+
+// HTTP client with auth handler — all services receive this instance
+builder.Services.AddTransient<AuthorizingMessageHandler>();
+builder.Services.AddHttpClient("API", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:64100/"))
+    .AddHttpMessageHandler<AuthorizingMessageHandler>();
+
+builder.Services.AddScoped(sp =>
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("API"));
 
 builder.Services.AddMudServices();
 
@@ -22,9 +39,8 @@ builder.Services.AddScoped<LessonService>();
 builder.Services.AddScoped<ExtraLessonService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<MagicLinkService>();
 
-// Catch any unhandled exception and write it to the browser console instead of
-// crashing the JS debug adapter with exit code 0xffffffff.
 AppDomain.CurrentDomain.UnhandledException += (_, e) =>
     Console.Error.WriteLine($"[UnhandledException] {e.ExceptionObject}");
 
@@ -34,4 +50,10 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
     e.SetObserved();
 };
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+// Restore session from sessionStorage before first render
+var authService = host.Services.GetRequiredService<AuthService>();
+await authService.InitializeAsync();
+
+await host.RunAsync();

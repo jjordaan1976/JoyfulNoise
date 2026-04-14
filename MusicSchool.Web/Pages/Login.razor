@@ -1,0 +1,57 @@
+@page "/login"
+@layout LoginLayout
+@attribute [AllowAnonymous]
+
+@using Microsoft.AspNetCore.Authorization
+@using MusicSchool.Auth
+
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IConfiguration Config
+
+@implements IAsyncDisposable
+
+<MudPaper Elevation="4" Class="pa-8" Style="width:360px; text-align:center;">
+    <MudIcon Icon="@Icons.Material.Filled.MusicNote" Style="font-size:3rem; color:#F3D395;" Class="mb-2" />
+    <MudText Typo="Typo.h5" Style="font-weight:600; color:#3A3A3A;" Class="mb-1">Music School</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">Management Portal</MudText>
+
+    <MudText Typo="Typo.body2" Class="mb-4">Sign in with your Google account to continue.</MudText>
+
+    <div id="google-signin-button" style="display:flex; justify-content:center;"></div>
+</MudPaper>
+
+@code {
+    private DotNetObjectReference<AuthService>? _dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
+        AuthService.AuthStateChanged += OnAuthStateChanged;
+        _dotNetRef = DotNetObjectReference.Create(AuthService);
+        var clientId = Config["GoogleClientId"];
+        await JS.InvokeVoidAsync("googleAuth.initialize", clientId, _dotNetRef);
+        await JS.InvokeVoidAsync("googleAuth.renderButton", "google-signin-button");
+    }
+
+    private void OnAuthStateChanged()
+    {
+        if (AuthService.IsAuthenticated)
+            Navigation.NavigateTo("/", replace: true);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        AuthService.AuthStateChanged -= OnAuthStateChanged;
+        _dotNetRef?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

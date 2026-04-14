@@ -1,4 +1,4 @@
-@page "/dashboard/{StudentId:int}"
+@page "/dashboard"
 
 @namespace MusicSchool.StudentPortal.Pages
 
@@ -215,8 +215,6 @@ else
 }
 
 @code {
-    [Parameter] public int StudentId { get; set; }
-
     private bool _loading = true;
     private Student? _student;
 
@@ -233,8 +231,8 @@ else
     {
         _loading = true;
 
-        // 1. Load student info
-        _student = await Api.GetStudentAsync(StudentId);
+        // 1. Load student info (StudentID comes from the validated magic link on the API side)
+        _student = await Api.GetStudentAsync();
         if (_student is null)
         {
             _loading = false;
@@ -242,7 +240,7 @@ else
         }
 
         // 2. Load all bundles for this student so we can look up duration
-        var bundles = await Api.GetBundlesByStudentAsync(StudentId);
+        var bundles = await Api.GetBundlesAsync();
         foreach (var b in bundles)
             _lessonDurationMap[b.BundleID] = b.DurationMinutes;
 

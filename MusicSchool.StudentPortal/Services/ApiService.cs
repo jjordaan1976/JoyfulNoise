@@ -3,7 +3,6 @@ using MusicSchool.Models;
 using MusicSchool.Models.TransferModels;
 using System.Net.Http.Json;
 
-
 namespace MusicSchool.StudentPortal.Services;
 
 public class ApiService
@@ -12,8 +11,7 @@ public class ApiService
 
     public ApiService(HttpClient http) => _http = http;
 
-    // ── Generic helper ───────────────────────────────────────────
-    public async Task<T?> GetAsync<T>(string url)
+    private async Task<T?> GetAsync<T>(string url)
     {
         try
         {
@@ -27,35 +25,24 @@ public class ApiService
         }
     }
 
-    // ── Student ──────────────────────────────────────────────────
-    public Task<Student?> GetStudentAsync(int studentId)
-        => GetAsync<Student>($"Student/GetStudent?id={studentId}");
+    public Task<Student?> GetStudentAsync()
+        => GetAsync<Student>("StudentPortal/GetStudent");
 
-    // ── Lessons ──────────────────────────────────────────────────
-    /// <summary>
-    /// Returns all lessons for a bundle (base Lesson model).
-    /// We fetch bundles first, then pull lessons per bundle.
-    /// </summary>
+    public async Task<List<LessonBundleDetail>> GetBundlesAsync()
+    {
+        var result = await GetAsync<IEnumerable<LessonBundleDetail>>("StudentPortal/GetBundles");
+        return result?.ToList() ?? [];
+    }
+
+    public async Task<List<ScheduledSlot>> GetActiveSlotsAsync()
+    {
+        var result = await GetAsync<IEnumerable<ScheduledSlot>>("StudentPortal/GetSlots");
+        return result?.ToList() ?? [];
+    }
+
     public async Task<List<Lesson>> GetLessonsByBundleAsync(int bundleId)
     {
-        var result = await GetAsync<IEnumerable<Lesson>>(
-            $"Lesson/GetByBundle?bundleId={bundleId}");
-        return result?.ToList() ?? [];
-    }
-
-    // ── Bundles ──────────────────────────────────────────────────
-    public async Task<List<LessonBundleDetail>> GetBundlesByStudentAsync(int studentId)
-    {
-        var result = await GetAsync<IEnumerable<LessonBundleDetail>>(
-            $"LessonBundle/GetByStudent?studentId={studentId}");
-        return result?.ToList() ?? [];
-    }
-
-    // ── Scheduled slots ──────────────────────────────────────────
-    public async Task<List<ScheduledSlot>> GetActiveSlotsByStudentAsync(int studentId)
-    {
-        var result = await GetAsync<IEnumerable<ScheduledSlot>>(
-            $"ScheduledSlot/GetActiveByStudent?studentId={studentId}");
+        var result = await GetAsync<IEnumerable<Lesson>>($"StudentPortal/GetLessonsByBundle?bundleId={bundleId}");
         return result?.ToList() ?? [];
     }
 }

@@ -1,5 +1,9 @@
 using Dapper;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
+using Microsoft.IdentityModel.Tokens;
+using MusicSchool.Api.Auth;
 using MusicSchool.Data.Implementations;
 using MusicSchool.Data.Interfaces;
 using Scalar.AspNetCore;
@@ -51,7 +55,27 @@ namespace MusicSchool.Api
             services.AddScoped<ILessonBundleAggregateDataAccessObject, LessonBundleAggregateDataAccessObject>();
             services.AddScoped<IScheduledSlotAggregateDataAccessObject, ScheduledSlotAggregateDataAccessObject>();
             services.AddScoped<IPaymentDataAccessObject, PaymentDataAccessObject>();
-            services.AddScoped<IPaymentRepository, PaymentRepository>();           
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<IMagicLinkDataAccessObject, MagicLinkDataAccessObject>();
+            services.AddScoped<IMagicLinkRepository, MagicLinkRepository>();
+
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.Authority = "https://accounts.google.com";
+                    options.Audience = Configuration["GoogleClientId"];
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = "https://accounts.google.com",
+                        ValidateAudience = true,
+                        ValidAudience = Configuration["GoogleClientId"],
+                        ValidateLifetime = true,
+                        NameClaimType = "email"
+                    };
+                })
+                .AddScheme<AuthenticationSchemeOptions, MagicLinkAuthenticationHandler>(
+                    MagicLinkAuthenticationHandler.SchemeName, _ => { });
 
             services.AddControllers();
             services.AddOpenApi();
@@ -76,6 +100,7 @@ namespace MusicSchool.Api
             }
 
             app.UseHttpsRedirection();
+            app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
         }

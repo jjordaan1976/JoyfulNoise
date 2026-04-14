@@ -4,8 +4,11 @@
 @inject AccountHolderService AccountHolderSvc
 @inject StudentService StudentSvc
 @inject InvoiceService InvoiceSvc
+@inject MagicLinkService MagicLinkSvc
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject IConfiguration Config
 
 <PageTitle>Account Holder — Music School</PageTitle>
 
@@ -26,6 +29,12 @@ else
             <MudText Typo="Typo.body2" Color="Color.Secondary">@_accountHolder.Email</MudText>
         </div>
         <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.Link"
+                       OnClick="CopyPortalLinkAsync"
+                       Disabled="_generatingLink">
+                @(_generatingLink ? "Generating…" : "Copy Portal Link")
+            </MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit"
                        OnClick="OpenEditDialog">Edit</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd"
@@ -178,6 +187,7 @@ else
     [Parameter] public int AccountHolderID { get; set; }
 
     private bool _loading = true;
+    private bool _generatingLink;
     private bool _studentsLoading;
     private AccountHolder? _accountHolder;
     private List<Student> _students = [];
@@ -295,5 +305,23 @@ else
             _students = await StudentSvc.GetByAccountHolderAsync(AccountHolderID);
         }
         else Snackbar.Add("Failed to update student.", Severity.Error);
+    }
+
+    private async Task CopyPortalLinkAsync()
+    {
+        _generatingLink = true;
+        var token = await MagicLinkSvc.CreateForAccountHolderAsync(AccountHolderID);
+        _generatingLink = false;
+
+        if (token is null)
+        {
+            Snackbar.Add("Failed to generate portal link.", Severity.Error);
+            return;
+        }
+
+        var baseUrl = Config["AccountHolderPortalUrl"]?.TrimEnd('/') ?? "https://localhost:57349";
+        var link = $"{baseUrl}/?token={token}";
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", link);
+        Snackbar.Add("Portal link copied to clipboard!", Severity.Success);
     }
 }

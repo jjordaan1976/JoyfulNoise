@@ -7,8 +7,11 @@
 @inject ScheduledSlotService SlotSvc
 @inject LessonTypeService LessonTypeSvc
 @inject TeacherService TeacherSvc
+@inject MagicLinkService MagicLinkSvc
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject IConfiguration Config
 
 <PageTitle>Student — Music School</PageTitle>
 
@@ -31,6 +34,12 @@ else
             </MudText>
         </div>
         <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.Link"
+                       OnClick="CopyPortalLinkAsync"
+                       Disabled="_generatingLink">
+                @(_generatingLink ? "Generating…" : "Copy Portal Link")
+            </MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Inventory"
                        OnClick="OpenAddBundleDialog">New Bundle</MudButton>
@@ -268,6 +277,7 @@ else
     [Parameter] public int StudentID { get; set; }
 
     private bool _loading = true;
+    private bool _generatingLink;
     private Student? _student;
     private AccountHolder? _accountHolder;
 
@@ -493,5 +503,23 @@ else
             _slots = await SlotSvc.GetActiveByStudentAsync(StudentID);
         }
         else Snackbar.Add("Failed to close slot.", Severity.Error);
+    }
+
+    private async Task CopyPortalLinkAsync()
+    {
+        _generatingLink = true;
+        var token = await MagicLinkSvc.CreateForStudentAsync(StudentID);
+        _generatingLink = false;
+
+        if (token is null)
+        {
+            Snackbar.Add("Failed to generate portal link.", Severity.Error);
+            return;
+        }
+
+        var baseUrl = Config["StudentPortalUrl"]?.TrimEnd('/') ?? "https://localhost:51173";
+        var link = $"{baseUrl}/?token={token}";
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", link);
+        Snackbar.Add("Portal link copied to clipboard!", Severity.Success);
     }
 }

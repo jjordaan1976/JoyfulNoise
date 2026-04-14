@@ -22,5 +22,28 @@
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        window.googleAuth = {
+            initialize: function (clientId, dotNetHelper) {
+                google.accounts.id.initialize({
+                    client_id: clientId,
+                    callback: function (response) {
+                        dotNetHelper.invokeMethodAsync('HandleCredential', response.credential);
+                    }
+                });
+            },
+            renderButton: function (elementId) {
+                google.accounts.id.renderButton(
+                    document.getElementById(elementId),
+                    { theme: 'outline', size: 'large', width: 280 }
+                );
+                google.accounts.id.prompt();
+            },
+            signOut: function () {
+                google.accounts.id.disableAutoSelect();
+            }
+        };
+    </script>
 </body>
 </html>

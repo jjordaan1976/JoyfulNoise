@@ -1,4 +1,4 @@
-@page "/statement/{AccountHolderId:int}"
+@page "/statement"
 @namespace MusicSchool.AccountHolderPortal.Pages
 
 @using MusicSchool.Data.Models
@@ -207,8 +207,6 @@ else
 }
 
 @code {
-    [Parameter] public int AccountHolderId { get; set; }
-
     private bool _loading = true;
     private AccountHolder? _accountHolder;
     private List<Invoice> _allInvoices = [];
@@ -240,9 +238,10 @@ else
     {
         _loading = true;
 
-        var accountHolderTask = Api.GetAccountHolderAsync(AccountHolderId);
-        var allInvoicesTask = Api.GetAllInvoicesAsync(AccountHolderId);
-        var paymentsTask = Api.GetPaymentsByAccountHolderAsync(AccountHolderId);
+        // AccountHolderID comes from the validated magic link on the API side
+        var accountHolderTask = Api.GetAccountHolderAsync();
+        var allInvoicesTask = Api.GetAllInvoicesAsync();
+        var paymentsTask = Api.GetPaymentsByAccountHolderAsync();
 
         await Task.WhenAll(accountHolderTask, allInvoicesTask, paymentsTask);
 

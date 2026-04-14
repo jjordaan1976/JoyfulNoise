@@ -2,16 +2,22 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 using MusicSchool.StudentPortal;
+using MusicSchool.StudentPortal.Auth;
 using MusicSchool.StudentPortal.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddScoped(sp => new HttpClient
-{
-    BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:64100/")
-});
+builder.Services.AddSingleton<TokenService>();
+builder.Services.AddTransient<MagicLinkHandler>();
+
+builder.Services.AddHttpClient("API", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:64100/"))
+    .AddHttpMessageHandler<MagicLinkHandler>();
+
+builder.Services.AddScoped(sp =>
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("API"));
 
 builder.Services.AddScoped<ApiService>();
 builder.Services.AddMudServices();

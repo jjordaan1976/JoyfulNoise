@@ -1,0 +1,24 @@
+@inherits LayoutComponentBase
+@namespace MusicSchool.Web.Shared
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div style="display:flex; justify-content:center; align-items:center; min-height:100vh; background:#F0F2F5;">
+    @Body
+</div>
+
+@code {
+    private MudTheme _theme = new MudTheme
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#F3D395",
+            PrimaryContrastText = "#3A3A3A",
+            Background = "#F0F2F5",
+            Surface = "#FFFFFF",
+        }
+    };
+}

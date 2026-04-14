@@ -1,55 +1,64 @@
 @page "/"
 @namespace MusicSchool.AccountHolderPortal.Pages
 
+@using MusicSchool.AccountHolderPortal.Auth
+@using Microsoft.AspNetCore.WebUtilities
+
+@inject TokenService TokenSvc
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
 <PageTitle>Music School — Account Portal</PageTitle>
 
-<MudPaper Class="pa-6 mt-6" Elevation="1" Style="max-width:480px; margin:auto; border-top:4px solid #F3D395;">
-
-    <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-5">
-        <MudIcon Icon="@Icons.Material.Filled.MusicNote"
-                 Style="font-size:3rem; color:#F3D395;" />
-        <MudText Typo="Typo.h5" Style="font-weight:700; color:#3A3A3A;">
-            Account Portal
-        </MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
-            Enter your Account Holder ID to view your statement and invoices.
-        </MudText>
-    </MudStack>
-
-    <MudTextField @bind-Value="_accountHolderId"
-                  Label="Account Holder ID"
-                  Variant="Variant.Outlined"
-                  InputType="InputType.Number"
-                  Adornment="Adornment.Start"
-                  AdornmentIcon="@Icons.Material.Filled.AccountCircle"
-                  Class="mb-4"
-                  OnKeyDown="@OnKeyDown" />
-
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Primary"
-               FullWidth="true"
-               Size="Size.Large"
-               StartIcon="@Icons.Material.Filled.Receipt"
-               OnClick="ViewStatement"
-               Disabled="@(_accountHolderId <= 0)">
-        View My Statement
-    </MudButton>
-
-</MudPaper>
+@if (_invalid)
+{
+    <MudPaper Class="pa-6 mt-6" Elevation="1"
+              Style="max-width:480px; margin:auto; border-top:4px solid #B71C1C;">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.LinkOff"
+                     Style="font-size:3rem; color:#B71C1C;" />
+            <MudText Typo="Typo.h6" Style="font-weight:700; color:#3A3A3A;">
+                Invalid or Missing Link
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                This link is not valid. Please ask your teacher to send you a new portal link.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+}
 
 @code {
-    [Inject] private NavigationManager Nav { get; set; } = default!;
+    private bool _invalid;
 
-    private int _accountHolderId;
-
-    private void ViewStatement()
+    protected override async Task OnInitializedAsync()
     {
-        if (_accountHolderId > 0)
-            Nav.NavigateTo($"/statement/{_accountHolderId}");
-    }
+        // 1. Already have a token in memory
+        if (!string.IsNullOrEmpty(TokenSvc.Token))
+        {
+            Nav.NavigateTo("/statement", replace: true);
+            return;
+        }
 
-    private void OnKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter") ViewStatement();
+        // 2. Restore from sessionStorage (page refresh)
+        var stored = await JS.InvokeAsync<string?>("sessionStorage.getItem", "magic_token");
+        if (!string.IsNullOrEmpty(stored))
+        {
+            TokenSvc.SetToken(stored);
+            Nav.NavigateTo("/statement", replace: true);
+            return;
+        }
+
+        // 3. Extract ?token= from URL
+        var query = QueryHelpers.ParseQuery(new Uri(Nav.Uri).Query);
+        if (query.TryGetValue("token", out var tokenValues) && !string.IsNullOrEmpty(tokenValues))
+        {
+            var token = tokenValues.ToString();
+            await JS.InvokeVoidAsync("sessionStorage.setItem", "magic_token", token);
+            TokenSvc.SetToken(token);
+            Nav.NavigateTo("/statement", replace: true);
+            return;
+        }
+
+        _invalid = true;
     }
 }

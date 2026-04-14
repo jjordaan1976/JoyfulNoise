@@ -10,7 +10,7 @@ public class ApiService
 
     public ApiService(HttpClient http) => _http = http;
 
-    public async Task<T?> GetAsync<T>(string url)
+    private async Task<T?> GetAsync<T>(string url)
     {
         try
         {
@@ -24,29 +24,24 @@ public class ApiService
         }
     }
 
-    // ── Convenience helpers ──────────────────────────────────────
+    public Task<AccountHolder?> GetAccountHolderAsync()
+        => GetAsync<AccountHolder>("AccountHolderPortal/GetAccountHolder");
 
-    public Task<AccountHolder?> GetAccountHolderAsync(int id)
-        => GetAsync<AccountHolder>($"AccountHolder/GetAccountHolder?id={id}");
-
-    public async Task<List<Invoice>> GetAllInvoicesAsync(int accountHolderId)
+    public async Task<List<Invoice>> GetAllInvoicesAsync()
     {
-        var result = await GetAsync<IEnumerable<Invoice>>(
-            $"Invoice/GetByAccountHolder?accountHolderId={accountHolderId}");
+        var result = await GetAsync<IEnumerable<Invoice>>("AccountHolderPortal/GetAllInvoices");
         return result?.ToList() ?? [];
     }
 
-    public async Task<List<Invoice>> GetOutstandingInvoicesAsync(int accountHolderId)
+    public async Task<List<Invoice>> GetOutstandingInvoicesAsync()
     {
-        var result = await GetAsync<IEnumerable<Invoice>>(
-            $"Invoice/GetOutstandingByAccountHolder?accountHolderId={accountHolderId}");
+        var result = await GetAsync<IEnumerable<Invoice>>("AccountHolderPortal/GetOutstandingInvoices");
         return result?.ToList() ?? [];
     }
 
-    public async Task<List<Payment>> GetPaymentsByAccountHolderAsync(int accountHolderId)
-{
-    var result = await GetAsync<IEnumerable<Payment>>(
-        $"Payment/GetByAccountHolder?accountHolderId={accountHolderId}");
-    return result?.ToList() ?? [];
-}
+    public async Task<List<Payment>> GetPaymentsByAccountHolderAsync()
+    {
+        var result = await GetAsync<IEnumerable<Payment>>("AccountHolderPortal/GetPayments");
+        return result?.ToList() ?? [];
+    }
 }

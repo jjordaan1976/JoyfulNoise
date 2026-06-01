@@ -45,7 +45,7 @@ namespace MusicSchool.Controllers
         public async Task<ResponseBase<int?>> AddBundle([FromBody] AddBundleRequest req)
         {
             ResponseBase<int?> response = new ResponseBase<int?>() { ReturnCode = -1 };
-            var result = await _lessonBundleRepository.AddBundleAsync(req.Bundle, req.Quarters);
+            var result = await _lessonBundleRepository.AddBundleAsync(req.Bundle, req.Quarters, req.SelectedBundleLessons);
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";

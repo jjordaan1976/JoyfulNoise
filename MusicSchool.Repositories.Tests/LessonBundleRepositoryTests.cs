@@ -90,9 +90,9 @@ public class LessonBundleRepositoryTests
     {
         var bundle   = new LessonBundle { StudentID = 3 };
         var quarters = new List<BundleQuarter> { new() { QuarterNumber = 1 } };
-        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters)).ReturnsAsync(7);
+        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters, 32)).ReturnsAsync(7);
 
-        var result = await _sut.AddBundleAsync(bundle, quarters);
+        var result = await _sut.AddBundleAsync(bundle, quarters, 32);
 
         Assert.Equal(7, result);
     }
@@ -102,10 +102,10 @@ public class LessonBundleRepositoryTests
     {
         var bundle   = new LessonBundle { StudentID = 3 };
         var quarters = new List<BundleQuarter>();
-        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters))
+        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters, 32))
                       .ThrowsAsync(new InvalidOperationException("Student not found"));
 
-        var result = await _sut.AddBundleAsync(bundle, quarters);
+        var result = await _sut.AddBundleAsync(bundle, quarters, 32);
 
         Assert.Null(result);
     }
@@ -115,10 +115,10 @@ public class LessonBundleRepositoryTests
     {
         var bundle   = new LessonBundle { StudentID = 3 };
         var quarters = new List<BundleQuarter>();
-        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters))
+        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters, 32))
                       .ThrowsAsync(new Exception("DB connection error"));
 
-        var result = await _sut.AddBundleAsync(bundle, quarters);
+        var result = await _sut.AddBundleAsync(bundle, quarters, 32);
 
         Assert.Null(result);
     }

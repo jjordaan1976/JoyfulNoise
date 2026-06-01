@@ -39,11 +39,11 @@ namespace MusicSchool.Data.Implementations
         /// The application layer is responsible for building the quarter list
         /// before calling this method.
         /// </summary>
-        public async Task<int?> AddBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters)
+        public async Task<int?> AddBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters, int selectedBundleLessons)
         {
             try
             {
-                return await _aggregateService.SaveNewBundleAsync(bundle, quarters);
+                return await _aggregateService.SaveNewBundleAsync(bundle, quarters, selectedBundleLessons);
             }
             catch (Exception ex)
             {

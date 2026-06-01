@@ -143,4 +143,72 @@ public class LessonBundleAggregateDataAccessObjectTests
         Assert.Equal(new DateTime(2025, 6,  1), firstDue);
         Assert.Equal(new DateTime(2026, 5,  1), lastDue);
     }
+
+    // ── CalculateProrata — prorata business rules ──────────────────────────────
+
+    [Theory]
+    [InlineData(32, 1,  32, 12)]   // January start  → full bundle, 12 invoices
+    [InlineData(32, 7,  16,  6)]   // July start      → 16 prorated lessons, 6 invoices
+    [InlineData(32, 12,  3,  1)]   // December start  → 3 prorated lessons, 1 invoice
+    [InlineData(48, 7,  24,  6)]   // July start, 48 bundle → 24 lessons, 6 invoices
+    [InlineData(48, 4,  36,  9)]   // April start, 48 bundle → 36 lessons, 9 invoices
+    public void CalculateProrata_ReturnsCorrectLessonsAndMonthCount(
+        int selectedBundle, int startMonth, int expectedLessons, int expectedMonths)
+    {
+        var startDate = new DateTime(2025, startMonth, 1);
+
+        var (proratedLessons, monthCount) =
+            LessonBundleAggregateDataAccessObject.CalculateProrata(selectedBundle, startDate);
+
+        Assert.Equal(expectedLessons, proratedLessons);
+        Assert.Equal(expectedMonths,  monthCount);
+    }
+
+    [Fact]
+    public void CalculateProrata_JulyStart32Bundle_ProducesCorrectInstalmentAmount()
+    {
+        // 32 lessons × R200 full year = R6400. Monthly rate = R533.33.
+        // Prorated to July: 16 lessons × R200 / 6 months = R533.33 per instalment.
+        var startDate     = new DateTime(2025, 7, 1);
+        decimal price     = 200m;
+        int selectedBundle = 32;
+
+        var (proratedLessons, monthCount) =
+            LessonBundleAggregateDataAccessObject.CalculateProrata(selectedBundle, startDate);
+
+        var instalmentAmount = Math.Round(proratedLessons * price / monthCount, 2);
+
+        Assert.Equal(16,      proratedLessons);
+        Assert.Equal(6,       monthCount);
+        Assert.Equal(533.33m, instalmentAmount);
+    }
+
+    [Fact]
+    public void CalculateProrata_JulyStart_Generates6Instalments_DueJulToDecember()
+    {
+        var startDate = new DateTime(2025, 7, 1);
+        var (proratedLessons, monthCount) =
+            LessonBundleAggregateDataAccessObject.CalculateProrata(32, startDate);
+
+        var firstDue  = new DateTime(startDate.Year, startDate.Month, 1);
+        var instalments = new List<Invoice>();
+
+        for (byte i = 1; i <= monthCount; i++)
+        {
+            instalments.Add(new Invoice
+            {
+                BundleID          = 1,
+                AccountHolderID   = 99,
+                InstallmentNumber = i,
+                Amount            = Math.Round(proratedLessons * 200m / monthCount, 2),
+                DueDate           = firstDue.AddMonths(i - 1),
+                Status            = InvoiceStatus.Pending,
+            });
+        }
+
+        Assert.Equal(6, instalments.Count);
+        Assert.Equal(new DateTime(2025, 7,  1), instalments[0].DueDate);
+        Assert.Equal(new DateTime(2025, 12, 1), instalments[5].DueDate);
+        Assert.All(instalments, inv => Assert.Equal(533.33m, inv.Amount));
+    }
 }

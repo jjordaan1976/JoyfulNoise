@@ -1,0 +1,54 @@
+using Microsoft.Extensions.Logging;
+using Tutor.Data.Interfaces;
+using Tutor.Data.Models;
+
+namespace Tutor.Data.Implementations
+{
+    public class TeacherRepository : ITeacherRepository
+    {
+        private readonly ITeacherDataAccessObject _teacherService;
+        private readonly ILogger<TeacherRepository> _logger;
+
+        public TeacherRepository(ITeacherDataAccessObject teacherService, ILogger<TeacherRepository> logger)
+        {
+            _teacherService = teacherService;
+            _logger = logger;
+        }
+
+        public async Task<Teacher?> GetTeacherAsync(int id)
+        {
+            return await _teacherService.GetTeacherAsync(id);
+        }
+
+        public async Task<IEnumerable<Teacher>> GetAllActiveAsync()
+        {
+            return await _teacherService.GetAllActiveAsync();
+        }
+
+        public async Task<int?> AddTeacherAsync(Teacher teacher)
+        {
+            try
+            {
+                return await _teacherService.InsertAsync(teacher);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to insert Teacher {Name}", teacher.Name);
+                return null;
+            }
+        }
+
+        public async Task<bool> UpdateTeacherAsync(Teacher teacher)
+        {
+            try
+            {
+                return await _teacherService.UpdateAsync(teacher);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update TeacherID {TeacherID}", teacher.TeacherID);
+                return false;
+            }
+        }
+    }
+}

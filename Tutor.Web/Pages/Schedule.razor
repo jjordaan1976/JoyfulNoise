@@ -1,0 +1,530 @@
+@page "/schedule"
+@using Tutor.Data.Models
+@inject TeacherService TeacherSvc
+@inject AccountHolderService AccountHolderSvc
+@inject StudentService StudentSvc
+@inject LessonService LessonSvc
+@inject ExtraLessonService ExtraLessonSvc
+@inject LessonTypeService LessonTypeSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Schedule — Music School</PageTitle>
+
+<div class="page-header d-flex justify-space-between align-center">
+    <div>
+        <MudText Typo="Typo.h5">Lesson Schedule</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">View and manage daily lessons</MudText>
+    </div>
+</div>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid AlignItems="AlignItems.Center">
+        <MudItem xs="12" sm="5" md="4">
+            <MudSelect @bind-Value="_selectedTeacherId" Label="Teacher"
+                       @bind-Value:after="LoadSchedule" Clearable="true">
+                @foreach (var t in _teachers)
+                {
+                    <MudSelectItem Value="t.TeacherID">@t.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="5" md="4">
+            <MudDatePicker @bind-Date="_selectedDate" Label="Date"
+                           @bind-Date:after="LoadSchedule" DateFormat="yyyy/MM/dd" />
+        </MudItem>
+        <MudItem xs="12" sm="2" md="4">
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="PreviousDay" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                           OnClick="GoToToday">Today</MudButton>
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="NextDay" />
+            </MudStack>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+
+@if (_selectedTeacherId > 0 && _selectedDate.HasValue)
+{
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1">
+                <MudTable Items="_lessons" Hover="true" Dense="false" Loading="_loading" Elevation="0">
+                    <ToolBarContent>
+                        <MudText Typo="Typo.h6">Bundle Lessons (@_lessons.Count)</MudText>
+                    </ToolBarContent>
+                    <HeaderContent>
+                        <MudTh>Time</MudTh>
+                        <MudTh>Student</MudTh>
+                        <MudTh>Duration</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
+                        <MudTd>@context.StudentFullName</MudTd>
+                        <MudTd>@context.DurationMinutes min</MudTd>
+                        <MudTd>
+                            <StatusChip Status="@context.Status" />
+                            @if (!string.IsNullOrWhiteSpace(context.Notes))
+                            {
+                                <MudTooltip Text="@context.Notes" Placement="Placement.Right">
+                                    <MudIcon Icon="@Icons.Material.Filled.StickyNote2"
+                                             Size="Size.Small" Color="Color.Secondary"
+                                             Class="ml-1" Style="vertical-align:middle;" />
+                                </MudTooltip>
+                            }
+                        </MudTd>
+                        <MudTd>
+                            @if (context.Status == LessonStatus.Scheduled)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
+                                               Color="Color.Success" Title="Mark Completed"
+                                               OnClick="@(() => OpenCompleteLessonDialog(context))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small"
+                                               Color="Color.Warning" Title="Teacher Cancelled"
+                                               OnClick="@(() => QuickUpdateLesson(context, LessonStatus.CancelledTeacher))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.PersonOff" Size="Size.Small"
+                                               Color="Color.Error" Title="Student Cancelled / Forfeit"
+                                               OnClick="@(() => OpenForfeitDialog(context))" />
+                            }
+                            @if (context.Status == LessonStatus.CancelledTeacher
+                              || context.Status == LessonStatus.CancelledStudent)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.EventRepeat" Size="Size.Small"
+                                               Color="Color.Primary" Title="Reschedule"
+                                               OnClick="@(() => OpenRescheduleDialog(context))" />
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Class="pa-3">No bundle lessons for this day.</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1">
+                <MudTable Items="_extraLessons" Hover="true" Dense="false" Loading="_loading" Elevation="0">
+                    <ToolBarContent>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%">
+                            <MudText Typo="Typo.h6">Extra Lessons (@_extraLessons.Count)</MudText>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       OnClick="OpenAddExtraLessonDialog">Add</MudButton>
+                        </MudStack>
+                    </ToolBarContent>
+                    <HeaderContent>
+                        <MudTh>Time</MudTh>
+                        <MudTh>Student</MudTh>
+                        <MudTh>Price</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.ScheduledTime.ToString("HH:mm")</MudTd>
+                        <MudTd>@context.StudentFullName</MudTd>
+                        <MudTd>R @context.PriceCharged.ToString("N2")</MudTd>
+                        <MudTd>
+                            <StatusChip Status="@context.Status" />
+                            @if (!string.IsNullOrWhiteSpace(context.Notes))
+                            {
+                                <MudTooltip Text="@context.Notes" Placement="Placement.Right">
+                                    <MudIcon Icon="@Icons.Material.Filled.StickyNote2"
+                                             Size="Size.Small" Color="Color.Secondary"
+                                             Class="ml-1" Style="vertical-align:middle;" />
+                                </MudTooltip>
+                            }
+                        </MudTd>
+                        <MudTd>
+                            @if (context.Status == ExtraLessonStatus.Scheduled)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
+                                               Color="Color.Success" Title="Complete"
+                                               OnClick="@(() => OpenCompleteExtraDialog(context))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small"
+                                               Color="Color.Error" Title="Cancel"
+                                               OnClick="@(() => QuickUpdateExtra(context, ExtraLessonStatus.Cancelled))" />
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Class="pa-3">No extra lessons for this day.</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+else
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+        Select a teacher and date to view the schedule.
+    </MudAlert>
+}
+
+<!-- Reschedule Dialog -->
+<MudDialog @ref="_rescheduleDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Reschedule Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-1">
+            Originally: <strong>@_lessonToReschedule?.ScheduledDate.ToString("yyyy MMM dd")</strong>
+            at <strong>@_lessonToReschedule?.ScheduledTime.ToString("HH:mm")</strong>
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+            Cancelled by @(_lessonToReschedule?.CancelledBy ?? "—")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudDatePicker @bind-Date="_rescheduleDate" Label="New Date" Required="true" Class="mb-3" DateFormat="yyyy/MM/dd" />
+        <MudTimePicker @bind-Time="_rescheduleTime" Label="New Time" Required="true" AmPm="false" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _rescheduleDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ConfirmReschedule">
+            Reschedule
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Complete Lesson Dialog -->
+<MudDialog @ref="_completeLessonDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Complete Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-2">
+            <strong>@_lessonToComplete?.StudentFullName</strong>
+            — @_lessonToComplete?.ScheduledDate.ToString("yyyy MMM dd")
+            @_lessonToComplete?.ScheduledTime.ToString("HH:mm")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudTextField @bind-Value="_completeLessonNote"
+                      Label="Lesson note (optional)"
+                      Lines="3"
+                      Placeholder="e.g. Worked on scales, great progress with sight-reading…" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _completeLessonDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmCompleteLesson">
+            Mark Completed
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Complete Extra Lesson Dialog -->
+<MudDialog @ref="_completeExtraDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Complete Extra Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-2">
+            <strong>@_extraToComplete?.StudentFullName</strong>
+            — @_extraToComplete?.ScheduledDate.ToString("yyyy MMM dd")
+            @_extraToComplete?.ScheduledTime.ToString("HH:mm")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudTextField @bind-Value="_completeExtraNote"
+                      Label="Lesson note (optional)"
+                      Lines="3"
+                      Placeholder="e.g. Worked on scales, great progress with sight-reading…" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _completeExtraDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmCompleteExtra">
+            Mark Completed
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Forfeit Dialog -->
+<MudDialog @ref="_forfeitDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Student Cancellation</MudText></TitleContent>
+    <DialogContent>
+        <MudText Class="mb-2">
+            <strong>@_lessonToAction?.StudentFullName</strong>
+            — @_lessonToAction?.ScheduledDate.ToString("yyyy MMM dd")
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudText Typo="Typo.body2" Class="mb-3">
+            Should the teacher forfeit this lesson credit, or keep it for rescheduling?
+        </MudText>
+        <MudTextField @bind-Value="_actionReason" Label="Reason (optional)" Lines="2" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _forfeitDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Color="Color.Warning" Variant="Variant.Outlined"
+                   OnClick="@(() => ConfirmForfeit(false))">Keep Credit</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error"
+                   OnClick="@(() => ConfirmForfeit(true))">Forfeit Credit</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Add Extra Lesson Dialog -->
+<MudDialog @ref="_addExtraDialog" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">Add Extra Lesson</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_extraForm">
+            <MudSelect @bind-Value="_newExtra.StudentID" Label="Student" Required="true"
+                       RequiredError="Student is required" Class="mb-3">
+                @foreach (var s in _scheduleStudents)
+                {
+                    <MudSelectItem Value="s.StudentID">@s.FullName</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect @bind-Value="_newExtra.LessonTypeID" Label="Lesson Type" Required="true"
+                       @bind-Value:after="SetExtraBasePrice" Class="mb-3">
+                @foreach (var lt in _lessonTypes)
+                {
+                    <MudSelectItem Value="lt.LessonTypeID">@lt.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTimePicker @bind-Time="_extraTime" Label="Time" Required="true"
+                           AmPm="false" Class="mb-3" />
+            <MudNumericField @bind-Value="_newExtra.PriceCharged" Label="Price Charged"
+                             Required="true" Min="0m" Format="N2"
+                             Adornment="Adornment.Start" AdornmentText="R" Class="mb-3"
+                             HelperText="Auto-filled from base price; teacher may override" />
+            <MudTextField @bind-Value="_newExtra.Notes" Label="Notes" Lines="2" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _addExtraDialog!.CloseAsync(DialogResult.Cancel()))">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveExtraLesson">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading;
+    private List<Teacher> _teachers = [];
+    private List<LessonDetail> _lessons = [];
+    private List<ExtraLessonDetail> _extraLessons = [];
+    private List<LessonType> _lessonTypes = [];
+    private List<Student> _scheduleStudents = [];
+    private int _selectedTeacherId;
+    private DateTime? _selectedDate = DateTime.Today;
+
+    // Reschedule dialog
+    private MudDialog? _rescheduleDialog;
+    private LessonDetail? _lessonToReschedule;
+    private DateTime? _rescheduleDate;
+    private TimeSpan? _rescheduleTime;
+
+    // Complete lesson dialog
+    private MudDialog? _completeLessonDialog;
+    private LessonDetail? _lessonToComplete;
+    private string _completeLessonNote = string.Empty;
+
+    // Complete extra lesson dialog
+    private MudDialog? _completeExtraDialog;
+    private ExtraLessonDetail? _extraToComplete;
+    private string _completeExtraNote = string.Empty;
+
+    // Forfeit / cancellation dialog
+    private MudDialog? _forfeitDialog;
+    private LessonDetail? _lessonToAction;
+    private string _actionReason = string.Empty;
+
+    // Add extra lesson dialog
+    private MudDialog? _addExtraDialog;
+    private MudForm? _extraForm;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private ExtraLesson _newExtra = new();
+    private TimeSpan? _extraTime;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _teachers = await TeacherSvc.GetAllActiveAsync();
+        _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
+
+        if (_teachers.Any())
+        {
+            _selectedTeacherId = _teachers.First().TeacherID;
+            await LoadSchedule();
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
+    }
+
+    private async Task LoadSchedule()
+    {
+        if (_selectedTeacherId <= 0 || _selectedDate is null) return;
+        _loading = true;
+        var date = _selectedDate.Value.Date;
+        _lessons = await LessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
+        _extraLessons = await ExtraLessonSvc.GetByTeacherAndDateAsync(_selectedTeacherId, date);
+
+        var accountHolders = await AccountHolderSvc.GetByTeacherAsync(_selectedTeacherId);
+        _scheduleStudents = [];
+        foreach (var ah in accountHolders)
+        {
+            var students = await StudentSvc.GetByAccountHolderAsync(ah.AccountHolderID);
+            _scheduleStudents.AddRange(students.Where(s => s.IsActive));
+        }
+
+        _loading = false;
+    }
+
+    private void GoToToday() { _selectedDate = DateTime.Today; _ = LoadSchedule(); }
+    private void PreviousDay() { _selectedDate = (_selectedDate ?? DateTime.Today).AddDays(-1); _ = LoadSchedule(); }
+    private void NextDay() { _selectedDate = (_selectedDate ?? DateTime.Today).AddDays(1); _ = LoadSchedule(); }
+
+    // ── Reschedule ────────────────────────────────────────────────
+
+    private async Task OpenRescheduleDialog(LessonDetail lesson)
+    {
+        _lessonToReschedule = lesson;
+        _rescheduleDate = lesson.ScheduledDate.Date;
+        _rescheduleTime = lesson.ScheduledTime.ToTimeSpan();
+        await _rescheduleDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmReschedule()
+    {
+        if (_lessonToReschedule is null || _rescheduleDate is null || _rescheduleTime is null)
+            return;
+
+        var newDate = _rescheduleDate.Value.Date;
+        var newTime = TimeOnly.FromTimeSpan(_rescheduleTime.Value);
+
+        var result = await LessonSvc.RescheduleLessonAsync(_lessonToReschedule.LessonID, newDate, newTime);
+        if (result)
+        {
+            Snackbar.Add("Lesson rescheduled.", Severity.Success);
+            await _rescheduleDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed to reschedule lesson.", Severity.Error);
+    }
+
+    // ── Complete bundle lesson ────────────────────────────────────
+
+    private async Task OpenCompleteLessonDialog(LessonDetail lesson)
+    {
+        _lessonToComplete = lesson;
+        _completeLessonNote = string.Empty;
+        await _completeLessonDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmCompleteLesson()
+    {
+        if (_lessonToComplete is null) return;
+        var result = await LessonSvc.UpdateLessonStatusAsync(
+            _lessonToComplete.LessonID,
+            LessonStatus.Completed,
+            note: string.IsNullOrWhiteSpace(_completeLessonNote) ? null : _completeLessonNote);
+        if (result)
+        {
+            Snackbar.Add("Lesson marked as completed.", Severity.Success);
+            await _completeLessonDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed to update lesson.", Severity.Error);
+    }
+
+    // ── Complete extra lesson ─────────────────────────────────────
+
+    private async Task OpenCompleteExtraDialog(ExtraLessonDetail extra)
+    {
+        _extraToComplete = extra;
+        _completeExtraNote = string.Empty;
+        await _completeExtraDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmCompleteExtra()
+    {
+        if (_extraToComplete is null) return;
+        var result = await ExtraLessonSvc.UpdateExtraLessonStatusAsync(
+            _extraToComplete.ExtraLessonID,
+            ExtraLessonStatus.Completed,
+            note: string.IsNullOrWhiteSpace(_completeExtraNote) ? null : _completeExtraNote);
+        if (result)
+        {
+            Snackbar.Add("Extra lesson marked as completed.", Severity.Success);
+            await _completeExtraDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed to update extra lesson.", Severity.Error);
+    }
+
+    // ── Other status updates ──────────────────────────────────────
+
+    private async Task QuickUpdateLesson(LessonDetail lesson, string status)
+    {
+        var result = await LessonSvc.UpdateLessonStatusAsync(lesson.LessonID, status);
+        if (result) { Snackbar.Add("Lesson updated.", Severity.Success); await LoadSchedule(); }
+        else Snackbar.Add("Failed to update lesson.", Severity.Error);
+    }
+
+    private async Task QuickUpdateExtra(ExtraLessonDetail extra, string status)
+    {
+        var result = await ExtraLessonSvc.UpdateExtraLessonStatusAsync(extra.ExtraLessonID, status);
+        if (result) { Snackbar.Add("Extra lesson updated.", Severity.Success); await LoadSchedule(); }
+        else Snackbar.Add("Failed to update extra lesson.", Severity.Error);
+    }
+
+    private async Task OpenForfeitDialog(LessonDetail lesson)
+    {
+        _lessonToAction = lesson;
+        _actionReason = string.Empty;
+        await _forfeitDialog!.ShowAsync();
+    }
+
+    private async Task ConfirmForfeit(bool forfeit)
+    {
+        if (_lessonToAction is null) return;
+        var status = forfeit ? LessonStatus.Forfeited : LessonStatus.CancelledStudent;
+        var result = await LessonSvc.UpdateLessonStatusAsync(_lessonToAction.LessonID, status);
+        if (result)
+        {
+            Snackbar.Add(forfeit ? "Credit forfeited." : "Credit kept — please reschedule.", Severity.Success);
+            await _forfeitDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed.", Severity.Error);
+    }
+
+    // ── Add extra lesson ──────────────────────────────────────────
+
+    private async Task OpenAddExtraLessonDialog()
+    {
+        _newExtra = new ExtraLesson
+        {
+            TeacherID = _selectedTeacherId,
+            ScheduledDate = _selectedDate ?? DateTime.Today,
+            Status = ExtraLessonStatus.Scheduled
+        };
+        _extraTime = new TimeSpan(9, 0, 0);
+        await _addExtraDialog!.ShowAsync();
+    }
+
+    private void SetExtraBasePrice()
+    {
+        var lt = _lessonTypes.FirstOrDefault(l => l.LessonTypeID == _newExtra.LessonTypeID);
+        if (lt is not null) _newExtra.PriceCharged = lt.BasePricePerLesson;
+    }
+
+    private async Task SaveExtraLesson()
+    {
+        await _extraForm!.Validate();
+        if (!_extraForm.IsValid) return;
+        if (_extraTime is null) { Snackbar.Add("Time is required.", Severity.Warning); return; }
+        _newExtra.ScheduledTime = TimeOnly.FromTimeSpan(_extraTime.Value);
+
+        var result = await ExtraLessonSvc.AddExtraLessonAsync(_newExtra);
+        if (result.HasValue)
+        {
+            Snackbar.Add("Extra lesson added.", Severity.Success);
+            await _addExtraDialog!.CloseAsync(DialogResult.Ok(true));
+            await LoadSchedule();
+        }
+        else Snackbar.Add("Failed to add extra lesson.", Severity.Error);
+    }
+}

@@ -359,3 +359,142 @@ When building or reviewing any UI component, consult `UI_SKILL.md` first.
 * **Throw on failure** — silent returns mask errors; exceptions preserve context.
 * **Prefer C# over SQL** for any computation or conditional logic.
 * **Test coverage is mandatory** at repository and aggregate DAO layers.
+
+
+---
+
+## Web UI Architecture & Testing Standards (Blazor / Razor Components)
+
+### Code-Behind Requirement
+
+* All non-trivial Razor pages/components must use a separate code-behind class (`.razor.cs`).
+* Razor markup files are responsible only for presentation and binding.
+* Business rules, decision logic, state transitions, validation, orchestration, and UI behaviour must reside in the code-behind class.
+* The code-behind class becomes the primary unit under test.
+* Avoid placing logic directly inside `@code { }` blocks except for trivial UI-only concerns.
+
+Example:
+
+```
+CustomerPage.razor
+CustomerPage.razor.cs
+```
+
+### Page Model Responsibility
+
+The code-behind class is the behavioural model for the page.
+
+Responsibilities include:
+
+* Loading data from APIs.
+* Managing page state.
+* Executing commands.
+* Validation and decision logic.
+* Coordinating user interactions.
+* Determining UI visibility and enabled/disabled states.
+
+The Razor file should bind to properties and invoke methods exposed by the code-behind model.
+
+### Web Test Project
+
+Every solution must contain a dedicated web testing project:
+
+```
+*.Web.Tests
+```
+
+Frameworks:
+
+* xUnit
+* Moq
+* ASP.NET Core Test Host (`WebApplicationFactory`)
+* Optional: bUnit for component rendering tests where required
+
+Purpose:
+
+* Execute real HTTP requests against actual API endpoints.
+* Validate end-to-end request processing through Controllers, Repositories, and application services.
+* Replace DAO implementations with mocks so that tests remain deterministic and database-independent.
+
+### API Integration Test Rules
+
+Tests must:
+
+* Host the actual API application in memory.
+* Call real HTTP endpoints using `HttpClient`.
+* Exercise real controller routing.
+* Exercise real repository logic.
+* Exercise real validation paths.
+* Mock all DAO dependencies.
+
+The objective is to verify application behaviour while avoiding database dependencies.
+
+Example execution path:
+
+```
+Test
+  -> HttpClient
+      -> Controller
+          -> Repository
+              -> Mock DAO
+```
+
+### Decision Coverage Requirement
+
+Every decision point that influences page behaviour must have test coverage.
+
+Examples:
+
+* Success path.
+* Failure path.
+* Validation failures.
+* Conditional visibility.
+* Conditional enable/disable behaviour.
+* Empty data scenarios.
+* Permission-based behaviour.
+* Status-based behaviour.
+* Error handling paths.
+
+If a page contains five independent behavioural decisions, there must be tests covering all possible outcomes of those decisions.
+
+### Minimum Coverage Standard
+
+For each page model:
+
+* Every public method must be tested.
+* Every conditional branch must be tested.
+* Every error path must be tested.
+* Every state transition must be tested.
+
+Coverage should focus on behavioural correctness rather than line-count metrics.
+
+### Mocking Rules
+
+Web tests must mock:
+
+* Single-table DAOs
+* Aggregate DAOs
+* External API DAOs
+
+Web tests must NOT mock:
+
+* Controllers
+* Repositories
+* Application services under test
+* Authentication abstractions (unless explicitly testing authentication scenarios)
+
+The goal is to validate as much real application behaviour as possible while isolating infrastructure concerns.
+
+### Architectural Principle
+
+The UI layer must be designed as testable software, not as markup containing embedded logic.
+
+A developer should be able to:
+
+1. Instantiate a page model.
+2. Provide mocked dependencies.
+3. Execute behaviour.
+4. Assert state changes.
+5. Verify all decision paths.
+
+without requiring a browser, database, or external service.

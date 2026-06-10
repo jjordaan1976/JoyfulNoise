@@ -1,0 +1,152 @@
+using Dapper;
+using Tutor.Data.Interfaces;
+using Tutor.Data.Models;
+using System.Data;
+
+namespace Tutor.Data.Implementations
+{
+    public class InvoiceDataAccessObject : IInvoiceDataAccessObject
+    {
+        private readonly IDbConnection _connection;
+
+        public InvoiceDataAccessObject(IDbConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public async Task<Invoice?> GetInvoiceAsync(int id)
+        {
+            const string sql = @"
+                SELECT InvoiceID,
+                       BundleID,
+                       ExtraLessonID,
+                       AccountHolderID,
+                       InstallmentNumber,
+                       Amount,
+                       DueDate,
+                       PaidDate,
+                       Status,
+                       Notes,
+                       CreatedAt
+                FROM Invoice
+                WHERE InvoiceID = @InvoiceID;";
+
+            return await _connection.QuerySingleOrDefaultAsync<Invoice>(sql, new { InvoiceID = id });
+        }
+
+        public async Task<IEnumerable<Invoice>> GetByBundleAsync(int bundleId)
+        {
+            const string sql = @"
+                SELECT InvoiceID,
+                       BundleID,
+                       ExtraLessonID,
+                       AccountHolderID,
+                       InstallmentNumber,
+                       Amount,
+                       DueDate,
+                       PaidDate,
+                       Status,
+                       Notes,
+                       CreatedAt
+                FROM Invoice
+                WHERE BundleID = @BundleID
+                ORDER BY InstallmentNumber;";
+
+            return await _connection.QueryAsync<Invoice>(sql, new { BundleID = bundleId });
+        }
+
+        public async Task<IEnumerable<Invoice>> GetByAccountHolderAsync(int accountHolderId)
+        {
+            const string sql = @"
+                SELECT InvoiceID,
+                       BundleID,
+                       ExtraLessonID,
+                       AccountHolderID,
+                       InstallmentNumber,
+                       Amount,
+                       DueDate,
+                       PaidDate,
+                       Status,
+                       Notes,
+                       CreatedAt
+                FROM Invoice
+                WHERE AccountHolderID = @AccountHolderID
+                ORDER BY DueDate;";
+
+            return await _connection.QueryAsync<Invoice>(sql, new { AccountHolderID = accountHolderId });
+        }
+
+        public async Task<IEnumerable<Invoice>> GetOutstandingByAccountHolderAsync(int accountHolderId)
+        {
+            const string sql = @"
+                SELECT InvoiceID,
+                       BundleID,
+                       ExtraLessonID,
+                       AccountHolderID,
+                       InstallmentNumber,
+                       Amount,
+                       DueDate,
+                       PaidDate,
+                       Status,
+                       Notes,
+                       CreatedAt
+                FROM Invoice
+                WHERE AccountHolderID = @AccountHolderID
+                  AND Status IN ('Pending', 'Overdue')
+                ORDER BY DueDate;";
+
+            return await _connection.QueryAsync<Invoice>(sql, new { AccountHolderID = accountHolderId });
+        }
+
+        public async Task InsertBatchAsync(IEnumerable<Invoice> invoices, IDbTransaction tx, IDbConnection connection)
+        {
+            const string sql = @"
+                INSERT INTO Invoice
+                    (BundleID, ExtraLessonID, AccountHolderID, InstallmentNumber,
+                     Amount, DueDate, Status, Notes)
+                VALUES
+                    (@BundleID, @ExtraLessonID, @AccountHolderID, @InstallmentNumber,
+                     @Amount, @DueDate, @Status, @Notes);";
+
+            await connection.ExecuteAsync(
+                new CommandDefinition(sql, invoices, tx));
+        }
+
+        /// <summary>
+        /// Inserts a single Invoice row within an existing transaction.
+        /// Returns the new InvoiceID.
+        /// </summary>
+        public async Task<int> InsertAsync(Invoice invoice, IDbTransaction tx, IDbConnection connection)
+        {
+            const string sql = @"
+                INSERT INTO Invoice
+                    (BundleID, ExtraLessonID, AccountHolderID, InstallmentNumber,
+                     Amount, DueDate, Status, Notes)
+                VALUES
+                    (@BundleID, @ExtraLessonID, @AccountHolderID, @InstallmentNumber,
+                     @Amount, @DueDate, @Status, @Notes);
+
+                SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+            return await connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql, invoice, tx));
+        }
+
+        public async Task<bool> UpdateStatusAsync(int invoiceId, string status, DateOnly? paidDate)
+        {
+            const string sql = @"
+                UPDATE Invoice
+                SET Status   = @Status,
+                    PaidDate = @PaidDate
+                WHERE InvoiceID = @InvoiceID;";
+
+            DateTime? paidDateTime = paidDate.HasValue
+                ? paidDate.Value.ToDateTime(TimeOnly.MinValue)
+                : null;
+
+            var rowsAffected = await _connection.ExecuteAsync(sql,
+                new { InvoiceID = invoiceId, Status = status, PaidDate = paidDateTime });
+            return rowsAffected > 0;
+        }
+    }
+}

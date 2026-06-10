@@ -1,58 +1,14 @@
 @page "/"
 @namespace Tutor.AccountHolderPortal.Pages
 
-@using Microsoft.AspNetCore.WebUtilities
-
 @inject NavigationManager Nav
-@inject IJSRuntime JS
 
-<PageTitle>Tutor — Account Portal</PageTitle>
-
-@if (_invalid)
-{
-    <MudPaper Class="pa-6 mt-6" Elevation="1"
-              Style="max-width:480px; margin:auto; border-top:4px solid #B71C1C;">
-        <MudStack AlignItems="AlignItems.Center" Spacing="2">
-            <MudIcon Icon="@Icons.Material.Filled.LinkOff"
-                     Style="font-size:3rem; color:#B71C1C;" />
-            <MudText Typo="Typo.h6" Style="font-weight:700; color:#3A3A3A;">
-                Invalid or Missing Link
-            </MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
-                This link is not valid. Please ask your teacher to send you a new portal link.
-            </MudText>
-        </MudStack>
-    </MudPaper>
-}
+<PageTitle>Tutor — Account Holder Portal</PageTitle>
 
 @code {
-    private bool _invalid;
-
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        // 1. Already have a token in memory
-        if (!string.IsNullOrEmpty(TokenSvc.Token))
-        {
-            Nav.NavigateTo("/statement", replace: true);
-            return;
-        }
-
-        // 2. Restore from sessionStorage (page refresh)
-        var stored = await JS.InvokeAsync<string?>("sessionStorage.getItem", "magic_token");
-        if (!string.IsNullOrEmpty(stored))
-        { Nav.NavigateTo("/statement", replace: true);
-            return;
-        }
-
-        // 3. Extract ?token= from URL
-        var query = QueryHelpers.ParseQuery(new Uri(Nav.Uri).Query);
-        if (query.TryGetValue("token", out var tokenValues) && !string.IsNullOrEmpty(tokenValues))
-        {
-            var token = tokenValues.ToString();
-            await JS.InvokeVoidAsync("sessionStorage.setItem", "magic_token", token); Nav.NavigateTo("/statement", replace: true);
-            return;
-        }
-
-        _invalid = true;
+        Nav.NavigateTo("/statement", replace: true);
+        return Task.CompletedTask;
     }
 }

@@ -3,27 +3,19 @@
 @attribute [AllowAnonymous]
 
 @using Microsoft.AspNetCore.Authorization
-@using Tutor.Auth
-
-@inject AuthService AuthService
-@inject NavigationManager Navigation
 
 <MudPaper Elevation="4" Class="pa-8" Style="width:360px; text-align:center;">
     <MudIcon Icon="@Icons.Material.Filled.School" Style="font-size:3rem; color:#1976D2;" Class="mb-2" />
     <MudText Typo="Typo.h5" Style="font-weight:600; color:#3A3A3A;" Class="mb-1">Tutor</MudText>
     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">Management Portal</MudText>
 
-    <MudText Typo="Typo.body2" Class="mb-4">Authentication is handled via magic links sent to your email.</MudText>
-    <MudText Typo="Typo.caption" Color="Color.Secondary">Check your email for your authentication link.</MudText>
+    <MudText Typo="Typo.body2" Class="mb-4">Authentication is currently disabled.</MudText>
+    <MudText Typo="Typo.caption" Color="Color.Secondary">Please contact your administrator to set up authentication.</MudText>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-6" FullWidth="true" Href="/">
+        Return to Dashboard
+    </MudButton>
 </MudPaper>
 
 @code {
-    protected override Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && AuthService.IsAuthenticated)
-        {
-            Navigation.NavigateTo("/", replace: true);
-        }
-        return Task.CompletedTask;
-    }
 }

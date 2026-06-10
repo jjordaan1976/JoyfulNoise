@@ -1,7 +1,5 @@
 using Dapper;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.Data.SqlClient;
-using Tutor.Api.Auth;
 using Tutor.Data.Implementations;
 using Tutor.Data.Interfaces;
 using Scalar.AspNetCore;
@@ -54,15 +52,9 @@ namespace Tutor.Api
             services.AddScoped<IScheduledSlotAggregateDataAccessObject, ScheduledSlotAggregateDataAccessObject>();
             services.AddScoped<IPaymentDataAccessObject, PaymentDataAccessObject>();
             services.AddScoped<IPaymentRepository, PaymentRepository>();
-            services.AddScoped<IMagicLinkDataAccessObject, MagicLinkDataAccessObject>();
-            services.AddScoped<IMagicLinkRepository, MagicLinkRepository>();
 
             // Email service
             services.AddHttpClient<IEmailService, BrevoEmailService>();
-
-            services.AddAuthentication(MagicLinkAuthenticationHandler.SchemeName)
-                .AddScheme<AuthenticationSchemeOptions, MagicLinkAuthenticationHandler>(
-                    MagicLinkAuthenticationHandler.SchemeName, _ => { });
 
             services.AddControllers();
             services.AddOpenApi();
@@ -87,8 +79,6 @@ namespace Tutor.Api
             }
 
             app.UseHttpsRedirection();
-            app.UseAuthentication();
-            app.UseAuthorization();
             app.MapControllers();
         }
     }

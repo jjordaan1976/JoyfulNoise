@@ -1,10 +1,8 @@
 @page "/"
 @namespace Tutor.StudentPortal.Pages
 
-@using Tutor.StudentPortal.Auth
 @using Microsoft.AspNetCore.WebUtilities
 
-@inject TokenService TokenSvc
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
@@ -42,9 +40,7 @@
         // 2. Try to restore from sessionStorage (page refresh)
         var stored = await JS.InvokeAsync<string?>("sessionStorage.getItem", "magic_token");
         if (!string.IsNullOrEmpty(stored))
-        {
-            TokenSvc.SetToken(stored);
-            Nav.NavigateTo("/dashboard", replace: true);
+        { Nav.NavigateTo("/dashboard", replace: true);
             return;
         }
 
@@ -53,9 +49,7 @@
         if (query.TryGetValue("token", out var tokenValues) && !string.IsNullOrEmpty(tokenValues))
         {
             var token = tokenValues.ToString();
-            await JS.InvokeVoidAsync("sessionStorage.setItem", "magic_token", token);
-            TokenSvc.SetToken(token);
-            Nav.NavigateTo("/dashboard", replace: true);
+            await JS.InvokeVoidAsync("sessionStorage.setItem", "magic_token", token); Nav.NavigateTo("/dashboard", replace: true);
             return;
         }
 

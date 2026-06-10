@@ -1,18 +1,13 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Tutor.Api.Auth;
 using Tutor.Data.Interfaces;
 using Tutor.Models.TransferModels;
 
 namespace Tutor.Api
 {
     [Route("AccountHolderPortal")]
-    [Authorize(AuthenticationSchemes = MagicLinkAuthenticationHandler.SchemeName)]
     [ApiController]
     public class AccountHolderPortalController : ControllerBase
     {
-        private int AccountHolderId =>
-            int.Parse(User.FindFirst(MagicLinkAuthenticationHandler.ClaimEntityId)!.Value);
 
         private readonly IAccountHolderRepository _accountHolderRepository;
         private readonly IInvoiceRepository _invoiceRepository;
@@ -29,10 +24,10 @@ namespace Tutor.Api
         }
 
         [HttpGet("GetAccountHolder")]
-        public async Task<ResponseBase<Tutor.Data.Models.AccountHolder>> GetAccountHolder()
+        public async Task<ResponseBase<Tutor.Data.Models.AccountHolder>> GetAccountHolder([FromQuery] int accountHolderId)
         {
             var response = new ResponseBase<Tutor.Data.Models.AccountHolder> { ReturnCode = -1 };
-            var result = await _accountHolderRepository.GetAccountHolderAsync(AccountHolderId);
+            var result = await _accountHolderRepository.GetAccountHolderAsync(accountHolderId);
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";
@@ -40,10 +35,10 @@ namespace Tutor.Api
         }
 
         [HttpGet("GetAllInvoices")]
-        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>>> GetAllInvoices()
+        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>>> GetAllInvoices([FromQuery] int accountHolderId)
         {
             var response = new ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>> { ReturnCode = -1 };
-            var result = await _invoiceRepository.GetByAccountHolderAsync(AccountHolderId);
+            var result = await _invoiceRepository.GetByAccountHolderAsync(accountHolderId);
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";
@@ -51,10 +46,10 @@ namespace Tutor.Api
         }
 
         [HttpGet("GetOutstandingInvoices")]
-        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>>> GetOutstandingInvoices()
+        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>>> GetOutstandingInvoices([FromQuery] int accountHolderId)
         {
             var response = new ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>> { ReturnCode = -1 };
-            var result = await _invoiceRepository.GetOutstandingByAccountHolderAsync(AccountHolderId);
+            var result = await _invoiceRepository.GetOutstandingByAccountHolderAsync(accountHolderId);
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";
@@ -62,10 +57,10 @@ namespace Tutor.Api
         }
 
         [HttpGet("GetPayments")]
-        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.Payment>>> GetPayments()
+        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.Payment>>> GetPayments([FromQuery] int accountHolderId)
         {
             var response = new ResponseBase<IEnumerable<Tutor.Data.Models.Payment>> { ReturnCode = -1 };
-            var result = await _paymentRepository.GetByAccountHolderAsync(AccountHolderId);
+            var result = await _paymentRepository.GetByAccountHolderAsync(accountHolderId);
             response.Data = result;
             response.ReturnCode = 0;
             response.ReturnMessage = "Success";

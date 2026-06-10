@@ -3,19 +3,14 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using Tutor.StudentPortal;
-using Tutor.StudentPortal.Auth;
 using Tutor.StudentPortal.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddSingleton<TokenService>();
-builder.Services.AddTransient<MagicLinkHandler>();
-
 builder.Services.AddHttpClient("API", client =>
-    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:64100/"))
-    .AddHttpMessageHandler<MagicLinkHandler>();
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:64100/"));
 
 builder.Services.AddScoped(sp =>
     sp.GetRequiredService<IHttpClientFactory>().CreateClient("API"));

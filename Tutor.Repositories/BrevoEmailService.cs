@@ -20,41 +20,6 @@ namespace Tutor.Data.Implementations
             _logger = logger;
         }
 
-        public async Task<bool> SendMagicLinkAsync(string recipientEmail, string recipientName, string magicLinkUrl)
-        {
-            var subject = "Your Secure Authentication Link";
-            var htmlContent = $@"
-                <html>
-                <head>
-                    <style>
-                        body {{ font-family: Arial, sans-serif; background-color: #f5f5f5; }}
-                        .container {{ background-color: white; max-width: 600px; margin: 20px auto; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-                        .header {{ color: #1976D2; font-size: 24px; margin-bottom: 20px; }}
-                        .content {{ color: #333; line-height: 1.6; margin-bottom: 20px; }}
-                        .button {{ display: inline-block; background-color: #1976D2; color: white; padding: 12px 30px; border-radius: 4px; text-decoration: none; margin-top: 20px; }}
-                        .footer {{ color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; }}
-                    </style>
-                </head>
-                <body>
-                    <div class='container'>
-                        <div class='header'>Secure Authentication Link</div>
-                        <div class='content'>
-                            <p>Hello {recipientName},</p>
-                            <p>You've requested a secure authentication link to access your account. Click the button below to log in:</p>
-                            <a href='{magicLinkUrl}' class='button'>Authenticate</a>
-                            <p>This link will expire in 24 hours.</p>
-                            <p>If you didn't request this link, please ignore this email.</p>
-                        </div>
-                        <div class='footer'>
-                            <p>© 2024 Tutor Management System. All rights reserved.</p>
-                        </div>
-                    </div>
-                </body>
-                </html>";
-
-            return await SendAsync(recipientEmail, recipientName, subject, htmlContent);
-        }
-
         public async Task<bool> SendAsync(string toEmail, string toName, string subject, string htmlContent)
         {
             try

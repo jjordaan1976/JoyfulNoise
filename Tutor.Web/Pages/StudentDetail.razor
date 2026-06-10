@@ -7,7 +7,6 @@
 @inject ScheduledSlotService SlotSvc
 @inject LessonTypeService LessonTypeSvc
 @inject TeacherService TeacherSvc
-@inject MagicLinkService MagicLinkSvc
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -508,8 +507,7 @@ else
     private async Task CopyPortalLinkAsync()
     {
         _generatingLink = true;
-        var token = await MagicLinkSvc.CreateForStudentAsync(StudentID);
-        _generatingLink = false;
+        var token = _generatingLink = false;
 
         if (token is null)
         {

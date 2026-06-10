@@ -4,7 +4,6 @@
 @inject AccountHolderService AccountHolderSvc
 @inject StudentService StudentSvc
 @inject InvoiceService InvoiceSvc
-@inject MagicLinkService MagicLinkSvc
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -310,8 +309,7 @@ else
     private async Task CopyPortalLinkAsync()
     {
         _generatingLink = true;
-        var token = await MagicLinkSvc.CreateForAccountHolderAsync(AccountHolderID);
-        _generatingLink = false;
+        var token = _generatingLink = false;
 
         if (token is null)
         {

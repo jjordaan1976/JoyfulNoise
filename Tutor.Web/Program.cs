@@ -1,28 +1,13 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
-using Tutor.Auth;
 using Tutor.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<Tutor.Web.App>("#app");
 
-// Auth - Magic Link based authentication
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<AuthenticationStateProvider, MagicLinkAuthStateProvider>();
-builder.Services.AddAuthorizationCore(options =>
-{
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
-});
-
-// HTTP client with auth handler — all services receive this instance
-builder.Services.AddTransient<AuthorizingMessageHandler>();
+// HTTP client for API calls
 builder.Services.AddHttpClient("API", client =>
-    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:64100/"))
-    .AddHttpMessageHandler<AuthorizingMessageHandler>();
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:64100/"));
 
 builder.Services.AddScoped(sp =>
     sp.GetRequiredService<IHttpClientFactory>().CreateClient("API"));
@@ -39,7 +24,6 @@ builder.Services.AddScoped<LessonService>();
 builder.Services.AddScoped<ExtraLessonService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<PaymentService>();
-builder.Services.AddScoped<MagicLinkService>();
 
 AppDomain.CurrentDomain.UnhandledException += (_, e) =>
     Console.Error.WriteLine($"[UnhandledException] {e.ExceptionObject}");
@@ -51,9 +35,5 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
 };
 
 var host = builder.Build();
-
-// Restore session from sessionStorage before first render
-var authService = host.Services.GetRequiredService<AuthService>();
-await authService.InitializeAsync();
 
 await host.RunAsync();

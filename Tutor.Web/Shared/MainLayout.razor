@@ -2,8 +2,6 @@
 
 @namespace Tutor.Web.Shared
 
-@using Tutor.Auth
-@inject AuthService AuthService
 @inject NavigationManager Navigation
 
 <MudLayout>
@@ -13,9 +11,7 @@
         <MudIcon Icon="@Icons.Material.Filled.MusicNote" Class="mr-2" />
         <MudText Typo="Typo.h6" Style="font-weight:600;">Tutor</MudText>
         <MudSpacer />
-        <MudText Typo="Typo.body2" Class="mr-3">@AuthService.CurrentUser.Identity?.Name</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
-                       Title="Sign out" OnClick="SignOutAsync" />
+        <MudText Typo="Typo.body2" Class="mr-3">Guest User</MudText>
     </MudAppBar>
 
     <MudDrawer @bind-Open="_drawerOpen" Elevation="2" Variant="DrawerVariant.Responsive"
@@ -57,10 +53,4 @@
     private bool _drawerOpen = true;
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
-
-    private async Task SignOutAsync()
-    {
-        await AuthService.SignOutAsync();
-        Navigation.NavigateTo("/login", replace: true);
-    }
 }

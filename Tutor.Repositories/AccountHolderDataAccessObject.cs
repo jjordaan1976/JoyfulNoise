@@ -32,6 +32,24 @@ namespace Tutor.Data.Implementations
             return await _connection.QuerySingleOrDefaultAsync<AccountHolder>(sql, new { AccountHolderID = id });
         }
 
+        public async Task<AccountHolder?> GetByEmailAsync(string email)
+        {
+            const string sql = @"
+                SELECT AccountHolderID,
+                       TeacherID,
+                       FirstName,
+                       LastName,
+                       Email,
+                       Phone,
+                       BillingAddress,
+                       IsActive,
+                       CreatedAt
+                FROM AccountHolder
+                WHERE Email = @Email;";
+
+            return await _connection.QuerySingleOrDefaultAsync<AccountHolder>(sql, new { Email = email });
+        }
+
         public async Task<IEnumerable<AccountHolder>> GetByTeacherAsync(int teacherId)
         {
             const string sql = @"

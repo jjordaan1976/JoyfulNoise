@@ -20,6 +20,11 @@ namespace Tutor.Data.Implementations
             return await _studentService.GetStudentAsync(id);
         }
 
+        public async Task<Student?> GetByEmailAsync(string email)
+        {
+            return await _studentService.GetByEmailAsync(email);
+        }
+
         public async Task<IEnumerable<Student>> GetByAccountHolderAsync(int accountHolderId)
         {
             return await _studentService.GetByAccountHolderAsync(accountHolderId);

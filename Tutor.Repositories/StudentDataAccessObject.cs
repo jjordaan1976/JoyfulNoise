@@ -21,6 +21,7 @@ namespace Tutor.Data.Implementations
                        AccountHolderID,
                        FirstName,
                        LastName,
+                       Email,
                        DateOfBirth,
                        IsAccountHolder,
                        IsActive,
@@ -31,6 +32,24 @@ namespace Tutor.Data.Implementations
             return await _connection.QuerySingleOrDefaultAsync<Student>(sql, new { StudentID = id });
         }
 
+        public async Task<Student?> GetByEmailAsync(string email)
+        {
+            const string sql = @"
+                SELECT StudentID,
+                       AccountHolderID,
+                       FirstName,
+                       LastName,
+                       Email,
+                       DateOfBirth,
+                       IsAccountHolder,
+                       IsActive,
+                       CreatedAt
+                FROM Student
+                WHERE Email = @Email;";
+
+            return await _connection.QuerySingleOrDefaultAsync<Student>(sql, new { Email = email });
+        }
+
         public async Task<IEnumerable<Student>> GetByAccountHolderAsync(int accountHolderId)
         {
             const string sql = @"
@@ -38,6 +57,7 @@ namespace Tutor.Data.Implementations
                        AccountHolderID,
                        FirstName,
                        LastName,
+                       Email,
                        DateOfBirth,
                        IsAccountHolder,
                        IsActive,

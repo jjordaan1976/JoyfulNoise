@@ -1,10 +1,15 @@
 using Dapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
+using Microsoft.IdentityModel.Tokens;
 using Tutor.Data.Implementations;
 using Tutor.Data.Interfaces;
+using Tutor.JwtService;
+using Tutor.Repositories;
 using Scalar.AspNetCore;
 using Serilog;
 using System.Data;
+using System.Text;
 
 namespace Tutor.Api
 {
@@ -56,6 +61,32 @@ namespace Tutor.Api
             // Email service
             services.AddHttpClient<IEmailService, BrevoEmailService>();
 
+            // JWT and OTP services
+            var jwtSecret = Configuration["Jwt:Secret"] ?? "your-secret-key-that-is-long-enough-for-hmacsha256-algorithm";
+            var jwtIssuer = Configuration["Jwt:Issuer"] ?? "TutorApp";
+            var jwtAudience = Configuration["Jwt:Audience"] ?? "TutorUsers";
+
+            services.AddSingleton<IJwtTokenService>(new JwtTokenService(jwtSecret, jwtIssuer, jwtAudience));
+            services.AddSingleton<IOtpService, OtpService>();
+
+            // JWT Authentication
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                        ValidateIssuer = true,
+                        ValidIssuer = jwtIssuer,
+                        ValidateAudience = true,
+                        ValidAudience = jwtAudience,
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.Zero
+                    };
+                });
+
+            services.AddAuthorization();
             services.AddControllers();
             services.AddOpenApi();
         }
@@ -79,6 +110,8 @@ namespace Tutor.Api
             }
 
             app.UseHttpsRedirection();
+            app.UseAuthentication();
+            app.UseAuthorization();
             app.MapControllers();
         }
     }

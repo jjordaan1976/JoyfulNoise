@@ -2,6 +2,8 @@
   <Project Path="Tutor.AccountHolderPortal/Tutor.AccountHolderPortal.csproj" />
   <Project Path="Tutor.Api/Tutor.Api.csproj" />
   <Project Path="Tutor.Interfaces/Tutor.Interfaces.csproj" Id="c24cd138-4512-451b-8000-81fc32f0792b" />
+  <Project Path="Tutor.JwtService.Tests/Tutor.JwtService.Tests.csproj" />
+  <Project Path="Tutor.JwtService/Tutor.JwtService.csproj" />
   <Project Path="Tutor.Models/Tutor.Models.csproj" />
   <Project Path="Tutor.Repositories.Tests/Tutor.Repositories.Tests.csproj" Id="c6f5118f-d9cc-45e6-bada-59faa3fd7bbb" />
   <Project Path="Tutor.Repositories/Tutor.Repositories.csproj" />

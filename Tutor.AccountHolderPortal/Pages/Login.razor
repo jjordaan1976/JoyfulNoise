@@ -1,5 +1,5 @@
 @page "/login"
-@layout LoginLayout
+@layout AccountHolderPortal.Shared.LoginLayout
 @attribute [AllowAnonymous]
 
 @using Microsoft.AspNetCore.Authorization
@@ -10,7 +10,7 @@
 <MudPaper Elevation="4" Class="pa-8" Style="width:360px; text-align:center;">
     <MudIcon Icon="@Icons.Material.Filled.School" Style="font-size:3rem; color:#1976D2;" Class="mb-2" />
     <MudText Typo="Typo.h5" Style="font-weight:600; color:#3A3A3A;" Class="mb-1">Tutor</MudText>
-    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">Management Portal</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">Account Holder Portal</MudText>
 
     @if (!_showOtpInput)
     {
@@ -95,7 +95,7 @@
                     // Store token in sessionStorage
                     await Http.GetAsync("javascript:window.sessionStorage.setItem('auth_token', '" + token + "')");
                     Snackbar.Add("Login successful", Severity.Success);
-                    Nav.NavigateTo("/", replace: true);
+                    Nav.NavigateTo("/statement", replace: true);
                 }
                 else
                 {

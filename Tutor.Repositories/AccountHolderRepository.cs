@@ -21,6 +21,11 @@ namespace Tutor.Data.Implementations
             return await _accountHolderService.GetAccountHolderAsync(id);
         }
 
+        public async Task<AccountHolder?> GetByEmailAsync(string email)
+        {
+            return await _accountHolderService.GetByEmailAsync(email);
+        }
+
         public async Task<IEnumerable<AccountHolder>> GetByTeacherAsync(int teacherId)
         {
             return await _accountHolderService.GetByTeacherAsync(teacherId);

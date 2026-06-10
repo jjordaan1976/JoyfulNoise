@@ -3,9 +3,11 @@
 @attribute [AllowAnonymous]
 
 @using Microsoft.AspNetCore.Authorization
+@using Tutor.StudentPortal.Services
 @inject HttpClient Http
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject IAuthService AuthService
 
 <MudPaper Elevation="4" Class="pa-8" Style="width:360px; text-align:center;">
     <MudIcon Icon="@Icons.Material.Filled.School" Style="font-size:3rem; color:#1976D2;" Class="mb-2" />
@@ -93,7 +95,7 @@
                 if (token != null)
                 {
                     // Store token in sessionStorage
-                    await Http.GetAsync("javascript:window.sessionStorage.setItem('auth_token', '" + token + "')");
+                    await AuthService.SetTokenAsync(token);
                     Snackbar.Add("Login successful", Severity.Success);
                     Nav.NavigateTo("/dashboard", replace: true);
                 }

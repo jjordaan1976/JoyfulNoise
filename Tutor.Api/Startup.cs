@@ -57,6 +57,9 @@ namespace Tutor.Api
             services.AddScoped<IMagicLinkDataAccessObject, MagicLinkDataAccessObject>();
             services.AddScoped<IMagicLinkRepository, MagicLinkRepository>();
 
+            // Email service
+            services.AddHttpClient<IEmailService, BrevoEmailService>();
+
             services.AddAuthentication(MagicLinkAuthenticationHandler.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, MagicLinkAuthenticationHandler>(
                     MagicLinkAuthenticationHandler.SchemeName, _ => { });

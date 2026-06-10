@@ -7,11 +7,13 @@ namespace Tutor.Data.Implementations
     public class MagicLinkRepository : IMagicLinkRepository
     {
         private readonly IMagicLinkDataAccessObject _dao;
+        private readonly IEmailService _emailService;
         private readonly ILogger<MagicLinkRepository> _logger;
 
-        public MagicLinkRepository(IMagicLinkDataAccessObject dao, ILogger<MagicLinkRepository> logger)
+        public MagicLinkRepository(IMagicLinkDataAccessObject dao, IEmailService emailService, ILogger<MagicLinkRepository> logger)
         {
             _dao = dao;
+            _emailService = emailService;
             _logger = logger;
         }
 

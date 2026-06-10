@@ -13,7 +13,8 @@
       "Bash(grep -v \"\\\\\\\\obj\\\\\\\\\")",
       "Bash(xargs -I {} grep -l \"AssemblyName\\\\|RootNamespace\" \"{}\")",
       "Bash(git add *)",
-      "Bash(git commit -m 'Remove Gmail Authentication and replace with Magic Link auth *)"
+      "Bash(git commit -m 'Remove Gmail Authentication and replace with Magic Link auth *)",
+      "Bash(git commit -m 'Add Brevo transactional email service for Magic Link authentication *)"
     ]
   }
 }

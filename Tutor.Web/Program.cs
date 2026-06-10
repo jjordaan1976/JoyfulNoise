@@ -8,9 +8,9 @@ using Tutor.Services;
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<Tutor.Web.App>("#app");
 
-// Auth
+// Auth - Magic Link based authentication
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<AuthenticationStateProvider, GoogleAuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider, MagicLinkAuthStateProvider>();
 builder.Services.AddAuthorizationCore(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()

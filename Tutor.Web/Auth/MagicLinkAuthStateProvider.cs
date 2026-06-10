@@ -3,11 +3,11 @@ using System.Security.Claims;
 
 namespace Tutor.Auth
 {
-    public class GoogleAuthStateProvider : AuthenticationStateProvider
+    public class MagicLinkAuthStateProvider : AuthenticationStateProvider
     {
         private readonly AuthService _authService;
 
-        public GoogleAuthStateProvider(AuthService authService)
+        public MagicLinkAuthStateProvider(AuthService authService)
         {
             _authService = authService;
             _authService.AuthStateChanged += OnAuthStateChanged;

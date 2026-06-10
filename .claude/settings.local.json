@@ -11,7 +11,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Code\\\\za.co.leanshift\\\\JoyfulNoise\" -MaxDepth 1 -Directory)",
       "Bash(Select-Object -ExpandProperty Name)",
       "Bash(grep -v \"\\\\\\\\obj\\\\\\\\\")",
-      "Bash(xargs -I {} grep -l \"AssemblyName\\\\|RootNamespace\" \"{}\")"
+      "Bash(xargs -I {} grep -l \"AssemblyName\\\\|RootNamespace\" \"{}\")",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Remove Gmail Authentication and replace with Magic Link auth *)"
     ]
   }
 }

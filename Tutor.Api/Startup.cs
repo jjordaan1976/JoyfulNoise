@@ -1,8 +1,6 @@
 using Dapper;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
-using Microsoft.IdentityModel.Tokens;
 using Tutor.Api.Auth;
 using Tutor.Data.Implementations;
 using Tutor.Data.Interfaces;
@@ -59,21 +57,7 @@ namespace Tutor.Api
             services.AddScoped<IMagicLinkDataAccessObject, MagicLinkDataAccessObject>();
             services.AddScoped<IMagicLinkRepository, MagicLinkRepository>();
 
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    options.Authority = "https://accounts.google.com";
-                    options.Audience = Configuration["GoogleClientId"];
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = "https://accounts.google.com",
-                        ValidateAudience = true,
-                        ValidAudience = Configuration["GoogleClientId"],
-                        ValidateLifetime = true,
-                        NameClaimType = "email"
-                    };
-                })
+            services.AddAuthentication(MagicLinkAuthenticationHandler.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, MagicLinkAuthenticationHandler>(
                     MagicLinkAuthenticationHandler.SchemeName, _ => { });
 
@@ -94,7 +78,7 @@ namespace Tutor.Api
                 app.MapOpenApi();
                 app.MapScalarApiReference(options =>
                 {
-                    options.Title = "MusicSchool API";
+                    options.Title = "Tutor API";
                     options.Theme = ScalarTheme.DeepSpace;
                 });
             }

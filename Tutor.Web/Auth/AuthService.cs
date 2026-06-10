@@ -24,7 +24,7 @@ namespace Tutor.Auth
 
         public async Task InitializeAsync()
         {
-            var token = await _js.InvokeAsync<string?>("sessionStorage.getItem", "google_token");
+            var token = await _js.InvokeAsync<string?>("sessionStorage.getItem", "auth_token");
             if (!string.IsNullOrEmpty(token) && !IsTokenExpired(token))
                 SetToken(token);
         }
@@ -33,7 +33,7 @@ namespace Tutor.Auth
         public async Task HandleCredential(string credential)
         {
             SetToken(credential);
-            await _js.InvokeVoidAsync("sessionStorage.setItem", "google_token", credential);
+            await _js.InvokeVoidAsync("sessionStorage.setItem", "auth_token", credential);
             AuthStateChanged?.Invoke();
         }
 
@@ -41,8 +41,7 @@ namespace Tutor.Auth
         {
             _token = null;
             _currentUser = new(new ClaimsIdentity());
-            await _js.InvokeVoidAsync("sessionStorage.removeItem", "google_token");
-            await _js.InvokeVoidAsync("googleAuth.signOut");
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", "auth_token");
             AuthStateChanged?.Invoke();
         }
 
@@ -79,7 +78,7 @@ namespace Tutor.Auth
                 if (payload.TryGetProperty("name", out var name))
                     claims.Add(new Claim(ClaimTypes.Name, name.GetString()!));
 
-                return new ClaimsPrincipal(new ClaimsIdentity(claims, "Google"));
+                return new ClaimsPrincipal(new ClaimsIdentity(claims, "MagicLink"));
             }
             catch { return new ClaimsPrincipal(new ClaimsIdentity()); }
         }

@@ -4,7 +4,14 @@
       "Bash(xargs ls:*)",
       "Bash(xargs grep -l \"class LessonBundleDetail\")",
       "Bash(dotnet test *)",
-      "Bash(dotnet build *)"
+      "Bash(dotnet build *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Code\\\\za.co.leanshift\\\\JoyfulNoise\" -Recurse -File -Filter \"*.csproj\" -o)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Code\\\\za.co.leanshift\\\\JoyfulNoise\" -Recurse -File -Filter \"*.sln\" -o)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Code\\\\za.co.leanshift\\\\JoyfulNoise\" -MaxDepth 1 -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(grep -v \"\\\\\\\\obj\\\\\\\\\")",
+      "Bash(xargs -I {} grep -l \"AssemblyName\\\\|RootNamespace\" \"{}\")"
     ]
   }
 }

@@ -7,11 +7,16 @@ namespace Tutor.Data.Implementations
     public class StudentRepository : IStudentRepository
     {
         private readonly IStudentDataAccessObject _studentService;
+        private readonly IUserRepository _userRepository;
         private readonly ILogger<StudentRepository> _logger;
 
-        public StudentRepository(IStudentDataAccessObject studentService, ILogger<StudentRepository> logger)
+        public StudentRepository(
+            IStudentDataAccessObject studentService,
+            IUserRepository userRepository,
+            ILogger<StudentRepository> logger)
         {
             _studentService = studentService;
+            _userRepository = userRepository;
             _logger = logger;
         }
 
@@ -34,7 +39,17 @@ namespace Tutor.Data.Implementations
         {
             try
             {
-                return await _studentService.InsertAsync(student);
+                var studentId = await _studentService.InsertAsync(student);
+
+                await _userRepository.CreateUserAsync(new User
+                {
+                    Email = student.Email,
+                    DisplayName = student.FullName,
+                    Role = UserRole.Student,
+                    StudentID = studentId
+                });
+
+                return studentId;
             }
             catch (Exception ex)
             {

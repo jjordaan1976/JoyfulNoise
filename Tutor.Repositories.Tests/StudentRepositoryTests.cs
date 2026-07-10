@@ -9,14 +9,16 @@ namespace Tutor.Repositories.Tests;
 public class StudentRepositoryTests
 {
     private readonly Mock<IStudentDataAccessObject> _daoMock;
+    private readonly Mock<IUserRepository> _userRepoMock;
     private readonly Mock<ILogger<StudentRepository>> _loggerMock;
     private readonly StudentRepository _sut;
 
     public StudentRepositoryTests()
     {
-        _daoMock    = new Mock<IStudentDataAccessObject>();
-        _loggerMock = new Mock<ILogger<StudentRepository>>();
-        _sut        = new StudentRepository(_daoMock.Object, _loggerMock.Object);
+        _daoMock      = new Mock<IStudentDataAccessObject>();
+        _userRepoMock = new Mock<IUserRepository>();
+        _loggerMock   = new Mock<ILogger<StudentRepository>>();
+        _sut          = new StudentRepository(_daoMock.Object, _userRepoMock.Object, _loggerMock.Object);
     }
 
     // ── GetStudentAsync ───────────────────────────────────────────────────────
@@ -92,6 +94,32 @@ public class StudentRepositoryTests
         var result = await _sut.AddStudentAsync(student);
 
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task AddStudentAsync_WhenSuccessful_CreatesUserForStudent()
+    {
+        var student = new Student { FirstName = "Anna", LastName = "Bell", Email = "anna@b.com" };
+        _daoMock.Setup(d => d.InsertAsync(student)).ReturnsAsync(55);
+
+        await _sut.AddStudentAsync(student);
+
+        _userRepoMock.Verify(u => u.CreateUserAsync(It.Is<User>(x =>
+            x.Email == "anna@b.com" &&
+            x.DisplayName == "Anna Bell" &&
+            x.Role == UserRole.Student &&
+            x.StudentID == 55)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddStudentAsync_WhenInsertFails_DoesNotCreateUser()
+    {
+        var student = new Student { FirstName = "Anna", LastName = "Bell", Email = "anna@b.com" };
+        _daoMock.Setup(d => d.InsertAsync(student)).ThrowsAsync(new Exception("DB error"));
+
+        await _sut.AddStudentAsync(student);
+
+        _userRepoMock.Verify(u => u.CreateUserAsync(It.IsAny<User>()), Times.Never);
     }
 
     // ── UpdateStudentAsync ────────────────────────────────────────────────────

@@ -74,9 +74,9 @@ namespace Tutor.Data.Implementations
         {
             const string sql = @"
                 INSERT INTO Student
-                    (AccountHolderID, FirstName, LastName, DateOfBirth, IsAccountHolder, IsActive)
+                    (AccountHolderID, FirstName, LastName, Email, DateOfBirth, IsAccountHolder, IsActive)
                 VALUES
-                    (@AccountHolderID, @FirstName, @LastName, @DateOfBirth, @IsAccountHolder, @IsActive);
+                    (@AccountHolderID, @FirstName, @LastName, @Email, @DateOfBirth, @IsAccountHolder, @IsActive);
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
@@ -90,6 +90,7 @@ namespace Tutor.Data.Implementations
                 SET AccountHolderID = @AccountHolderID,
                     FirstName       = @FirstName,
                     LastName        = @LastName,
+                    Email           = @Email,
                     DateOfBirth     = @DateOfBirth,
                     IsAccountHolder = @IsAccountHolder,
                     IsActive        = @IsActive

@@ -9,14 +9,16 @@ namespace Tutor.Repositories.Tests;
 public class TeacherRepositoryTests
 {
     private readonly Mock<ITeacherDataAccessObject> _daoMock;
+    private readonly Mock<IUserRepository> _userRepoMock;
     private readonly Mock<ILogger<TeacherRepository>> _loggerMock;
     private readonly TeacherRepository _sut;
 
     public TeacherRepositoryTests()
     {
-        _daoMock    = new Mock<ITeacherDataAccessObject>();
-        _loggerMock = new Mock<ILogger<TeacherRepository>>();
-        _sut        = new TeacherRepository(_daoMock.Object, _loggerMock.Object);
+        _daoMock      = new Mock<ITeacherDataAccessObject>();
+        _userRepoMock = new Mock<IUserRepository>();
+        _loggerMock   = new Mock<ILogger<TeacherRepository>>();
+        _sut          = new TeacherRepository(_daoMock.Object, _userRepoMock.Object, _loggerMock.Object);
     }
 
     // ── GetTeacherAsync ───────────────────────────────────────────────────────
@@ -78,6 +80,32 @@ public class TeacherRepositoryTests
         var result = await _sut.AddTeacherAsync(teacher);
 
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task AddTeacherAsync_WhenSuccessful_CreatesUserForTeacher()
+    {
+        var teacher = new Teacher { Name = "Bob Dylan", Email = "bob@b.com" };
+        _daoMock.Setup(d => d.InsertAsync(teacher)).ReturnsAsync(7);
+
+        await _sut.AddTeacherAsync(teacher);
+
+        _userRepoMock.Verify(u => u.CreateUserAsync(It.Is<User>(x =>
+            x.Email == "bob@b.com" &&
+            x.DisplayName == "Bob Dylan" &&
+            x.Role == UserRole.Teacher &&
+            x.TeacherID == 7)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddTeacherAsync_WhenInsertFails_DoesNotCreateUser()
+    {
+        var teacher = new Teacher { Name = "Bob Dylan", Email = "bob@b.com" };
+        _daoMock.Setup(d => d.InsertAsync(teacher)).ThrowsAsync(new Exception("DB error"));
+
+        await _sut.AddTeacherAsync(teacher);
+
+        _userRepoMock.Verify(u => u.CreateUserAsync(It.IsAny<User>()), Times.Never);
     }
 
     // ── UpdateTeacherAsync ────────────────────────────────────────────────────

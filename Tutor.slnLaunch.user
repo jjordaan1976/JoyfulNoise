@@ -1,0 +1,23 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "Tutor.AccountHolderPortal\\Tutor.AccountHolderPortal.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "Tutor.Api\\Tutor.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "Tutor.StudentPortal\\Tutor.StudentPortal.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "Tutor.Web\\Tutor.Web.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

@@ -57,9 +57,11 @@ namespace Tutor.Api
             services.AddScoped<IScheduledSlotAggregateDataAccessObject, ScheduledSlotAggregateDataAccessObject>();
             services.AddScoped<IPaymentDataAccessObject, PaymentDataAccessObject>();
             services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<IUserDataAccessObject, UserDataAccessObject>();
+            services.AddScoped<IUserRepository, UserRepository>();
 
-            // Email service
-            services.AddHttpClient<IEmailService, BrevoEmailService>();
+            // Email service — mock console sender for this phase of development
+            services.AddScoped<IEmailService, ConsoleEmailService>();
 
             // JWT and OTP services
             var jwtSecret = Configuration["Jwt:Secret"] ?? "your-secret-key-that-is-long-enough-for-hmacsha256-algorithm";
@@ -84,6 +86,19 @@ namespace Tutor.Api
                         ValidateLifetime = true,
                         ClockSkew = TimeSpan.Zero
                     };
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnAuthenticationFailed = context =>
+                        {
+                            Log.Warning(context.Exception, "JWT authentication failed");
+                            return Task.CompletedTask;
+                        },
+                        OnMessageReceived = context =>
+                        {
+                            Log.Information("JWT token received: {HasToken}", !string.IsNullOrEmpty(context.Token));
+                            return Task.CompletedTask;
+                        }
+                    };
                 });
 
             services.AddAuthorization();
@@ -91,7 +106,7 @@ namespace Tutor.Api
             services.AddOpenApi();
         }
 
-        public void Configure(WebApplication app, IWebHostEnvironment env)
+        public void Configure(WebApplication app, IWebHostEnvironment env, string corsPolicyName)
         {
             app.UseSerilogRequestLogging(options =>
             {
@@ -110,6 +125,7 @@ namespace Tutor.Api
             }
 
             app.UseHttpsRedirection();
+            app.UseCors(corsPolicyName);
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();

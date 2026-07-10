@@ -8,11 +8,16 @@ namespace Tutor.Data.Implementations
     public class AccountHolderRepository : IAccountHolderRepository
     {
         private readonly IAccountHolderDataAccessObject _accountHolderService;
+        private readonly IUserRepository _userRepository;
         private readonly ILogger<AccountHolderRepository> _logger;
 
-        public AccountHolderRepository(IAccountHolderDataAccessObject accountHolderService, ILogger<AccountHolderRepository> logger)
+        public AccountHolderRepository(
+            IAccountHolderDataAccessObject accountHolderService,
+            IUserRepository userRepository,
+            ILogger<AccountHolderRepository> logger)
         {
             _accountHolderService = accountHolderService;
+            _userRepository = userRepository;
             _logger = logger;
         }
 
@@ -35,7 +40,17 @@ namespace Tutor.Data.Implementations
         {
             try
             {
-                return await _accountHolderService.InsertAsync(accountHolder);
+                var accountHolderId = await _accountHolderService.InsertAsync(accountHolder);
+
+                await _userRepository.CreateUserAsync(new User
+                {
+                    Email = accountHolder.Email,
+                    DisplayName = accountHolder.FullName,
+                    Role = UserRole.AccountHolder,
+                    AccountHolderID = accountHolderId
+                });
+
+                return accountHolderId;
             }
             catch (Exception ex)
             {

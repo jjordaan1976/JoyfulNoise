@@ -17,7 +17,15 @@
       "Bash(git commit -m 'Add Brevo transactional email service for Magic Link authentication *)",
       "Bash(dotnet new *)",
       "Bash(dotnet sln *)",
-      "Bash(dotnet add *)"
+      "Bash(dotnet add *)",
+      "Bash(ls -d Tutor.*Portal*)",
+      "Bash(ls -d *Portal*)",
+      "Bash(cat Tutor.AccountHolderPortal/App.razor)",
+      "Bash(cat Tutor.AccountHolderPortal/_Imports.razor)",
+      "Bash(ls *.sln)",
+      "Bash(grep -i \"Project\\(\" *.sln)",
+      "Bash(timeout 12 dotnet run --no-build)",
+      "Bash(taskkill //F //IM dotnet.exe //T)"
     ]
   }
 }

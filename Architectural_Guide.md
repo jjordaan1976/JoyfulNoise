@@ -166,6 +166,12 @@ public class ResponseBase<T>
 * All timestamps are stored as **UTC `DATETIME`**.
 * **Nullable reference types are enabled** across all projects.
 
+## Primary Key & Identity Constraints (Enforced)
+* Mandatory Key Structure: Every table in the database must have a single primary key column named exactly Id.
+* Data Type: The Id field must be of type int.
+* Identity Configuration: The field must use identity specification starting at 0 with an increment of 1: IDENTITY(0,1).
+* No Compound Keys: Composite or multi-field primary keys are strictly forbidden. All tables must rely solely on the single-column auto-incrementing integer Id field as their primary key.
+
 ### Database Migrations
 
 Every schema change **must** be recorded as a numbered SQL script in the `Database/` folder at the solution root:

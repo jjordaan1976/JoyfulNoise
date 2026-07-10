@@ -15,21 +15,18 @@ namespace Tutor.Api.Controllers
         private readonly IEmailService _emailService;
         private readonly IOtpService _otpService;
         private readonly IJwtTokenService _jwtService;
-        private readonly IAccountHolderRepository _accountHolderRepository;
-        private readonly IStudentRepository _studentRepository;
+        private readonly IUserRepository _userRepository;
 
         public AuthController(
             IEmailService emailService,
             IOtpService otpService,
             IJwtTokenService jwtService,
-            IAccountHolderRepository accountHolderRepository,
-            IStudentRepository studentRepository)
+            IUserRepository userRepository)
         {
             _emailService = emailService;
             _otpService = otpService;
             _jwtService = jwtService;
-            _accountHolderRepository = accountHolderRepository;
-            _studentRepository = studentRepository;
+            _userRepository = userRepository;
         }
 
         [HttpPost("request-otp")]
@@ -73,24 +70,24 @@ namespace Tutor.Api.Controllers
             if (!_otpService.ValidateOtp(request.Email, request.Otp))
                 return Unauthorized(new TokenResponse { Success = false, Message = "Invalid or expired OTP" });
 
-            // Generate JWT
-            var claims = new Dictionary<string, string>();
+            // The token identifies the logged-in user. One email can hold several
+            // roles (e.g. Student + AccountHolder); the token carries them all and
+            // each portal reads the claim relevant to it.
+            var users = (await _userRepository.GetByEmailAsync(request.Email)).ToList();
+            if (users.Count == 0)
+                return Unauthorized(new TokenResponse { Success = false, Message = "No user is registered for this email address" });
 
-            // Try to find user (AccountHolder or Student)
-            var accountHolder = await _accountHolderRepository.GetByEmailAsync(request.Email);
-            if (accountHolder != null)
+            var claims = new Dictionary<string, string>
             {
-                claims["accountHolderId"] = accountHolder.AccountHolderID.ToString();
-                claims["role"] = "AccountHolder";
-            }
-            else
+                ["name"] = users[0].DisplayName,
+                ["role"] = string.Join(",", users.Select(u => u.Role.ToString()))
+            };
+
+            foreach (var user in users)
             {
-                var student = await _studentRepository.GetByEmailAsync(request.Email);
-                if (student != null)
-                {
-                    claims["studentId"] = student.StudentID.ToString();
-                    claims["role"] = "Student";
-                }
+                if (user.TeacherID.HasValue) claims["teacherId"] = user.TeacherID.Value.ToString();
+                if (user.StudentID.HasValue) claims["studentId"] = user.StudentID.Value.ToString();
+                if (user.AccountHolderID.HasValue) claims["accountHolderId"] = user.AccountHolderID.Value.ToString();
             }
 
             var token = _jwtService.GenerateToken(request.Email, claims);

@@ -8,6 +8,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 @inject IAuthService AuthService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 
 <MudPaper Elevation="4" Class="pa-8" Style="width:360px; text-align:center;">
     <MudIcon Icon="@Icons.Material.Filled.School" Style="font-size:3rem; color:#1976D2;" Class="mb-2" />
@@ -96,6 +97,7 @@
                 {
                     // Store token in sessionStorage
                     await AuthService.SetTokenAsync(token);
+                    ((JwtAuthenticationStateProvider)AuthStateProvider).NotifyAuthenticationChanged();
                     Snackbar.Add("Login successful", Severity.Success);
                     Nav.NavigateTo("/statement", replace: true);
                 }

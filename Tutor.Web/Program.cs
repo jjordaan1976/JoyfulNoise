@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 using Tutor.Services;
@@ -8,6 +10,12 @@ builder.RootComponents.Add<Tutor.Web.App>("#app");
 
 // Auth service for token management
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Authentication state for CascadingAuthenticationState / AuthorizeRouteView.
+// Pages are protected by @attribute [Authorize] in _Imports.razor; Login.razor opts out with [AllowAnonymous].
+builder.Services.AddAuthorizationCore();
+builder.Services.AddScoped<JwtAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
 
 // HTTP client for API calls with authorization
 builder.Services.AddScoped<AuthorizingMessageHandler>();

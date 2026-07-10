@@ -147,6 +147,8 @@ else
         <MudForm @ref="_addStudentForm">
             <MudTextField @bind-Value="_newStudent.FirstName" Label="First Name" Required="true" Class="mb-3" />
             <MudTextField @bind-Value="_newStudent.LastName" Label="Last Name" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="_newStudent.Email" Label="Email" InputType="InputType.Email" Class="mb-3"
+                          HelperText="Needed for the student to log in to the Student Portal" />
             <MudDatePicker @bind-Date="_dobDate" Label="Date of Birth" Class="mb-3" DateFormat="yyyy/MM/dd" />
             <MudSwitch @bind-Value="_newStudent.IsAccountHolder" Label="Same as Account Holder" Color="Color.Primary" Class="mb-2" />
             <MudSwitch @bind-Value="_newStudent.IsActive" Label="Active" Color="Color.Primary" />
@@ -165,6 +167,8 @@ else
         <MudForm @ref="_editStudentForm">
             <MudTextField @bind-Value="_editStudent.FirstName" Label="First Name" Required="true" Class="mb-3" />
             <MudTextField @bind-Value="_editStudent.LastName" Label="Last Name" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="_editStudent.Email" Label="Email" InputType="InputType.Email" Class="mb-3"
+                          HelperText="Needed for the student to log in to the Student Portal" />
             <MudDatePicker @bind-Date="_editDobDate" Label="Date of Birth" Class="mb-3" DateFormat="yyyy/MM/dd" />
             <MudSwitch @bind-Value="_editStudent.IsAccountHolder" Label="Same as Account Holder" Color="Color.Primary" Class="mb-2" />
             <MudSwitch @bind-Value="_editStudent.IsActive" Label="Active" Color="Color.Primary" />
@@ -258,7 +262,7 @@ else
         _editStudent = new Student
         {
             StudentID = s.StudentID, AccountHolderID = s.AccountHolderID,
-            FirstName = s.FirstName, LastName = s.LastName,
+            FirstName = s.FirstName, LastName = s.LastName, Email = s.Email,
             IsAccountHolder = s.IsAccountHolder, IsActive = s.IsActive
         };
         _editDobDate = s.DateOfBirth.HasValue

@@ -9,14 +9,16 @@ namespace Tutor.Repositories.Tests;
 public class AccountHolderRepositoryTests
 {
     private readonly Mock<IAccountHolderDataAccessObject> _daoMock;
+    private readonly Mock<IUserRepository> _userRepoMock;
     private readonly Mock<ILogger<AccountHolderRepository>> _loggerMock;
     private readonly AccountHolderRepository _sut;
 
     public AccountHolderRepositoryTests()
     {
-        _daoMock    = new Mock<IAccountHolderDataAccessObject>();
-        _loggerMock = new Mock<ILogger<AccountHolderRepository>>();
-        _sut        = new AccountHolderRepository(_daoMock.Object, _loggerMock.Object);
+        _daoMock      = new Mock<IAccountHolderDataAccessObject>();
+        _userRepoMock = new Mock<IUserRepository>();
+        _loggerMock   = new Mock<ILogger<AccountHolderRepository>>();
+        _sut          = new AccountHolderRepository(_daoMock.Object, _userRepoMock.Object, _loggerMock.Object);
     }
 
     // ── GetAccountHolderAsync ─────────────────────────────────────────────────
@@ -92,6 +94,32 @@ public class AccountHolderRepositoryTests
         var result = await _sut.AddAccountHolderAsync(ah);
 
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task AddAccountHolderAsync_WhenSuccessful_CreatesUserForAccountHolder()
+    {
+        var ah = new AccountHolder { FirstName = "John", LastName = "Smith", Email = "john@b.com" };
+        _daoMock.Setup(d => d.InsertAsync(ah)).ReturnsAsync(42);
+
+        await _sut.AddAccountHolderAsync(ah);
+
+        _userRepoMock.Verify(u => u.CreateUserAsync(It.Is<User>(x =>
+            x.Email == "john@b.com" &&
+            x.DisplayName == "John Smith" &&
+            x.Role == UserRole.AccountHolder &&
+            x.AccountHolderID == 42)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddAccountHolderAsync_WhenInsertFails_DoesNotCreateUser()
+    {
+        var ah = new AccountHolder { FirstName = "John", LastName = "Smith", Email = "john@b.com" };
+        _daoMock.Setup(d => d.InsertAsync(ah)).ThrowsAsync(new Exception("DB error"));
+
+        await _sut.AddAccountHolderAsync(ah);
+
+        _userRepoMock.Verify(u => u.CreateUserAsync(It.IsAny<User>()), Times.Never);
     }
 
     // ── UpdateAccountHolderAsync ──────────────────────────────────────────────

@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "accountholder-portal",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "Tutor.AccountHolderPortal", "--no-build"],
+      "port": 57349
+    },
+    {
+      "name": "student-portal",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "Tutor.StudentPortal", "--no-build"],
+      "port": 51173
+    },
+    {
+      "name": "tutor-web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "Tutor.Web", "--no-build"],
+      "port": 64314
+    },
+    {
+      "name": "tutor-api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "Tutor.Api", "--no-build"],
+      "port": 64100
+    }
+  ]
+}

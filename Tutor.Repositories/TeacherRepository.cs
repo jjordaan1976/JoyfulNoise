@@ -7,11 +7,16 @@ namespace Tutor.Data.Implementations
     public class TeacherRepository : ITeacherRepository
     {
         private readonly ITeacherDataAccessObject _teacherService;
+        private readonly IUserRepository _userRepository;
         private readonly ILogger<TeacherRepository> _logger;
 
-        public TeacherRepository(ITeacherDataAccessObject teacherService, ILogger<TeacherRepository> logger)
+        public TeacherRepository(
+            ITeacherDataAccessObject teacherService,
+            IUserRepository userRepository,
+            ILogger<TeacherRepository> logger)
         {
             _teacherService = teacherService;
+            _userRepository = userRepository;
             _logger = logger;
         }
 
@@ -29,7 +34,17 @@ namespace Tutor.Data.Implementations
         {
             try
             {
-                return await _teacherService.InsertAsync(teacher);
+                var teacherId = await _teacherService.InsertAsync(teacher);
+
+                await _userRepository.CreateUserAsync(new User
+                {
+                    Email = teacher.Email,
+                    DisplayName = teacher.Name,
+                    Role = UserRole.Teacher,
+                    TeacherID = teacherId
+                });
+
+                return teacherId;
             }
             catch (Exception ex)
             {

@@ -183,7 +183,16 @@ else
                                    Class="mb-3" @bind-Date:after="RecalcBundle" DateFormat="yyyy/MM/dd" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudDatePicker @bind-Date="_bundleEndDate" Label="End Date" Required="true" Class="mb-3" DateFormat="yyyy/MM/dd" />
+                    <MudRadioGroup T="BundleCreationMode" @bind-Value="_bundleMode" @bind-Value:after="RecalcBundle">
+                        <MudRadio T="BundleCreationMode" Value="BundleCreationMode.Full" Color="Color.Primary">In Full</MudRadio>
+                        <MudRadio T="BundleCreationMode" Value="BundleCreationMode.Prorata" Color="Color.Primary">Prorata</MudRadio>
+                    </MudRadioGroup>
+                    @if (_bundleMode == BundleCreationMode.Full && _bundleStartDate?.Month > 2)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error">
+                            A full-year bundle can only start in January or February.
+                        </MudText>
+                    }
                 </MudItem>
                 <MudItem xs="12">
                     <MudTextField @bind-Value="_newBundle.Notes" Label="Notes" Lines="2" Class="mb-3" />
@@ -209,8 +218,9 @@ else
                     }
                 </MudGrid>
                 <MudText Typo="Typo.body2" Class="mt-3">
-                    Total: R@((_newBundle.TotalLessons * _newBundle.PricePerLesson).ToString("N2"))
-                    · Monthly: R@((_newBundle.TotalLessons * _newBundle.PricePerLesson / 12).ToString("N2"))
+                    @ProratedTotalLessons lessons
+                    · Total: R@((ProratedTotalLessons * _newBundle.PricePerLesson).ToString("N2"))
+                    · Monthly (@MonthsRemaining months): R@((MonthsRemaining > 0 ? ProratedTotalLessons * _newBundle.PricePerLesson / MonthsRemaining : 0).ToString("N2"))
                 </MudText>
             }
         </MudForm>
@@ -289,7 +299,10 @@ else
     private LessonBundle _newBundle = new();
     private List<BundleQuarter> _quarters = [];
     private DateTime? _bundleStartDate;
-    private DateTime? _bundleEndDate;
+    private BundleCreationMode _bundleMode = BundleCreationMode.Prorata;
+
+    private int ProratedTotalLessons => _quarters.Sum(q => q.LessonsAllocated);
+    private int MonthsRemaining => _bundleStartDate.HasValue ? 13 - _bundleStartDate.Value.Month : 12;
 
     private ScheduledSlot _newSlot = new();
     private TimeSpan? _slotTime;
@@ -305,10 +318,10 @@ else
         _loading = true;
         _student = await StudentSvc.GetStudentAsync(StudentID);
         _lessonTypes = await LessonTypeSvc.GetAllActiveAsync();
-        _accountHolder = await AccountHolderSvc.GetAccountHolderAsync(_student.AccountHolderID);
 
         if (_student is not null)
         {
+            _accountHolder = await AccountHolderSvc.GetAccountHolderAsync(_student.AccountHolderID);
             _breadcrumbs =
             [
                 new BreadcrumbItem("Account Holders", href: "/account-holders"),
@@ -344,30 +357,30 @@ else
         }
     }
 
+    // Mirrors the server-side quarter layout in LessonBundleRepository.AddBundleAsync
+    // so the dialog preview matches what will be saved.
     private void RecalcBundle()
     {
         _quarters = [];
         if (_newBundle.TotalLessons <= 0 || _newBundle.TotalLessons % 4 != 0 || _bundleStartDate is null)
             return;
 
-        var startDate = _bundleStartDate.Value;
-        var quarterSize = _newBundle.TotalLessons / 4;
-        var totalDays = _bundleEndDate.HasValue
-            ? _bundleEndDate.Value.DayOfYear - startDate.DayOfYear
-            : 365;
-        var daysPerQ = totalDays / 4;
+        var startDate = _bundleStartDate.Value.Date;
+        var perQuarter = _newBundle.TotalLessons / 4;
+        var year = startDate.Year;
+        var firstQuarter = _bundleMode == BundleCreationMode.Full
+            ? 1
+            : (startDate.Month - 1) / 3 + 1;
 
-        for (byte i = 1; i <= 4; i++)
+        for (var q = firstQuarter; q <= 4; q++)
         {
-            var qStart = startDate.AddDays((i - 1) * daysPerQ);
-            var qEnd = i < 4 ? qStart.AddDays(daysPerQ - 1) : (
-                _bundleEndDate.HasValue ? _bundleEndDate.Value : qStart.AddDays(daysPerQ - 1));
+            var quarterStart = new DateTime(year, (q - 1) * 3 + 1, 1);
             _quarters.Add(new BundleQuarter
             {
-                QuarterNumber = i,
-                LessonsAllocated = quarterSize,
-                QuarterStartDate = qStart,
-                QuarterEndDate = qEnd
+                QuarterNumber = (byte)q,
+                LessonsAllocated = perQuarter,
+                QuarterStartDate = q == firstQuarter && startDate > quarterStart ? startDate : quarterStart,
+                QuarterEndDate = quarterStart.AddMonths(3).AddDays(-1)
             });
         }
     }
@@ -380,8 +393,8 @@ else
             TotalLessons = 32,
             IsActive = true
         };
-        _bundleStartDate = new DateTime(DateTime.Today.Year, 1, 1);
-        _bundleEndDate = new DateTime(DateTime.Today.Year, 12, 31);
+        _bundleStartDate = DateTime.Today;
+        _bundleMode = DateTime.Today.Month <= 2 ? BundleCreationMode.Full : BundleCreationMode.Prorata;
         _quarters = [];
         RecalcBundle();
         await _addBundleDialog!.ShowAsync();
@@ -396,20 +409,21 @@ else
             Snackbar.Add("Total lessons must be divisible by 4.", Severity.Warning);
             return;
         }
-        if (_bundleStartDate is null || _bundleEndDate is null)
+        if (_bundleStartDate is null)
         {
-            Snackbar.Add("Start and end dates are required.", Severity.Warning);
+            Snackbar.Add("Start date is required.", Severity.Warning);
+            return;
+        }
+        if (_bundleMode == BundleCreationMode.Full && _bundleStartDate.Value.Month > 2)
+        {
+            Snackbar.Add("A full-year bundle can only start in January or February.", Severity.Warning);
             return;
         }
 
-        // Get teacherID from active slot or first bundle
-        var existingSlots = await SlotSvc.GetActiveByStudentAsync(StudentID);
-
         _newBundle.StartDate = _bundleStartDate.Value.Date;
-        _newBundle.EndDate = _bundleEndDate.Value.Date;
-        _newBundle.TeacherID = _accountHolder.TeacherID;
+        _newBundle.TeacherID = _accountHolder!.TeacherID;
 
-        var req = new AddBundleRequest { Bundle = _newBundle, Quarters = _quarters };
+        var req = new AddBundleRequest { Bundle = _newBundle, Mode = _bundleMode };
         var result = await BundleSvc.AddBundleAsync(req);
         if (result.HasValue)
         {

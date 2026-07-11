@@ -29,7 +29,10 @@ namespace Tutor.Api
                     options.AddPolicy(name: MyAllowSpecificOrigins,
                         policy =>
                         {
-                            policy.WithOrigins("https://localhost:64314","https://localhost:57349", "https://localhost:51173") // Blazor WASM origin
+                            policy.WithOrigins(
+                                      "https://localhost:64314", "http://localhost:64315",   // Tutor.Web
+                                      "https://localhost:57349", "http://localhost:57350",   // AccountHolderPortal
+                                      "https://localhost:51173", "http://localhost:51174")   // StudentPortal
                                   .AllowAnyHeader()
                                   .AllowAnyMethod();
                         });

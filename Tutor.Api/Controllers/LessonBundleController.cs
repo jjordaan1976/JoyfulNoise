@@ -29,7 +29,7 @@ namespace Tutor.Controllers
 
         [HttpPost("AddBundle")]
         public Task<ResponseBase<int?>> AddBundle([FromBody] AddBundleRequest req)
-            => Execute(() => _lessonBundleRepository.AddBundleAsync(req.Bundle, req.Quarters, req.SelectedBundleLessons), _logger, "Error adding bundle");
+            => Execute(() => _lessonBundleRepository.AddBundleAsync(req.Bundle, req.Mode), _logger, "Error adding bundle");
 
         [HttpPut("UpdateBundle")]
         public Task<ResponseBase<bool>> UpdateBundle([FromBody] LessonBundle req)

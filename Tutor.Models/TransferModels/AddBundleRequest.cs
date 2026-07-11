@@ -4,13 +4,13 @@ namespace Tutor.Models.TransferModels
 {
     public class AddBundleRequest
     {
-        public LessonBundle Bundle { get; set; }
-        public IEnumerable<BundleQuarter> Quarters { get; set; }
-
         /// <summary>
-        /// The full-year bundle size the student selected (e.g. 32, 48).
-        /// The system will prorate this to the number of months remaining in the year.
+        /// Bundle to create. TotalLessons is the full-year size selected (e.g. 32, 36);
+        /// StartDate is the first lesson date. The server derives the quarter layout,
+        /// end date, and (for Prorata) the reduced TotalLessons.
         /// </summary>
-        public int SelectedBundleLessons { get; set; }
+        public LessonBundle Bundle { get; set; } = new();
+
+        public BundleCreationMode Mode { get; set; } = BundleCreationMode.Prorata;
     }
 }

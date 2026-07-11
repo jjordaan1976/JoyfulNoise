@@ -78,13 +78,12 @@ namespace Tutor.Data.Implementations
         }
 
         /// <summary>
-        /// Saves a new LessonBundle, its 4 BundleQuarter rows, and prorated monthly Invoice
+        /// Saves a new LessonBundle, its BundleQuarter rows, and monthly Invoice
         /// instalments — all in a single transaction on the same connection.
+        /// The quarter layout and TotalLessons are computed by the repository;
+        /// instalments are spread over the months remaining in the year.
         /// </summary>
-        /// <param name="bundle">Bundle to save. StartDate is used as the lesson start date for prorating.</param>
-        /// <param name="quarters">Quarter structure (dates/numbers). LessonsAllocated is overwritten with prorated values.</param>
-        /// <param name="selectedBundleLessons">The full-year bundle size selected (e.g. 32, 48). Prorated lessons and invoices are derived from this.</param>
-        public async Task<int> SaveNewBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters, int selectedBundleLessons)
+        public async Task<int> SaveNewBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters)
         {
             if (_connection.State != ConnectionState.Open)
                 _connection.Open();
@@ -93,18 +92,10 @@ namespace Tutor.Data.Implementations
 
             try
             {
-                // 1. Prorate lessons and invoice count based on lesson start date.
-                var (proratedLessons, monthCount) = CalculateProrata(selectedBundleLessons, bundle.StartDate);
-                bundle.TotalLessons = proratedLessons;
+                var quarterList = quarters.ToList();
+                var monthCount  = 13 - bundle.StartDate.Month;
 
-                // Distribute prorated lessons evenly across quarters; remainder goes to last quarter.
-                var quarterList   = quarters.ToList();
-                var baseAlloc     = proratedLessons / quarterList.Count;
-                var remainder     = proratedLessons % quarterList.Count;
-                for (int q = 0; q < quarterList.Count; q++)
-                    quarterList[q].LessonsAllocated = baseAlloc + (q == quarterList.Count - 1 ? remainder : 0);
-
-                // 2. Resolve AccountHolderID inside the transaction.
+                // 1. Resolve AccountHolderID inside the transaction.
                 var accountHolderId = await _connection.ExecuteScalarAsync<int>(
                     SELECT_ACCOUNT_HOLDER_ID_BY_STUDENT_QRY,
                     new { bundle.StudentID }, transaction);
@@ -113,10 +104,10 @@ namespace Tutor.Data.Implementations
                     throw new InvalidOperationException(
                         $"Student {bundle.StudentID} not found when creating bundle.");
 
-                // 3. Insert bundle
+                // 2. Insert bundle
                 var bundleId = await _lessonBundleService.InsertAsync(bundle, _connection, transaction);
 
-                // 4. Insert quarters — pass _connection explicitly so the INSERT runs on
+                // 3. Insert quarters — pass _connection explicitly so the INSERT runs on
                 //    the same connection that owns the transaction. Without this, Dapper
                 //    uses the service's injected connection which is a different instance,
                 //    causing the quarters to be inserted outside the transaction or not at
@@ -126,8 +117,8 @@ namespace Tutor.Data.Implementations
 
                 await _bundleQuarterService.InsertBatchAsync(quarterList, transaction, _connection);
 
-                // 5. Generate prorated monthly invoice instalments.
-                var instalmentAmount = Math.Round(proratedLessons * bundle.PricePerLesson / monthCount, 2);
+                // 4. Generate monthly invoice instalments over the months remaining in the year.
+                var instalmentAmount = Math.Round(bundle.TotalLessons * bundle.PricePerLesson / monthCount, 2);
                 var invoices = BuildInstalments(bundleId, accountHolderId, instalmentAmount, bundle.StartDate, monthCount);
 
                 await _invoiceService.InsertBatchAsync(invoices, transaction, _connection);
@@ -159,19 +150,6 @@ namespace Tutor.Data.Implementations
         // -------------------------------------------------------------------------
         // Helpers
         // -------------------------------------------------------------------------
-
-        /// <summary>
-        /// Calculates prorated lessons and invoice month count for a mid-year start.
-        /// Months remaining = from startDate.Month to December inclusive (13 - startDate.Month).
-        /// </summary>
-        public static (int ProratedLessons, int MonthCount) CalculateProrata(
-            int selectedBundleLessons,
-            DateTime lessonStartDate)
-        {
-            var monthCount     = 13 - lessonStartDate.Month;
-            var proratedLessons = (int)Math.Round(selectedBundleLessons * monthCount / 12.0);
-            return (proratedLessons, monthCount);
-        }
 
         private static IEnumerable<Invoice> BuildInstalments(
             int bundleId,

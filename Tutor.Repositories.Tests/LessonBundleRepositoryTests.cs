@@ -86,39 +86,102 @@ public class LessonBundleRepositoryTests
     // ── AddBundleAsync ────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task AddBundleAsync_WhenSuccessful_ReturnsNewBundleId()
+    public async Task AddBundleAsync_FullMode_JanuaryStart_CreatesFourFullQuarters()
     {
-        var bundle   = new LessonBundle { StudentID = 3 };
-        var quarters = new List<BundleQuarter> { new() { QuarterNumber = 1 } };
-        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters, 32)).ReturnsAsync(7);
+        var bundle = new LessonBundle { StudentID = 3, TotalLessons = 32, StartDate = new DateTime(2026, 1, 15) };
+        List<BundleQuarter>? captured = null;
+        _aggregateMock
+            .Setup(a => a.SaveNewBundleAsync(bundle, It.IsAny<IEnumerable<BundleQuarter>>()))
+            .Callback<LessonBundle, IEnumerable<BundleQuarter>>((_, q) => captured = q.ToList())
+            .ReturnsAsync(7);
 
-        var result = await _sut.AddBundleAsync(bundle, quarters, 32);
+        var result = await _sut.AddBundleAsync(bundle, BundleCreationMode.Full);
 
         Assert.Equal(7, result);
+        Assert.NotNull(captured);
+        Assert.Equal(4, captured.Count);
+        Assert.All(captured, q => Assert.Equal(8, q.LessonsAllocated));
+        Assert.Equal(new DateTime(2026, 1, 15), captured[0].QuarterStartDate);
+        Assert.Equal(new DateTime(2026, 3, 31), captured[0].QuarterEndDate);
+        Assert.Equal(new DateTime(2026, 12, 31), captured[3].QuarterEndDate);
+        Assert.Equal(32, bundle.TotalLessons);
+        Assert.Equal(new DateTime(2026, 12, 31), bundle.EndDate);
+    }
+
+    [Fact]
+    public async Task AddBundleAsync_FullMode_AfterFebruary_Throws()
+    {
+        var bundle = new LessonBundle { StudentID = 3, TotalLessons = 32, StartDate = new DateTime(2026, 3, 1) };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.AddBundleAsync(bundle, BundleCreationMode.Full));
+
+        _aggregateMock.Verify(a => a.SaveNewBundleAsync(
+            It.IsAny<LessonBundle>(), It.IsAny<IEnumerable<BundleQuarter>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AddBundleAsync_ProrataMode_JulyStart_CreatesTwoQuartersAtNormalRate()
+    {
+        var bundle = new LessonBundle { StudentID = 3, TotalLessons = 32, StartDate = new DateTime(2026, 7, 10) };
+        List<BundleQuarter>? captured = null;
+        _aggregateMock
+            .Setup(a => a.SaveNewBundleAsync(bundle, It.IsAny<IEnumerable<BundleQuarter>>()))
+            .Callback<LessonBundle, IEnumerable<BundleQuarter>>((_, q) => captured = q.ToList())
+            .ReturnsAsync(8);
+
+        var result = await _sut.AddBundleAsync(bundle, BundleCreationMode.Prorata);
+
+        Assert.Equal(8, result);
+        Assert.NotNull(captured);
+        Assert.Equal(2, captured.Count);
+        Assert.Equal(3, captured[0].QuarterNumber);
+        Assert.Equal(4, captured[1].QuarterNumber);
+        Assert.All(captured, q => Assert.Equal(8, q.LessonsAllocated));
+        Assert.Equal(new DateTime(2026, 7, 10), captured[0].QuarterStartDate);
+        Assert.Equal(new DateTime(2026, 9, 30), captured[0].QuarterEndDate);
+        Assert.Equal(new DateTime(2026, 10, 1), captured[1].QuarterStartDate);
+        Assert.Equal(new DateTime(2026, 12, 31), captured[1].QuarterEndDate);
+        Assert.Equal(16, bundle.TotalLessons);
+    }
+
+    [Fact]
+    public async Task AddBundleAsync_ProrataMode_FebruaryStart_KeepsAllFourQuarters()
+    {
+        var bundle = new LessonBundle { StudentID = 3, TotalLessons = 36, StartDate = new DateTime(2026, 2, 10) };
+        List<BundleQuarter>? captured = null;
+        _aggregateMock
+            .Setup(a => a.SaveNewBundleAsync(bundle, It.IsAny<IEnumerable<BundleQuarter>>()))
+            .Callback<LessonBundle, IEnumerable<BundleQuarter>>((_, q) => captured = q.ToList())
+            .ReturnsAsync(9);
+
+        await _sut.AddBundleAsync(bundle, BundleCreationMode.Prorata);
+
+        Assert.NotNull(captured);
+        Assert.Equal(4, captured.Count);
+        Assert.All(captured, q => Assert.Equal(9, q.LessonsAllocated));
+        Assert.Equal(new DateTime(2026, 2, 10), captured[0].QuarterStartDate);
+        Assert.Equal(36, bundle.TotalLessons);
+    }
+
+    [Fact]
+    public async Task AddBundleAsync_WhenTotalLessonsNotDivisibleByFour_Throws()
+    {
+        var bundle = new LessonBundle { StudentID = 3, TotalLessons = 30, StartDate = new DateTime(2026, 1, 1) };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.AddBundleAsync(bundle, BundleCreationMode.Full));
     }
 
     [Fact]
     public async Task AddBundleAsync_WhenAggregateDaoThrows_Throws()
     {
-        var bundle   = new LessonBundle { StudentID = 3 };
-        var quarters = new List<BundleQuarter>();
-        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters, 32))
-                      .ThrowsAsync(new InvalidOperationException("Student not found"));
-
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.AddBundleAsync(bundle, quarters, 32));
-    }
-
-    [Fact]
-    public async Task AddBundleAsync_WhenGeneralExceptionThrown_Throws()
-    {
-        var bundle   = new LessonBundle { StudentID = 3 };
-        var quarters = new List<BundleQuarter>();
-        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters, 32))
+        var bundle = new LessonBundle { StudentID = 3, TotalLessons = 32, StartDate = new DateTime(2026, 1, 1) };
+        _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, It.IsAny<IEnumerable<BundleQuarter>>()))
                       .ThrowsAsync(new Exception("DB connection error"));
 
         await Assert.ThrowsAsync<Exception>(
-            () => _sut.AddBundleAsync(bundle, quarters, 32));
+            () => _sut.AddBundleAsync(bundle, BundleCreationMode.Full));
     }
 
     // ── UpdateBundleAsync ─────────────────────────────────────────────────────

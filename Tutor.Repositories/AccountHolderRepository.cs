@@ -38,40 +38,22 @@ namespace Tutor.Data.Implementations
 
         public async Task<int?> AddAccountHolderAsync(AccountHolder accountHolder)
         {
-            try
-            {
-                var accountHolderId = await _accountHolderService.InsertAsync(accountHolder);
+            var accountHolderId = await _accountHolderService.InsertAsync(accountHolder);
 
-                await _userRepository.CreateUserAsync(new User
-                {
-                    Email = accountHolder.Email,
-                    DisplayName = accountHolder.FullName,
-                    Role = UserRole.AccountHolder,
-                    AccountHolderID = accountHolderId
-                });
-
-                return accountHolderId;
-            }
-            catch (Exception ex)
+            await _userRepository.CreateUserAsync(new User
             {
-                _logger.LogError(ex, "Failed to insert AccountHolder {FirstName} {LastName}",
-                    accountHolder.FirstName, accountHolder.LastName);
-                return null;
-            }
+                Email = accountHolder.Email,
+                DisplayName = accountHolder.FullName,
+                Role = UserRole.AccountHolder,
+                AccountHolderID = accountHolderId
+            });
+
+            return accountHolderId;
         }
 
         public async Task<bool> UpdateAccountHolderAsync(AccountHolder accountHolder)
         {
-            try
-            {
-                return await _accountHolderService.UpdateAsync(accountHolder);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update AccountHolderID {AccountHolderID}",
-                    accountHolder.AccountHolderID);
-                return false;
-            }
+            return await _accountHolderService.UpdateAsync(accountHolder);
         }
     }
 }

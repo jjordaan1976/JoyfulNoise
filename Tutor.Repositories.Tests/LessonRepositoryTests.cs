@@ -3,6 +3,7 @@ using Moq;
 using Tutor.Data.Implementations;
 using Tutor.Data.Interfaces;
 using Tutor.Data.Models;
+using Tutor.Models;
 
 namespace Tutor.Repositories.Tests;
 
@@ -11,6 +12,7 @@ public class LessonRepositoryTests
     private readonly Mock<ILessonAggregateDataAccessObject> _aggregateMock;
     private readonly Mock<ILessonDataAccessObject> _lessonDaoMock;
     private readonly Mock<IBundleQuarterDataAccessObject> _quarterDaoMock;
+    private readonly Mock<ILessonBundleRepository> _bundleRepoMock;
     private readonly Mock<ILogger<LessonRepository>> _loggerMock;
     private readonly LessonRepository _sut;
 
@@ -19,11 +21,13 @@ public class LessonRepositoryTests
         _aggregateMock  = new Mock<ILessonAggregateDataAccessObject>();
         _lessonDaoMock  = new Mock<ILessonDataAccessObject>();
         _quarterDaoMock = new Mock<IBundleQuarterDataAccessObject>();
+        _bundleRepoMock = new Mock<ILessonBundleRepository>();
         _loggerMock     = new Mock<ILogger<LessonRepository>>();
         _sut = new LessonRepository(
             _aggregateMock.Object,
             _lessonDaoMock.Object,
             _quarterDaoMock.Object,
+            _bundleRepoMock.Object,
             _loggerMock.Object);
     }
 
@@ -92,14 +96,48 @@ public class LessonRepositoryTests
     }
 
     [Fact]
-    public async Task AddLessonAsync_WhenDaoThrows_ReturnsNull()
+    public async Task AddLessonAsync_WhenDaoThrows_Throws()
     {
         var lesson = new Lesson { BundleID = 1 };
         _lessonDaoMock.Setup(d => d.InsertAsync(lesson)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.AddLessonAsync(lesson);
+        await Assert.ThrowsAsync<Exception>(() => _sut.AddLessonAsync(lesson));
+    }
 
-        Assert.Null(result);
+    // ── GetByBundleForStudentAsync ────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByBundleForStudentAsync_WhenStudentOwnsBundle_ReturnsLessons()
+    {
+        var bundles = new List<LessonBundleDetail>
+        {
+            new() { BundleID = 7, StudentID = 5 },
+            new() { BundleID = 8, StudentID = 5 }
+        };
+        _bundleRepoMock.Setup(b => b.GetByStudentAsync(5)).ReturnsAsync(bundles);
+
+        var lessons = new List<Lesson> { new() { LessonID = 1, BundleID = 7 }, new() { LessonID = 2, BundleID = 7 } };
+        _lessonDaoMock.Setup(d => d.GetByBundleAsync(7)).ReturnsAsync(lessons);
+
+        var result = await _sut.GetByBundleForStudentAsync(7, 5);
+
+        Assert.Equal(2, result.Count());
+    }
+
+    [Fact]
+    public async Task GetByBundleForStudentAsync_WhenBundleNotOwnedByStudent_ThrowsInvalidOperationException()
+    {
+        var bundles = new List<LessonBundleDetail>
+        {
+            new() { BundleID = 8, StudentID = 5 }
+        };
+        _bundleRepoMock.Setup(b => b.GetByStudentAsync(5)).ReturnsAsync(bundles);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.GetByBundleForStudentAsync(7, 5));
+
+        Assert.Equal("Bundle not found for this student.", ex.Message);
+        _lessonDaoMock.Verify(d => d.GetByBundleAsync(It.IsAny<int>()), Times.Never);
     }
 
     // ── UpdateLessonStatusAsync — status transitions ───────────────────────────
@@ -184,14 +222,12 @@ public class LessonRepositoryTests
     }
 
     [Fact]
-    public async Task UpdateLessonStatusAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task UpdateLessonStatusAsync_WhenDaoThrows_Throws()
     {
         _lessonDaoMock.Setup(d => d.GetLessonAsync(1)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.UpdateLessonStatusAsync(
-            1, LessonStatus.Completed, false, null, null, null);
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.UpdateLessonStatusAsync(
+            1, LessonStatus.Completed, false, null, null, null));
     }
 
     // ── RescheduleLessonAsync ─────────────────────────────────────────────────
@@ -227,34 +263,33 @@ public class LessonRepositoryTests
     }
 
     [Fact]
-    public async Task RescheduleLessonAsync_WhenStatusIsScheduled_ReturnsFalse()
+    public async Task RescheduleLessonAsync_WhenStatusIsScheduled_Throws()
     {
         var lesson = new Lesson { LessonID = 6, Status = LessonStatus.Scheduled };
         _lessonDaoMock.Setup(d => d.GetLessonAsync(6)).ReturnsAsync(lesson);
 
-        var result = await _sut.RescheduleLessonAsync(6, DateTime.Today, new TimeOnly(9, 0));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.RescheduleLessonAsync(6, DateTime.Today, new TimeOnly(9, 0)));
 
-        Assert.False(result);
+        Assert.Equal("Reschedule failed. Lesson may not be in a cancellable status.", ex.Message);
         _lessonDaoMock.Verify(d => d.RescheduleLessonAsync(It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<TimeOnly>()), Times.Never);
     }
 
     [Fact]
-    public async Task RescheduleLessonAsync_WhenLessonNotFound_ReturnsFalse()
+    public async Task RescheduleLessonAsync_WhenLessonNotFound_Throws()
     {
         _lessonDaoMock.Setup(d => d.GetLessonAsync(99)).ReturnsAsync((Lesson?)null);
 
-        var result = await _sut.RescheduleLessonAsync(99, DateTime.Today, new TimeOnly(9, 0));
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.RescheduleLessonAsync(99, DateTime.Today, new TimeOnly(9, 0)));
     }
 
     [Fact]
-    public async Task RescheduleLessonAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task RescheduleLessonAsync_WhenDaoThrows_Throws()
     {
         _lessonDaoMock.Setup(d => d.GetLessonAsync(4)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.RescheduleLessonAsync(4, DateTime.Today, new TimeOnly(10, 0));
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(
+            () => _sut.RescheduleLessonAsync(4, DateTime.Today, new TimeOnly(10, 0)));
     }
 }

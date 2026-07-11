@@ -98,29 +98,27 @@ public class LessonBundleRepositoryTests
     }
 
     [Fact]
-    public async Task AddBundleAsync_WhenAggregateDaoThrows_ReturnsNull()
+    public async Task AddBundleAsync_WhenAggregateDaoThrows_Throws()
     {
         var bundle   = new LessonBundle { StudentID = 3 };
         var quarters = new List<BundleQuarter>();
         _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters, 32))
                       .ThrowsAsync(new InvalidOperationException("Student not found"));
 
-        var result = await _sut.AddBundleAsync(bundle, quarters, 32);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.AddBundleAsync(bundle, quarters, 32));
     }
 
     [Fact]
-    public async Task AddBundleAsync_WhenGeneralExceptionThrown_ReturnsNull()
+    public async Task AddBundleAsync_WhenGeneralExceptionThrown_Throws()
     {
         var bundle   = new LessonBundle { StudentID = 3 };
         var quarters = new List<BundleQuarter>();
         _aggregateMock.Setup(a => a.SaveNewBundleAsync(bundle, quarters, 32))
                       .ThrowsAsync(new Exception("DB connection error"));
 
-        var result = await _sut.AddBundleAsync(bundle, quarters, 32);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<Exception>(
+            () => _sut.AddBundleAsync(bundle, quarters, 32));
     }
 
     // ── UpdateBundleAsync ─────────────────────────────────────────────────────
@@ -148,13 +146,11 @@ public class LessonBundleRepositoryTests
     }
 
     [Fact]
-    public async Task UpdateBundleAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task UpdateBundleAsync_WhenDaoThrows_Throws()
     {
         var bundle = new LessonBundle { BundleID = 1 };
         _bundleDaoMock.Setup(d => d.UpdateAsync(bundle)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.UpdateBundleAsync(bundle);
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.UpdateBundleAsync(bundle));
     }
 }

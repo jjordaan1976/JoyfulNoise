@@ -75,14 +75,12 @@ public class LessonTypeRepositoryTests
     }
 
     [Fact]
-    public async Task AddLessonTypeAsync_WhenDaoThrows_ReturnsNull()
+    public async Task AddLessonTypeAsync_WhenDaoThrows_Throws()
     {
         var lt = new LessonType { DurationMinutes = 60 };
         _daoMock.Setup(d => d.InsertAsync(lt)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.AddLessonTypeAsync(lt);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.AddLessonTypeAsync(lt));
     }
 
     // ── UpdateLessonTypeAsync ─────────────────────────────────────────────────
@@ -110,13 +108,11 @@ public class LessonTypeRepositoryTests
     }
 
     [Fact]
-    public async Task UpdateLessonTypeAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task UpdateLessonTypeAsync_WhenDaoThrows_Throws()
     {
         var lt = new LessonType { LessonTypeID = 1 };
         _daoMock.Setup(d => d.UpdateAsync(lt)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.UpdateLessonTypeAsync(lt);
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.UpdateLessonTypeAsync(lt));
     }
 }

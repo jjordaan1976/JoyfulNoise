@@ -108,27 +108,23 @@ public class ScheduledSlotRepositoryTests
     }
 
     [Fact]
-    public async Task AddSlotAsync_WhenNoBundleExists_LogsWarningAndReturnsNull()
+    public async Task AddSlotAsync_WhenNoBundleExists_Throws()
     {
         var slot = new ScheduledSlot { StudentID = 1 };
         _aggregateMock.Setup(a => a.SaveNewSlotWithLessonsAsync(slot))
                       .ThrowsAsync(new InvalidOperationException("StudentID 1 has no active bundle"));
 
-        var result = await _sut.AddSlotAsync(slot);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.AddSlotAsync(slot));
     }
 
     [Fact]
-    public async Task AddSlotAsync_WhenGeneralExceptionThrown_ReturnsNull()
+    public async Task AddSlotAsync_WhenGeneralExceptionThrown_Throws()
     {
         var slot = new ScheduledSlot { StudentID = 1 };
         _aggregateMock.Setup(a => a.SaveNewSlotWithLessonsAsync(slot))
                       .ThrowsAsync(new Exception("DB connection error"));
 
-        var result = await _sut.AddSlotAsync(slot);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.AddSlotAsync(slot));
     }
 
     // ── CloseSlotAsync ────────────────────────────────────────────────────────
@@ -156,14 +152,12 @@ public class ScheduledSlotRepositoryTests
     }
 
     [Fact]
-    public async Task CloseSlotAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task CloseSlotAsync_WhenDaoThrows_Throws()
     {
         var effectiveTo = DateOnly.FromDateTime(DateTime.Today);
         _slotDaoMock.Setup(d => d.CloseSlotAsync(5, effectiveTo))
                     .ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.CloseSlotAsync(5, effectiveTo);
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.CloseSlotAsync(5, effectiveTo));
     }
 }

@@ -9,14 +9,7 @@ namespace Tutor.Data.Implementations
     {
         private readonly IDbConnection _connection;
 
-        public UserDataAccessObject(IDbConnection connection)
-        {
-            _connection = connection;
-        }
-
-        public async Task<IEnumerable<User>> GetByEmailAsync(string email)
-        {
-            const string sql = @"
+        public static readonly string GetByEmailSql = @"
                 SELECT UserID,
                        Email,
                        DisplayName,
@@ -30,25 +23,13 @@ namespace Tutor.Data.Implementations
                 WHERE Email    = @Email
                   AND IsActive = 1;";
 
-            return await _connection.QueryAsync<User>(sql, new { Email = email });
-        }
-
-        public async Task<bool> ExistsAsync(string email, UserRole role)
-        {
-            const string sql = @"
+        public static readonly string ExistsSql = @"
                 SELECT COUNT(1)
                 FROM [User]
                 WHERE Email = @Email
                   AND Role  = @Role;";
 
-            var count = await _connection.ExecuteScalarAsync<int>(sql,
-                new { Email = email, Role = role.ToString() });
-            return count > 0;
-        }
-
-        public async Task<int> InsertAsync(User user)
-        {
-            const string sql = @"
+        public static readonly string InsertSql = @"
                 INSERT INTO [User]
                     (Email, DisplayName, Role, TeacherID, StudentID, AccountHolderID, IsActive)
                 VALUES
@@ -56,7 +37,26 @@ namespace Tutor.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(sql, new
+        public UserDataAccessObject(IDbConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public async Task<IEnumerable<User>> GetByEmailAsync(string email)
+        {
+            return await _connection.QueryAsync<User>(GetByEmailSql, new { Email = email });
+        }
+
+        public async Task<bool> ExistsAsync(string email, UserRole role)
+        {
+            var count = await _connection.ExecuteScalarAsync<int>(ExistsSql,
+                new { Email = email, Role = role.ToString() });
+            return count > 0;
+        }
+
+        public async Task<int> InsertAsync(User user)
+        {
+            return await _connection.ExecuteScalarAsync<int>(InsertSql, new
             {
                 user.Email,
                 user.DisplayName,

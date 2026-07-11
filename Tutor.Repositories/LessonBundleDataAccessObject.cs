@@ -9,14 +9,7 @@ namespace Tutor.Data.Implementations
     {
         private readonly IDbConnection _connection;
 
-        public LessonBundleDataAccessObject(IDbConnection connection)
-        {
-            _connection = connection;
-        }
-
-        public async Task<LessonBundle?> GetBundleAsync(int id)
-        {
-            const string sql = @"
+        public static readonly string GetByIdSql = @"
                 SELECT BundleID,
                        StudentID,
                        TeacherID,
@@ -32,12 +25,7 @@ namespace Tutor.Data.Implementations
                 FROM LessonBundle
                 WHERE BundleID = @BundleID;";
 
-            return await _connection.QuerySingleOrDefaultAsync<LessonBundle>(sql, new { BundleID = id });
-        }
-
-        public async Task<IEnumerable<LessonBundle>> GetByStudentAsync(int studentId)
-        {
-            const string sql = @"
+        public static readonly string GetByStudentSql = @"
                 SELECT BundleID,
                        StudentID,
                        TeacherID,
@@ -54,28 +42,17 @@ namespace Tutor.Data.Implementations
                 WHERE StudentID = @StudentID
 ORDER BY StudentID";
 
-            return await _connection.QueryAsync<LessonBundle>(sql, new { StudentID = studentId });
-        }
-
-        public async Task<int> InsertAsync(LessonBundle bundle, IDbTransaction tx)
-        {
-            const string sql = @"
+        public static readonly string InsertSql = @"
                 INSERT INTO LessonBundle
-                    (StudentID, TeacherID, LessonTypeID, 
+                    (StudentID, TeacherID, LessonTypeID,
                      TotalLessons, PricePerLesson, StartDate, EndDate, IsActive, Notes)
                 VALUES
-                    (@StudentID, @TeacherID, @LessonTypeID, 
+                    (@StudentID, @TeacherID, @LessonTypeID,
                      @TotalLessons, @PricePerLesson, @StartDate, @EndDate, @IsActive, @Notes);
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(
-                new CommandDefinition(sql, bundle, tx));
-        }
-
-        public async Task<bool> UpdateAsync(LessonBundle bundle)
-        {
-            const string sql = @"
+        public static readonly string UpdateSql = @"
                 UPDATE LessonBundle
                 SET StudentID      = @StudentID,
                     TeacherID      = @TeacherID,
@@ -89,7 +66,34 @@ ORDER BY StudentID";
                     Notes          = @Notes
                 WHERE BundleID = @BundleID;";
 
-            var rowsAffected = await _connection.ExecuteAsync(sql, bundle);
+        public LessonBundleDataAccessObject(IDbConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public async Task<LessonBundle?> GetBundleAsync(int id)
+        {
+            return await _connection.QuerySingleOrDefaultAsync<LessonBundle>(GetByIdSql, new { BundleID = id });
+        }
+
+        public async Task<IEnumerable<LessonBundle>> GetByStudentAsync(int studentId)
+        {
+            return await _connection.QueryAsync<LessonBundle>(GetByStudentSql, new { StudentID = studentId });
+        }
+
+        /// <summary>
+        /// Inserts within an existing transaction. Executes against the passed-in
+        /// connection (the one that owns the transaction), never the injected one.
+        /// </summary>
+        public async Task<int> InsertAsync(LessonBundle bundle, IDbConnection connection, IDbTransaction transaction)
+        {
+            return await connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(InsertSql, bundle, transaction));
+        }
+
+        public async Task<bool> UpdateAsync(LessonBundle bundle)
+        {
+            var rowsAffected = await _connection.ExecuteAsync(UpdateSql, bundle);
             return rowsAffected > 0;
         }
     }

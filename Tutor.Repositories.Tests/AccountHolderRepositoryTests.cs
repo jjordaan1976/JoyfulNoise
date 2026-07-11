@@ -86,14 +86,12 @@ public class AccountHolderRepositoryTests
     }
 
     [Fact]
-    public async Task AddAccountHolderAsync_WhenDaoThrows_ReturnsNull()
+    public async Task AddAccountHolderAsync_WhenDaoThrows_Throws()
     {
         var ah = new AccountHolder { FirstName = "John", LastName = "Smith" };
         _daoMock.Setup(d => d.InsertAsync(ah)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.AddAccountHolderAsync(ah);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.AddAccountHolderAsync(ah));
     }
 
     [Fact]
@@ -117,7 +115,7 @@ public class AccountHolderRepositoryTests
         var ah = new AccountHolder { FirstName = "John", LastName = "Smith", Email = "john@b.com" };
         _daoMock.Setup(d => d.InsertAsync(ah)).ThrowsAsync(new Exception("DB error"));
 
-        await _sut.AddAccountHolderAsync(ah);
+        await Assert.ThrowsAsync<Exception>(() => _sut.AddAccountHolderAsync(ah));
 
         _userRepoMock.Verify(u => u.CreateUserAsync(It.IsAny<User>()), Times.Never);
     }
@@ -147,13 +145,11 @@ public class AccountHolderRepositoryTests
     }
 
     [Fact]
-    public async Task UpdateAccountHolderAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task UpdateAccountHolderAsync_WhenDaoThrows_Throws()
     {
         var ah = new AccountHolder { AccountHolderID = 1 };
         _daoMock.Setup(d => d.UpdateAsync(ah)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.UpdateAccountHolderAsync(ah);
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.UpdateAccountHolderAsync(ah));
     }
 }

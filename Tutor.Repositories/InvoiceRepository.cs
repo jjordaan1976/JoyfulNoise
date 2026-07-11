@@ -43,31 +43,13 @@ namespace Tutor.Data.Implementations
         /// </summary>
         public async Task<bool> AddInvoiceInstalmentsAsync(IEnumerable<Invoice> invoices, IDbTransaction tx, IDbConnection connection)
         {
-            try
-            {
-                await _invoiceService.InsertBatchAsync(invoices, tx, connection);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to insert invoice instalments for BundleID {BundleID}",
-                    invoices.FirstOrDefault()?.BundleID);
-                return false;
-            }
+            await _invoiceService.InsertBatchAsync(invoices, tx, connection);
+            return true;
         }
 
         public async Task<bool> UpdateInvoiceStatusAsync(int invoiceId, string status, DateOnly? paidDate)
         {
-            try
-            {
-                return await _invoiceService.UpdateStatusAsync(invoiceId, status, paidDate);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update status for InvoiceID {InvoiceID}", invoiceId);
-                return false;
-            }
+            return await _invoiceService.UpdateStatusAsync(invoiceId, status, paidDate);
         }
     }
 }

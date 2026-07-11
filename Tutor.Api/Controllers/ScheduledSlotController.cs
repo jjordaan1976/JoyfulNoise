@@ -19,66 +19,23 @@ namespace Tutor.Controllers
         }
 
         [HttpGet("GetSlot")]
-        public async Task<ResponseBase<ScheduledSlot>> GetSlot([FromQuery] int id)
-        {
-            ResponseBase<ScheduledSlot> response = new ResponseBase<ScheduledSlot>() { ReturnCode = -1 };
-            var result = await _scheduledSlotRepository.GetSlotAsync(id);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<ScheduledSlot?>> GetSlot([FromQuery] int id)
+            => Execute(() => _scheduledSlotRepository.GetSlotAsync(id), _logger, "Error getting slot");
 
         [HttpGet("GetActiveByStudent")]
-        public async Task<ResponseBase<IEnumerable<ScheduledSlot>>> GetActiveByStudent([FromQuery] int studentId)
-        {
-            ResponseBase<IEnumerable<ScheduledSlot>> response = new ResponseBase<IEnumerable<ScheduledSlot>>() { ReturnCode = -1 };
-            var result = await _scheduledSlotRepository.GetActiveByStudentAsync(studentId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<ScheduledSlot>>> GetActiveByStudent([FromQuery] int studentId)
+            => Execute(() => _scheduledSlotRepository.GetActiveByStudentAsync(studentId), _logger, "Error getting active slots by student");
 
         [HttpGet("GetActiveByTeacher")]
-        public async Task<ResponseBase<IEnumerable<ScheduledSlot>>> GetActiveByTeacher([FromQuery] int teacherId)
-        {
-            ResponseBase<IEnumerable<ScheduledSlot>> response = new ResponseBase<IEnumerable<ScheduledSlot>>() { ReturnCode = -1 };
-            var result = await _scheduledSlotRepository.GetActiveByTeacherAsync(teacherId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<ScheduledSlot>>> GetActiveByTeacher([FromQuery] int teacherId)
+            => Execute(() => _scheduledSlotRepository.GetActiveByTeacherAsync(teacherId), _logger, "Error getting active slots by teacher");
 
         [HttpPost("AddSlot")]
-        public async Task<ResponseBase<int?>> AddSlot([FromBody] ScheduledSlot req)
-        {
-            ResponseBase<int?> response = new ResponseBase<int?>() { ReturnCode = -1 };
-            var result = await _scheduledSlotRepository.AddSlotAsync(req);
-
-            if (result is null)
-            {
-                response.ReturnCode = -1;
-                response.ReturnMessage = "Cannot add slot: the student has no active bundle with remaining credits.";
-                return response;
-            }
-
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<int?>> AddSlot([FromBody] ScheduledSlot req)
+            => Execute(() => _scheduledSlotRepository.AddSlotAsync(req), _logger, "Error adding slot");
 
         [HttpPut("CloseSlot")]
-        public async Task<ResponseBase<bool>> CloseSlot([FromQuery] int slotId, [FromQuery] DateOnly effectiveTo)
-        {
-            ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
-            var result = await _scheduledSlotRepository.CloseSlotAsync(slotId, effectiveTo);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<bool>> CloseSlot([FromQuery] int slotId, [FromQuery] DateOnly effectiveTo)
+            => Execute(() => _scheduledSlotRepository.CloseSlotAsync(slotId, effectiveTo), _logger, "Error closing slot");
     }
 }

@@ -54,82 +54,48 @@ namespace Tutor.Data.Implementations
 
         public async Task<int?> AddPaymentAsync(Payment payment)
         {
-            try
-            {
-                if (_connection.State != ConnectionState.Open)
-                    _connection.Open();
+            if (_connection.State != ConnectionState.Open)
+                _connection.Open();
 
-                using var tx = _connection.BeginTransaction();
-                try
-                {
-                    // Start fully unallocated; engine will reduce it.
-                    payment.UnallocatedAmount = payment.Amount;
-                    var paymentId = await InsertPaymentInTxAsync(payment, tx);
+            // Disposal rolls back the transaction if Commit is never reached.
+            using var tx = _connection.BeginTransaction();
 
-                    await RunAllocationEngineAsync(payment.AccountHolderID, tx);
+            // Start fully unallocated; engine will reduce it.
+            payment.UnallocatedAmount = payment.Amount;
+            var paymentId = await InsertPaymentInTxAsync(payment, tx);
 
-                    tx.Commit();
-                    return paymentId;
-                }
-                catch
-                {
-                    tx.Rollback();
-                    throw;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to add payment for AccountHolderID {AccountHolderID}",
-                    payment.AccountHolderID);
-                return null;
-            }
+            await RunAllocationEngineAsync(payment.AccountHolderID, tx);
+
+            tx.Commit();
+            return paymentId;
         }
 
         public async Task<int?> QuickPayInvoiceAsync(int invoiceId, DateTime paymentDate)
         {
-            try
+            var invoice = await _invoiceDao.GetInvoiceAsync(invoiceId)
+                ?? throw new InvalidOperationException($"QuickPay failed: invoice {invoiceId} not found.");
+
+            if (_connection.State != ConnectionState.Open)
+                _connection.Open();
+
+            // Disposal rolls back the transaction if Commit is never reached.
+            using var tx = _connection.BeginTransaction();
+
+            var payment = new Payment
             {
-                var invoice = await _invoiceDao.GetInvoiceAsync(invoiceId);
-                if (invoice is null)
-                {
-                    _logger.LogWarning("QuickPay: InvoiceID {InvoiceID} not found", invoiceId);
-                    return null;
-                }
+                AccountHolderID   = invoice.AccountHolderID,
+                Amount            = invoice.Amount,
+                UnallocatedAmount = 0,
+                PaymentDate       = paymentDate,
+                Source            = PaymentSource.QuickPay,
+                Notes             = $"Quick-pay for Invoice #{invoiceId}"
+            };
 
-                if (_connection.State != ConnectionState.Open)
-                    _connection.Open();
+            var paymentId = await InsertPaymentInTxAsync(payment, tx);
+            await AllocateToInvoiceAsync(paymentId, invoice, invoice.Amount, tx);
 
-                using var tx = _connection.BeginTransaction();
-                try
-                {
-                    var payment = new Payment
-                    {
-                        AccountHolderID   = invoice.AccountHolderID,
-                        Amount            = invoice.Amount,
-                        UnallocatedAmount = 0,
-                        PaymentDate       = paymentDate,
-                        Source            = PaymentSource.QuickPay,
-                        Notes             = $"Quick-pay for Invoice #{invoiceId}"
-                    };
-
-                    var paymentId = await InsertPaymentInTxAsync(payment, tx);
-                    await AllocateToInvoiceAsync(paymentId, invoice, invoice.Amount, tx);
-
-                    tx.Commit();
-                    return paymentId;
-                }
-                catch
-                {
-                    tx.Rollback();
-                    throw;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "QuickPay failed for InvoiceID {InvoiceID}", invoiceId);
-                return null;
-            }
+            tx.Commit();
+            return paymentId;
         }
 
         // ── Private helpers ───────────────────────────────────────────────────

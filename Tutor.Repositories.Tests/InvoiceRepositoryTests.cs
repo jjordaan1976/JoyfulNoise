@@ -116,7 +116,7 @@ public class InvoiceRepositoryTests
     }
 
     [Fact]
-    public async Task AddInvoiceInstalmentsAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task AddInvoiceInstalmentsAsync_WhenDaoThrows_Throws()
     {
         var invoices = new List<Invoice> { new() { BundleID = 1 } };
         var connMock = new Mock<IDbConnection>();
@@ -125,9 +125,8 @@ public class InvoiceRepositoryTests
         _daoMock.Setup(d => d.InsertBatchAsync(invoices, txMock.Object, connMock.Object))
                 .ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.AddInvoiceInstalmentsAsync(invoices, txMock.Object, connMock.Object);
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(
+            () => _sut.AddInvoiceInstalmentsAsync(invoices, txMock.Object, connMock.Object));
     }
 
     // ── UpdateInvoiceStatusAsync ──────────────────────────────────────────────
@@ -155,13 +154,12 @@ public class InvoiceRepositoryTests
     }
 
     [Fact]
-    public async Task UpdateInvoiceStatusAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task UpdateInvoiceStatusAsync_WhenDaoThrows_Throws()
     {
         _daoMock.Setup(d => d.UpdateStatusAsync(1, InvoiceStatus.Paid, It.IsAny<DateOnly?>()))
                 .ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.UpdateInvoiceStatusAsync(1, InvoiceStatus.Paid, null);
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(
+            () => _sut.UpdateInvoiceStatusAsync(1, InvoiceStatus.Paid, null));
     }
 }

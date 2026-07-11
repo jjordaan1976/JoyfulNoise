@@ -94,15 +94,13 @@ public class ExtraLessonRepositoryTests
     }
 
     [Fact]
-    public async Task AddExtraLessonAsync_WhenAggregateDaoThrows_ReturnsNull()
+    public async Task AddExtraLessonAsync_WhenAggregateDaoThrows_Throws()
     {
         var el = new ExtraLesson { StudentID = 1 };
         _aggregateMock.Setup(a => a.SaveNewExtraLessonAsync(el))
                       .ThrowsAsync(new InvalidOperationException("No student found"));
 
-        var result = await _sut.AddExtraLessonAsync(el);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.AddExtraLessonAsync(el));
     }
 
     // ── UpdateExtraLessonStatusAsync ──────────────────────────────────────────
@@ -142,13 +140,12 @@ public class ExtraLessonRepositoryTests
     }
 
     [Fact]
-    public async Task UpdateExtraLessonStatusAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task UpdateExtraLessonStatusAsync_WhenDaoThrows_Throws()
     {
         _daoMock.Setup(d => d.UpdateStatusAsync(1, ExtraLessonStatus.Completed, null))
                 .ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.UpdateExtraLessonStatusAsync(1, ExtraLessonStatus.Completed);
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(
+            () => _sut.UpdateExtraLessonStatusAsync(1, ExtraLessonStatus.Completed));
     }
 }

@@ -84,14 +84,12 @@ public class UserRepositoryTests
     }
 
     [Fact]
-    public async Task CreateUserAsync_WhenDaoThrows_ReturnsNull()
+    public async Task CreateUserAsync_WhenDaoThrows_Throws()
     {
         var user = new User { Email = "err@b.com", DisplayName = "Err", Role = UserRole.Teacher, TeacherID = 1 };
         _daoMock.Setup(d => d.ExistsAsync("err@b.com", UserRole.Teacher)).ReturnsAsync(false);
         _daoMock.Setup(d => d.InsertAsync(user)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.CreateUserAsync(user);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.CreateUserAsync(user));
     }
 }

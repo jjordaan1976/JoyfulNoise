@@ -20,47 +20,19 @@ namespace Tutor.Controllers
         }
 
         [HttpGet("GetBundle")]
-        public async Task<ResponseBase<IEnumerable<LessonBundleWithQuarterDetail>>> GetBundle([FromQuery] int bundleId)
-        {
-            ResponseBase<IEnumerable<LessonBundleWithQuarterDetail>> response = new ResponseBase<IEnumerable<LessonBundleWithQuarterDetail>>() { ReturnCode = -1 };
-            var result = await _lessonBundleRepository.GetBundleAsync(bundleId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<LessonBundleWithQuarterDetail>>> GetBundle([FromQuery] int bundleId)
+            => Execute(() => _lessonBundleRepository.GetBundleAsync(bundleId), _logger, "Error getting bundle");
 
         [HttpGet("GetByStudent")]
-        public async Task<ResponseBase<IEnumerable<LessonBundleDetail>>> GetByStudent([FromQuery] int studentId)
-        {
-            ResponseBase<IEnumerable<LessonBundleDetail>> response = new ResponseBase<IEnumerable<LessonBundleDetail>>() { ReturnCode = -1 };
-            var result = await _lessonBundleRepository.GetByStudentAsync(studentId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<LessonBundleDetail>>> GetByStudent([FromQuery] int studentId)
+            => Execute(() => _lessonBundleRepository.GetByStudentAsync(studentId), _logger, "Error getting bundles by student");
 
         [HttpPost("AddBundle")]
-        public async Task<ResponseBase<int?>> AddBundle([FromBody] AddBundleRequest req)
-        {
-            ResponseBase<int?> response = new ResponseBase<int?>() { ReturnCode = -1 };
-            var result = await _lessonBundleRepository.AddBundleAsync(req.Bundle, req.Quarters, req.SelectedBundleLessons);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<int?>> AddBundle([FromBody] AddBundleRequest req)
+            => Execute(() => _lessonBundleRepository.AddBundleAsync(req.Bundle, req.Quarters, req.SelectedBundleLessons), _logger, "Error adding bundle");
 
         [HttpPut("UpdateBundle")]
-        public async Task<ResponseBase<bool>> UpdateBundle([FromBody] LessonBundle req)
-        {
-            ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
-            var result = await _lessonBundleRepository.UpdateBundleAsync(req);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<bool>> UpdateBundle([FromBody] LessonBundle req)
+            => Execute(() => _lessonBundleRepository.UpdateBundleAsync(req), _logger, "Error updating bundle");
     }
 }

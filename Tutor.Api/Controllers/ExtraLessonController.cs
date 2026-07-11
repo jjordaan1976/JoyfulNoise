@@ -19,61 +19,26 @@ namespace Tutor.Controllers
         }
 
         [HttpGet("GetExtraLesson")]
-        public async Task<ResponseBase<ExtraLessonDetail>> GetExtraLesson([FromQuery] int extraLessonId)
-        {
-            ResponseBase<ExtraLessonDetail> response = new ResponseBase<ExtraLessonDetail>() { ReturnCode = -1 };
-            var result = await _extraLessonRepository.GetExtraLessonAsync(extraLessonId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<ExtraLessonDetail?>> GetExtraLesson([FromQuery] int extraLessonId)
+            => Execute(() => _extraLessonRepository.GetExtraLessonAsync(extraLessonId), _logger, "Error getting extra lesson");
 
         [HttpGet("GetByTeacherAndDate")]
-        public async Task<ResponseBase<IEnumerable<ExtraLessonDetail>>> GetByTeacherAndDate([FromQuery] int teacherId, [FromQuery] DateTime scheduledDate)
-        {
-            ResponseBase<IEnumerable<ExtraLessonDetail>> response = new ResponseBase<IEnumerable<ExtraLessonDetail>>() { ReturnCode = -1 };
-            var result = await _extraLessonRepository.GetByTeacherAndDateAsync(teacherId, scheduledDate);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<ExtraLessonDetail>>> GetByTeacherAndDate([FromQuery] int teacherId, [FromQuery] DateTime scheduledDate)
+            => Execute(() => _extraLessonRepository.GetByTeacherAndDateAsync(teacherId, scheduledDate), _logger, "Error getting extra lessons by teacher and date");
 
         [HttpGet("GetByStudent")]
-        public async Task<ResponseBase<IEnumerable<ExtraLesson>>> GetByStudent([FromQuery] int studentId)
-        {
-            ResponseBase<IEnumerable<ExtraLesson>> response = new ResponseBase<IEnumerable<ExtraLesson>>() { ReturnCode = -1 };
-            var result = await _extraLessonRepository.GetByStudentAsync(studentId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<ExtraLesson>>> GetByStudent([FromQuery] int studentId)
+            => Execute(() => _extraLessonRepository.GetByStudentAsync(studentId), _logger, "Error getting extra lessons by student");
 
         [HttpPost("AddExtraLesson")]
-        public async Task<ResponseBase<int?>> AddExtraLesson([FromBody] ExtraLesson req)
-        {
-            ResponseBase<int?> response = new ResponseBase<int?>() { ReturnCode = -1 };
-            var result = await _extraLessonRepository.AddExtraLessonAsync(req);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<int?>> AddExtraLesson([FromBody] ExtraLesson req)
+            => Execute(() => _extraLessonRepository.AddExtraLessonAsync(req), _logger, "Error adding extra lesson");
 
         [HttpPut("UpdateExtraLessonStatus")]
-        public async Task<ResponseBase<bool>> UpdateExtraLessonStatus(
+        public Task<ResponseBase<bool>> UpdateExtraLessonStatus(
             [FromQuery] int extraLessonId,
             [FromQuery] string status,
             [FromQuery] string? note = null)
-        {
-            ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
-            var result = await _extraLessonRepository.UpdateExtraLessonStatusAsync(extraLessonId, status, note);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+            => Execute(() => _extraLessonRepository.UpdateExtraLessonStatusAsync(extraLessonId, status, note), _logger, "Error updating extra lesson status");
     }
 }

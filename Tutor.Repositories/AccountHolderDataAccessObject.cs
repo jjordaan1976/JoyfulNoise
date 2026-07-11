@@ -9,14 +9,7 @@ namespace Tutor.Data.Implementations
     {
         private readonly IDbConnection _connection;
 
-        public AccountHolderDataAccessObject(IDbConnection connection)
-        {
-            _connection = connection;
-        }
-
-        public async Task<AccountHolder?> GetAccountHolderAsync(int id)
-        {
-            const string sql = @"
+        public static readonly string GetByIdSql = @"
                 SELECT AccountHolderID,
                        TeacherID,
                        FirstName,
@@ -29,12 +22,7 @@ namespace Tutor.Data.Implementations
                 FROM AccountHolder
                 WHERE AccountHolderID = @AccountHolderID;";
 
-            return await _connection.QuerySingleOrDefaultAsync<AccountHolder>(sql, new { AccountHolderID = id });
-        }
-
-        public async Task<AccountHolder?> GetByEmailAsync(string email)
-        {
-            const string sql = @"
+        public static readonly string GetByEmailSql = @"
                 SELECT AccountHolderID,
                        TeacherID,
                        FirstName,
@@ -47,12 +35,7 @@ namespace Tutor.Data.Implementations
                 FROM AccountHolder
                 WHERE Email = @Email;";
 
-            return await _connection.QuerySingleOrDefaultAsync<AccountHolder>(sql, new { Email = email });
-        }
-
-        public async Task<IEnumerable<AccountHolder>> GetByTeacherAsync(int teacherId)
-        {
-            const string sql = @"
+        public static readonly string GetByTeacherSql = @"
                 SELECT AccountHolderID,
                        TeacherID,
                        FirstName,
@@ -67,12 +50,7 @@ namespace Tutor.Data.Implementations
                   AND IsActive  = 1
                 ORDER BY LastName, FirstName;";
 
-            return await _connection.QueryAsync<AccountHolder>(sql, new { TeacherID = teacherId });
-        }
-
-        public async Task<int> InsertAsync(AccountHolder accountHolder)
-        {
-            const string sql = @"
+        public static readonly string InsertSql = @"
                 INSERT INTO AccountHolder
                     (TeacherID, FirstName, LastName, Email, Phone, BillingAddress, IsActive)
                 VALUES
@@ -80,12 +58,7 @@ namespace Tutor.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(sql, accountHolder);
-        }
-
-        public async Task<bool> UpdateAsync(AccountHolder accountHolder)
-        {
-            const string sql = @"
+        public static readonly string UpdateSql = @"
                 UPDATE AccountHolder
                 SET TeacherID      = @TeacherID,
                     FirstName      = @FirstName,
@@ -96,7 +69,34 @@ namespace Tutor.Data.Implementations
                     IsActive       = @IsActive
                 WHERE AccountHolderID = @AccountHolderID;";
 
-            var rowsAffected = await _connection.ExecuteAsync(sql, accountHolder);
+        public AccountHolderDataAccessObject(IDbConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public async Task<AccountHolder?> GetAccountHolderAsync(int id)
+        {
+            return await _connection.QuerySingleOrDefaultAsync<AccountHolder>(GetByIdSql, new { AccountHolderID = id });
+        }
+
+        public async Task<AccountHolder?> GetByEmailAsync(string email)
+        {
+            return await _connection.QuerySingleOrDefaultAsync<AccountHolder>(GetByEmailSql, new { Email = email });
+        }
+
+        public async Task<IEnumerable<AccountHolder>> GetByTeacherAsync(int teacherId)
+        {
+            return await _connection.QueryAsync<AccountHolder>(GetByTeacherSql, new { TeacherID = teacherId });
+        }
+
+        public async Task<int> InsertAsync(AccountHolder accountHolder)
+        {
+            return await _connection.ExecuteScalarAsync<int>(InsertSql, accountHolder);
+        }
+
+        public async Task<bool> UpdateAsync(AccountHolder accountHolder)
+        {
+            var rowsAffected = await _connection.ExecuteAsync(UpdateSql, accountHolder);
             return rowsAffected > 0;
         }
     }

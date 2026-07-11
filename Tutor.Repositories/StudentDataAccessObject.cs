@@ -9,14 +9,7 @@ namespace Tutor.Data.Implementations
     {
         private readonly IDbConnection _connection;
 
-        public StudentDataAccessObject(IDbConnection connection)
-        {
-            _connection = connection;
-        }
-
-        public async Task<Student?> GetStudentAsync(int id)
-        {
-            const string sql = @"
+        public static readonly string GetByIdSql = @"
                 SELECT StudentID,
                        AccountHolderID,
                        FirstName,
@@ -29,12 +22,7 @@ namespace Tutor.Data.Implementations
                 FROM Student
                 WHERE StudentID = @StudentID;";
 
-            return await _connection.QuerySingleOrDefaultAsync<Student>(sql, new { StudentID = id });
-        }
-
-        public async Task<Student?> GetByEmailAsync(string email)
-        {
-            const string sql = @"
+        public static readonly string GetByEmailSql = @"
                 SELECT StudentID,
                        AccountHolderID,
                        FirstName,
@@ -47,12 +35,7 @@ namespace Tutor.Data.Implementations
                 FROM Student
                 WHERE Email = @Email;";
 
-            return await _connection.QuerySingleOrDefaultAsync<Student>(sql, new { Email = email });
-        }
-
-        public async Task<IEnumerable<Student>> GetByAccountHolderAsync(int accountHolderId)
-        {
-            const string sql = @"
+        public static readonly string GetByAccountHolderSql = @"
                 SELECT StudentID,
                        AccountHolderID,
                        FirstName,
@@ -67,12 +50,7 @@ namespace Tutor.Data.Implementations
                   AND IsActive        = 1
                 ORDER BY LastName, FirstName;";
 
-            return await _connection.QueryAsync<Student>(sql, new { AccountHolderID = accountHolderId });
-        }
-
-        public async Task<int> InsertAsync(Student student)
-        {
-            const string sql = @"
+        public static readonly string InsertSql = @"
                 INSERT INTO Student
                     (AccountHolderID, FirstName, LastName, Email, DateOfBirth, IsAccountHolder, IsActive)
                 VALUES
@@ -80,12 +58,7 @@ namespace Tutor.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(sql, student);
-        }
-
-        public async Task<bool> UpdateAsync(Student student)
-        {
-            const string sql = @"
+        public static readonly string UpdateSql = @"
                 UPDATE Student
                 SET AccountHolderID = @AccountHolderID,
                     FirstName       = @FirstName,
@@ -96,7 +69,34 @@ namespace Tutor.Data.Implementations
                     IsActive        = @IsActive
                 WHERE StudentID = @StudentID;";
 
-            var rowsAffected = await _connection.ExecuteAsync(sql, student);
+        public StudentDataAccessObject(IDbConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public async Task<Student?> GetStudentAsync(int id)
+        {
+            return await _connection.QuerySingleOrDefaultAsync<Student>(GetByIdSql, new { StudentID = id });
+        }
+
+        public async Task<Student?> GetByEmailAsync(string email)
+        {
+            return await _connection.QuerySingleOrDefaultAsync<Student>(GetByEmailSql, new { Email = email });
+        }
+
+        public async Task<IEnumerable<Student>> GetByAccountHolderAsync(int accountHolderId)
+        {
+            return await _connection.QueryAsync<Student>(GetByAccountHolderSql, new { AccountHolderID = accountHolderId });
+        }
+
+        public async Task<int> InsertAsync(Student student)
+        {
+            return await _connection.ExecuteScalarAsync<int>(InsertSql, student);
+        }
+
+        public async Task<bool> UpdateAsync(Student student)
+        {
+            var rowsAffected = await _connection.ExecuteAsync(UpdateSql, student);
             return rowsAffected > 0;
         }
     }

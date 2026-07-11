@@ -48,6 +48,11 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
     e.SetObserved();
 };
 
+// Global app culture — required for MudDatePicker yyyy/MM/dd formatting. Do not remove.
+var culture = new System.Globalization.CultureInfo("en-ZA");
+System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
+
 var host = builder.Build();
 
 await host.RunAsync();

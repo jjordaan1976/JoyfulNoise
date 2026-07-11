@@ -31,6 +31,10 @@ namespace Tutor.Api
             services.AddScoped<IDbConnection>(_ =>
                 new SqlConnection(Configuration.GetConnectionString("Tutor")));
 
+            // Per-request identity from JWT claims
+            services.AddHttpContextAccessor();
+            services.AddScoped<ICurrentUserService, Auth.CurrentUserService>();
+
             // Repositories
             services.AddScoped<ITeacherRepository, TeacherRepository>();
             services.AddScoped<IAccountHolderRepository, AccountHolderRepository>();            
@@ -59,6 +63,7 @@ namespace Tutor.Api
             services.AddScoped<IPaymentRepository, PaymentRepository>();
             services.AddScoped<IUserDataAccessObject, UserDataAccessObject>();
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IAuthRepository, AuthRepository>();
 
             // Email service — mock console sender for this phase of development
             services.AddScoped<IEmailService, ConsoleEmailService>();

@@ -8,99 +8,43 @@ namespace Tutor.Api
     [Route("StudentPortal")]
     public class StudentPortalController : BaseController
     {
-
         private readonly IStudentRepository _studentRepository;
         private readonly ILessonBundleRepository _bundleRepository;
         private readonly IScheduledSlotRepository _slotRepository;
         private readonly ILessonRepository _lessonRepository;
+        private readonly ICurrentUserService _currentUser;
+        private readonly ILogger<StudentPortalController> _logger;
 
         public StudentPortalController(
             IStudentRepository studentRepository,
             ILessonBundleRepository bundleRepository,
             IScheduledSlotRepository slotRepository,
-            ILessonRepository lessonRepository)
+            ILessonRepository lessonRepository,
+            ICurrentUserService currentUser,
+            ILogger<StudentPortalController> logger)
         {
             _studentRepository = studentRepository;
             _bundleRepository = bundleRepository;
             _slotRepository = slotRepository;
             _lessonRepository = lessonRepository;
+            _currentUser = currentUser;
+            _logger = logger;
         }
 
         [HttpGet("GetStudent")]
-        public async Task<ResponseBase<Tutor.Data.Models.Student>> GetStudent()
-        {
-            var response = new ResponseBase<Tutor.Data.Models.Student> { ReturnCode = -1 };
-            var studentId = int.TryParse(GetClaimValue("studentId"), out var id) ? id : 0;
-            if (studentId == 0)
-            {
-                response.ReturnMessage = "Student not found in token claims.";
-                return response;
-            }
-            var result = await _studentRepository.GetStudentAsync(studentId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<Tutor.Data.Models.Student?>> GetStudent()
+            => Execute(() => _studentRepository.GetStudentAsync(_currentUser.RequireStudentId()), _logger, "Error getting student");
 
         [HttpGet("GetBundles")]
-        public async Task<ResponseBase<IEnumerable<LessonBundleDetail>>> GetBundles()
-        {
-            var response = new ResponseBase<IEnumerable<LessonBundleDetail>> { ReturnCode = -1 };
-            var studentId = int.TryParse(GetClaimValue("studentId"), out var id) ? id : 0;
-            if (studentId == 0)
-            {
-                response.ReturnMessage = "Student not found in token claims.";
-                return response;
-            }
-            var result = await _bundleRepository.GetByStudentAsync(studentId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<LessonBundleDetail>>> GetBundles()
+            => Execute(() => _bundleRepository.GetByStudentAsync(_currentUser.RequireStudentId()), _logger, "Error getting bundles");
 
         [HttpGet("GetSlots")]
-        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.ScheduledSlot>>> GetSlots()
-        {
-            var response = new ResponseBase<IEnumerable<Tutor.Data.Models.ScheduledSlot>> { ReturnCode = -1 };
-            var studentId = int.TryParse(GetClaimValue("studentId"), out var id) ? id : 0;
-            if (studentId == 0)
-            {
-                response.ReturnMessage = "Student not found in token claims.";
-                return response;
-            }
-            var result = await _slotRepository.GetActiveByStudentAsync(studentId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<Tutor.Data.Models.ScheduledSlot>>> GetSlots()
+            => Execute(() => _slotRepository.GetActiveByStudentAsync(_currentUser.RequireStudentId()), _logger, "Error getting slots");
 
         [HttpGet("GetLessonsByBundle")]
-        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.Lesson>>> GetLessonsByBundle([FromQuery] int bundleId)
-        {
-            var response = new ResponseBase<IEnumerable<Tutor.Data.Models.Lesson>> { ReturnCode = -1 };
-            var studentId = int.TryParse(GetClaimValue("studentId"), out var id) ? id : 0;
-            if (studentId == 0)
-            {
-                response.ReturnMessage = "Student not found in token claims.";
-                return response;
-            }
-
-            // Verify the bundle belongs to this student before returning lessons
-            var bundles = await _bundleRepository.GetByStudentAsync(studentId);
-            if (!bundles.Any(b => b.BundleID == bundleId))
-            {
-                response.ReturnMessage = "Bundle not found for this student.";
-                return response;
-            }
-
-            var result = await _lessonRepository.GetByBundleAsync(bundleId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<Tutor.Data.Models.Lesson>>> GetLessonsByBundle([FromQuery] int bundleId)
+            => Execute(() => _lessonRepository.GetByBundleForStudentAsync(bundleId, _currentUser.RequireStudentId()), _logger, "Error getting lessons");
     }
 }

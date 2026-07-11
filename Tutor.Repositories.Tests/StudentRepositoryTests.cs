@@ -86,14 +86,12 @@ public class StudentRepositoryTests
     }
 
     [Fact]
-    public async Task AddStudentAsync_WhenDaoThrows_ReturnsNull()
+    public async Task AddStudentAsync_WhenDaoThrows_Throws()
     {
         var student = new Student { FirstName = "Anna", LastName = "Bell" };
         _daoMock.Setup(d => d.InsertAsync(student)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.AddStudentAsync(student);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.AddStudentAsync(student));
     }
 
     [Fact]
@@ -117,7 +115,7 @@ public class StudentRepositoryTests
         var student = new Student { FirstName = "Anna", LastName = "Bell", Email = "anna@b.com" };
         _daoMock.Setup(d => d.InsertAsync(student)).ThrowsAsync(new Exception("DB error"));
 
-        await _sut.AddStudentAsync(student);
+        await Assert.ThrowsAsync<Exception>(() => _sut.AddStudentAsync(student));
 
         _userRepoMock.Verify(u => u.CreateUserAsync(It.IsAny<User>()), Times.Never);
     }
@@ -147,13 +145,11 @@ public class StudentRepositoryTests
     }
 
     [Fact]
-    public async Task UpdateStudentAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task UpdateStudentAsync_WhenDaoThrows_Throws()
     {
         var student = new Student { StudentID = 1 };
         _daoMock.Setup(d => d.UpdateAsync(student)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.UpdateStudentAsync(student);
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.UpdateStudentAsync(student));
     }
 }

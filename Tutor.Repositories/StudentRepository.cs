@@ -37,39 +37,22 @@ namespace Tutor.Data.Implementations
 
         public async Task<int?> AddStudentAsync(Student student)
         {
-            try
-            {
-                var studentId = await _studentService.InsertAsync(student);
+            var studentId = await _studentService.InsertAsync(student);
 
-                await _userRepository.CreateUserAsync(new User
-                {
-                    Email = student.Email,
-                    DisplayName = student.FullName,
-                    Role = UserRole.Student,
-                    StudentID = studentId
-                });
-
-                return studentId;
-            }
-            catch (Exception ex)
+            await _userRepository.CreateUserAsync(new User
             {
-                _logger.LogError(ex, "Failed to insert Student {FirstName} {LastName}",
-                    student.FirstName, student.LastName);
-                return null;
-            }
+                Email = student.Email,
+                DisplayName = student.FullName,
+                Role = UserRole.Student,
+                StudentID = studentId
+            });
+
+            return studentId;
         }
 
         public async Task<bool> UpdateStudentAsync(Student student)
         {
-            try
-            {
-                return await _studentService.UpdateAsync(student);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update StudentID {StudentID}", student.StudentID);
-                return false;
-            }
+            return await _studentService.UpdateAsync(student);
         }
     }
 }

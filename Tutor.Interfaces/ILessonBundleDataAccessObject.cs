@@ -8,7 +8,7 @@ namespace Tutor.Data.Interfaces
     {
         Task<LessonBundle?> GetBundleAsync(int id);
         Task<IEnumerable<LessonBundle>> GetByStudentAsync(int studentId);
-        Task<int> InsertAsync(LessonBundle bundle, IDbTransaction tx);
+        Task<int> InsertAsync(LessonBundle bundle, IDbConnection connection, IDbTransaction transaction);
         Task<bool> UpdateAsync(LessonBundle bundle);
     }
 }

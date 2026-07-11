@@ -27,30 +27,12 @@ namespace Tutor.Data.Implementations
 
         public async Task<int?> AddLessonTypeAsync(LessonType lessonType)
         {
-            try
-            {
-                return await _lessonTypeService.InsertAsync(lessonType);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to insert LessonType {DurationMinutes}min",
-                    lessonType.DurationMinutes);
-                return null;
-            }
+            return await _lessonTypeService.InsertAsync(lessonType);
         }
 
         public async Task<bool> UpdateLessonTypeAsync(LessonType lessonType)
         {
-            try
-            {
-                return await _lessonTypeService.UpdateAsync(lessonType);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update LessonTypeID {LessonTypeID}",
-                    lessonType.LessonTypeID);
-                return false;
-            }
+            return await _lessonTypeService.UpdateAsync(lessonType);
         }
     }
 }

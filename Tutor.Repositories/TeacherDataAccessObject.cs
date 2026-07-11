@@ -9,14 +9,7 @@ namespace Tutor.Data.Implementations
     {
         private readonly IDbConnection _connection;
 
-        public TeacherDataAccessObject(IDbConnection connection)
-        {
-            _connection = connection;
-        }
-
-        public async Task<Teacher?> GetTeacherAsync(int id)
-        {
-            const string sql = @"
+        public static readonly string GetByIdSql = @"
                 SELECT TeacherID,
                        Name,
                        Email,
@@ -26,12 +19,7 @@ namespace Tutor.Data.Implementations
                 FROM Teacher
                 WHERE TeacherID = @TeacherID;";
 
-            return await _connection.QuerySingleOrDefaultAsync<Teacher>(sql, new { TeacherID = id });
-        }
-
-        public async Task<IEnumerable<Teacher>> GetAllActiveAsync()
-        {
-            const string sql = @"
+        public static readonly string GetAllActiveSql = @"
                 SELECT TeacherID,
                        Name,
                        Email,
@@ -42,23 +30,13 @@ namespace Tutor.Data.Implementations
                 WHERE IsActive = 1
                 ORDER BY Name;";
 
-            return await _connection.QueryAsync<Teacher>(sql);
-        }
-
-        public async Task<int> InsertAsync(Teacher teacher)
-        {
-            const string sql = @"
+        public static readonly string InsertSql = @"
                 INSERT INTO Teacher (Name, Email, Phone, IsActive)
                 VALUES (@Name, @Email, @Phone, @IsActive);
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(sql, teacher);
-        }
-
-        public async Task<bool> UpdateAsync(Teacher teacher)
-        {
-            const string sql = @"
+        public static readonly string UpdateSql = @"
                 UPDATE Teacher
                 SET Name     = @Name,
                     Email    = @Email,
@@ -66,7 +44,29 @@ namespace Tutor.Data.Implementations
                     IsActive = @IsActive
                 WHERE TeacherID = @TeacherID;";
 
-            var rowsAffected = await _connection.ExecuteAsync(sql, teacher);
+        public TeacherDataAccessObject(IDbConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public async Task<Teacher?> GetTeacherAsync(int id)
+        {
+            return await _connection.QuerySingleOrDefaultAsync<Teacher>(GetByIdSql, new { TeacherID = id });
+        }
+
+        public async Task<IEnumerable<Teacher>> GetAllActiveAsync()
+        {
+            return await _connection.QueryAsync<Teacher>(GetAllActiveSql);
+        }
+
+        public async Task<int> InsertAsync(Teacher teacher)
+        {
+            return await _connection.ExecuteScalarAsync<int>(InsertSql, teacher);
+        }
+
+        public async Task<bool> UpdateAsync(Teacher teacher)
+        {
+            var rowsAffected = await _connection.ExecuteAsync(UpdateSql, teacher);
             return rowsAffected > 0;
         }
     }

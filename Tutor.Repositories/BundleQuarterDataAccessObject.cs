@@ -9,14 +9,7 @@ namespace Tutor.Data.Implementations
     {
         private readonly IDbConnection _connection;
 
-        public BundleQuarterDataAccessObject(IDbConnection connection)
-        {
-            _connection = connection;
-        }
-
-        public async Task<IEnumerable<BundleQuarter>> GetByBundleAsync(int bundleId)
-        {
-            const string sql = @"
+        public static readonly string GetByBundleSql = @"
                 SELECT QuarterID,
                        BundleID,
                        QuarterNumber,
@@ -28,7 +21,37 @@ namespace Tutor.Data.Implementations
                 WHERE BundleID = @BundleID
                 ORDER BY QuarterNumber;";
 
-            return await _connection.QueryAsync<BundleQuarter>(sql, new { BundleID = bundleId });
+        public static readonly string InsertBatchSql = @"
+                INSERT INTO BundleQuarter
+                    (BundleID, QuarterNumber, LessonsAllocated, LessonsUsed,
+                     QuarterStartDate, QuarterEndDate)
+                VALUES
+                    (@BundleID, @QuarterNumber, @LessonsAllocated, @LessonsUsed,
+                     @QuarterStartDate, @QuarterEndDate);";
+
+        public static readonly string UpdateLessonsUsedSql = @"
+                UPDATE BundleQuarter
+                SET LessonsUsed = @LessonsUsed
+                WHERE QuarterID = @QuarterID;";
+
+        public static readonly string AdjustLessonsUsedSql = @"
+                UPDATE BundleQuarter
+                SET LessonsUsed = CASE
+                                      WHEN LessonsUsed + @Delta < 0 THEN 0
+                                      ELSE LessonsUsed + @Delta
+                                  END
+                WHERE QuarterID = (
+                    SELECT QuarterID FROM Lesson WHERE LessonID = @LessonID
+                );";
+
+        public BundleQuarterDataAccessObject(IDbConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public async Task<IEnumerable<BundleQuarter>> GetByBundleAsync(int bundleId)
+        {
+            return await _connection.QueryAsync<BundleQuarter>(GetByBundleSql, new { BundleID = bundleId });
         }
 
         /// <summary>
@@ -39,26 +62,13 @@ namespace Tutor.Data.Implementations
         /// </summary>
         public async Task InsertBatchAsync(IEnumerable<BundleQuarter> quarters, IDbTransaction tx, IDbConnection connection)
         {
-            const string sql = @"
-                INSERT INTO BundleQuarter
-                    (BundleID, QuarterNumber, LessonsAllocated, LessonsUsed,
-                     QuarterStartDate, QuarterEndDate)
-                VALUES
-                    (@BundleID, @QuarterNumber, @LessonsAllocated, @LessonsUsed,
-                     @QuarterStartDate, @QuarterEndDate);";
-
             await connection.ExecuteAsync(
-                new CommandDefinition(sql, quarters, tx));
+                new CommandDefinition(InsertBatchSql, quarters, tx));
         }
 
         public async Task<bool> UpdateLessonsUsedAsync(int quarterId, int lessonsUsed)
         {
-            const string sql = @"
-                UPDATE BundleQuarter
-                SET LessonsUsed = @LessonsUsed
-                WHERE QuarterID = @QuarterID;";
-
-            var rowsAffected = await _connection.ExecuteAsync(sql,
+            var rowsAffected = await _connection.ExecuteAsync(UpdateLessonsUsedSql,
                 new { QuarterID = quarterId, LessonsUsed = lessonsUsed });
             return rowsAffected > 0;
         }
@@ -70,17 +80,7 @@ namespace Tutor.Data.Implementations
         /// </summary>
         public async Task<bool> AdjustLessonsUsedAsync(int lessonId, int delta)
         {
-            const string sql = @"
-                UPDATE BundleQuarter
-                SET LessonsUsed = CASE
-                                      WHEN LessonsUsed + @Delta < 0 THEN 0
-                                      ELSE LessonsUsed + @Delta
-                                  END
-                WHERE QuarterID = (
-                    SELECT QuarterID FROM Lesson WHERE LessonID = @LessonID
-                );";
-
-            var rowsAffected = await _connection.ExecuteAsync(sql,
+            var rowsAffected = await _connection.ExecuteAsync(AdjustLessonsUsedSql,
                 new { LessonID = lessonId, Delta = delta });
             return rowsAffected > 0;
         }

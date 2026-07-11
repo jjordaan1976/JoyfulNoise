@@ -9,14 +9,7 @@ namespace Tutor.Data.Implementations
     {
         private readonly IDbConnection _connection;
 
-        public ExtraLessonDataAccessObject(IDbConnection connection)
-        {
-            _connection = connection;
-        }
-
-        public async Task<ExtraLesson?> GetExtraLessonAsync(int id)
-        {
-            const string sql = @"
+        public static readonly string GetByIdSql = @"
                 SELECT ExtraLessonID,
                        StudentID,
                        TeacherID,
@@ -30,12 +23,7 @@ namespace Tutor.Data.Implementations
                 FROM ExtraLesson
                 WHERE ExtraLessonID = @ExtraLessonID;";
 
-            return await _connection.QuerySingleOrDefaultAsync<ExtraLesson>(sql, new { ExtraLessonID = id });
-        }
-
-        public async Task<IEnumerable<ExtraLesson>> GetByStudentAsync(int studentId)
-        {
-            const string sql = @"
+        public static readonly string GetByStudentSql = @"
                 SELECT ExtraLessonID,
                        StudentID,
                        TeacherID,
@@ -50,17 +38,7 @@ namespace Tutor.Data.Implementations
                 WHERE StudentID = @StudentID
                 ORDER BY ScheduledDate DESC, ScheduledTime DESC;";
 
-            return await _connection.QueryAsync<ExtraLesson>(sql, new { StudentID = studentId });
-        }
-
-        /// <summary>Inserts outside of a transaction (existing callers).</summary>
-        public async Task<int> InsertAsync(ExtraLesson extraLesson)
-            => await InsertAsync(extraLesson, null!, _connection);
-
-        /// <summary>Inserts within an existing transaction.</summary>
-        public async Task<int> InsertAsync(ExtraLesson extraLesson, IDbTransaction tx, IDbConnection connection)
-        {
-            const string sql = @"
+        public static readonly string InsertSql = @"
                 INSERT INTO ExtraLesson
                     (StudentID, TeacherID, LessonTypeID, ScheduledDate,
                      ScheduledTime, PriceCharged, Status, Notes)
@@ -70,8 +48,39 @@ namespace Tutor.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
+        public static readonly string UpdateStatusSql = @"
+                UPDATE ExtraLesson
+                SET Status = @Status,
+                    Notes  = COALESCE(@Notes, Notes)
+                WHERE ExtraLessonID = @ExtraLessonID;";
+
+        public ExtraLessonDataAccessObject(IDbConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public async Task<ExtraLesson?> GetExtraLessonAsync(int id)
+        {
+            return await _connection.QuerySingleOrDefaultAsync<ExtraLesson>(GetByIdSql, new { ExtraLessonID = id });
+        }
+
+        public async Task<IEnumerable<ExtraLesson>> GetByStudentAsync(int studentId)
+        {
+            return await _connection.QueryAsync<ExtraLesson>(GetByStudentSql, new { StudentID = studentId });
+        }
+
+        /// <summary>Inserts outside of a transaction (existing callers).</summary>
+        public async Task<int> InsertAsync(ExtraLesson extraLesson)
+            => await InsertAsync(extraLesson, null!, _connection);
+
+        /// <summary>
+        /// Inserts within an existing transaction. Executes against the passed-in
+        /// connection (the one that owns the transaction), never the injected one.
+        /// </summary>
+        public async Task<int> InsertAsync(ExtraLesson extraLesson, IDbTransaction tx, IDbConnection connection)
+        {
             return await connection.ExecuteScalarAsync<int>(
-                new CommandDefinition(sql, extraLesson, tx));
+                new CommandDefinition(InsertSql, extraLesson, tx));
         }
 
         /// <summary>
@@ -80,13 +89,7 @@ namespace Tutor.Data.Implementations
         /// </summary>
         public async Task<bool> UpdateStatusAsync(int extraLessonId, string status, string? note = null)
         {
-            const string sql = @"
-                UPDATE ExtraLesson
-                SET Status = @Status,
-                    Notes  = COALESCE(@Notes, Notes)
-                WHERE ExtraLessonID = @ExtraLessonID;";
-
-            var rowsAffected = await _connection.ExecuteAsync(sql,
+            var rowsAffected = await _connection.ExecuteAsync(UpdateStatusSql,
                 new { ExtraLessonID = extraLessonId, Status = status, Notes = note });
             return rowsAffected > 0;
         }

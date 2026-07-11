@@ -72,14 +72,12 @@ public class TeacherRepositoryTests
     }
 
     [Fact]
-    public async Task AddTeacherAsync_WhenDaoThrows_ReturnsNull()
+    public async Task AddTeacherAsync_WhenDaoThrows_Throws()
     {
         var teacher = new Teacher { Name = "Bob" };
         _daoMock.Setup(d => d.InsertAsync(teacher)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.AddTeacherAsync(teacher);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.AddTeacherAsync(teacher));
     }
 
     [Fact]
@@ -103,7 +101,7 @@ public class TeacherRepositoryTests
         var teacher = new Teacher { Name = "Bob Dylan", Email = "bob@b.com" };
         _daoMock.Setup(d => d.InsertAsync(teacher)).ThrowsAsync(new Exception("DB error"));
 
-        await _sut.AddTeacherAsync(teacher);
+        await Assert.ThrowsAsync<Exception>(() => _sut.AddTeacherAsync(teacher));
 
         _userRepoMock.Verify(u => u.CreateUserAsync(It.IsAny<User>()), Times.Never);
     }
@@ -133,13 +131,11 @@ public class TeacherRepositoryTests
     }
 
     [Fact]
-    public async Task UpdateTeacherAsync_WhenDaoThrows_ReturnsFalse()
+    public async Task UpdateTeacherAsync_WhenDaoThrows_Throws()
     {
         var teacher = new Teacher { TeacherID = 1 };
         _daoMock.Setup(d => d.UpdateAsync(teacher)).ThrowsAsync(new Exception("DB error"));
 
-        var result = await _sut.UpdateTeacherAsync(teacher);
-
-        Assert.False(result);
+        await Assert.ThrowsAsync<Exception>(() => _sut.UpdateTeacherAsync(teacher));
     }
 }

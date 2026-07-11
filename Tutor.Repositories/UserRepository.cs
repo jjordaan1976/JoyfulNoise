@@ -29,21 +29,13 @@ namespace Tutor.Data.Implementations
                 return null;
             }
 
-            try
+            if (await _userService.ExistsAsync(user.Email, user.Role))
             {
-                if (await _userService.ExistsAsync(user.Email, user.Role))
-                {
-                    _logger.LogInformation("User already exists for {Email} as {Role}", user.Email, user.Role);
-                    return null;
-                }
-
-                return await _userService.InsertAsync(user);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to create {Role} user for {Email}", user.Role, user.Email);
+                _logger.LogInformation("User already exists for {Email} as {Role}", user.Email, user.Role);
                 return null;
             }
+
+            return await _userService.InsertAsync(user);
         }
     }
 }

@@ -3,6 +3,7 @@
 @attribute [AllowAnonymous]
 
 @using Microsoft.AspNetCore.Authorization
+@using Tutor.Models.TransferModels
 @using Tutor.AccountHolderPortal.Services
 @inject HttpClient Http
 @inject ISnackbar Snackbar
@@ -58,14 +59,17 @@
         {
             var request = new { email = _email };
             var response = await Http.PostAsJsonAsync("api/auth/request-otp", request);
-            if (response.IsSuccessStatusCode)
+            var result = response.IsSuccessStatusCode
+                ? await response.Content.ReadFromJsonAsync<ResponseBase<bool>>()
+                : null;
+            if (result?.ReturnCode == 0)
             {
                 _showOtpInput = true;
                 Snackbar.Add("OTP sent to your email", Severity.Success);
             }
             else
             {
-                Snackbar.Add("Failed to send OTP", Severity.Error);
+                Snackbar.Add(result?.ReturnMessage ?? "Failed to send OTP", Severity.Error);
             }
         }
         catch (Exception ex)
@@ -87,28 +91,20 @@
         {
             var request = new { email = _email, otp = _otp };
             var response = await Http.PostAsJsonAsync("api/auth/verify-otp", request);
-            if (response.IsSuccessStatusCode)
+            var result = response.IsSuccessStatusCode
+                ? await response.Content.ReadFromJsonAsync<ResponseBase<string>>()
+                : null;
+            if (result?.ReturnCode == 0 && !string.IsNullOrEmpty(result.Data))
             {
-                var result = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-                var token = result.ValueKind != System.Text.Json.JsonValueKind.Undefined && result.TryGetProperty("token", out var tokenProp)
-                    ? tokenProp.GetString()
-                    : null;
-                if (token != null)
-                {
-                    // Store token in sessionStorage
-                    await AuthService.SetTokenAsync(token);
-                    ((JwtAuthenticationStateProvider)AuthStateProvider).NotifyAuthenticationChanged();
-                    Snackbar.Add("Login successful", Severity.Success);
-                    Nav.NavigateTo("/statement", replace: true);
-                }
-                else
-                {
-                    Snackbar.Add("Invalid response from server", Severity.Error);
-                }
+                // Store token in sessionStorage
+                await AuthService.SetTokenAsync(result.Data);
+                ((JwtAuthenticationStateProvider)AuthStateProvider).NotifyAuthenticationChanged();
+                Snackbar.Add("Login successful", Severity.Success);
+                Nav.NavigateTo("/statement", replace: true);
             }
             else
             {
-                Snackbar.Add("Invalid OTP", Severity.Error);
+                Snackbar.Add(result?.ReturnMessage ?? "Invalid OTP", Severity.Error);
                 _otp = string.Empty;
             }
         }

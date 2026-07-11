@@ -25,7 +25,15 @@
       "Bash(ls *.sln)",
       "Bash(grep -i \"Project\\(\" *.sln)",
       "Bash(timeout 12 dotnet run --no-build)",
-      "Bash(taskkill //F //IM dotnet.exe //T)"
+      "Bash(taskkill //F //IM dotnet.exe //T)",
+      "Bash(git mv *)",
+      "PowerShell(dotnet build Tutor.Api/Tutor.Api.csproj -v quiet)",
+      "PowerShell(dotnet test C:\\\\Code\\\\za.co.leanshift\\\\JoyfulNoise\\\\Tutor.Repositories.Tests\\\\Tutor.Repositories.Tests.csproj -v quiet --nologo)",
+      "PowerShell(dotnet build Tutor.Repositories/Tutor.Repositories.csproj -v quiet)",
+      "PowerShell(dotnet build Tutor.Repositories.Tests/Tutor.Repositories.Tests.csproj -v quiet)",
+      "PowerShell(Get-Process | Where-Object { $_.ProcessName -match 'dotnet|Tutor|iisexpress|MSBuild|VBCSCompiler' } | Select-Object Id, ProcessName, Path | Format-Table -AutoSize)",
+      "PowerShell(dotnet build-server shutdown)",
+      "PowerShell(dotnet test C:\\\\Code\\\\za.co.leanshift\\\\JoyfulNoise\\\\Tutor.Repositories.Tests\\\\Tutor.Repositories.Tests.csproj -v quiet --nologo --filter \"FullyQualifiedName~GetByBundleForStudentAsync\")"
     ]
   }
 }

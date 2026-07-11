@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Tutor.Interfaces\Tutor.Interfaces.csproj" />
     <ProjectReference Include="..\Tutor.Models\Tutor.Models.csproj" />
+    <ProjectReference Include="..\Tutor.JwtService\Tutor.JwtService.csproj" />
   </ItemGroup>
 
 </Project>

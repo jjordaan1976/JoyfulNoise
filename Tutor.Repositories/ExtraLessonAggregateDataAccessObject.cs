@@ -55,6 +55,9 @@ namespace Tutor.Data.Implementations
               AND el.ScheduledDate = @ScheduledDate
             ORDER BY el.ScheduledTime;";
 
+        public static readonly string SELECT_ACCOUNT_HOLDER_ID_BY_STUDENT_QRY =
+            "SELECT AccountHolderID FROM Student WHERE StudentID = @StudentID";
+
         public ExtraLessonAggregateDataAccessObject(
             IDbConnection connection,
             IExtraLessonDataAccessObject extraLessonService,
@@ -97,7 +100,7 @@ namespace Tutor.Data.Implementations
             {
                 // 1. Resolve the AccountHolderID for the student so we know who to bill.
                 var accountHolderId = await _connection.ExecuteScalarAsync<int>(
-                    "SELECT AccountHolderID FROM Student WHERE StudentID = @StudentID",
+                    SELECT_ACCOUNT_HOLDER_ID_BY_STUDENT_QRY,
                     new { extraLesson.StudentID },
                     transaction);
 

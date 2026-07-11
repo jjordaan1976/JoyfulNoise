@@ -62,6 +62,9 @@ namespace Tutor.Data.Implementations
             WHERE s.StudentID = @StudentID
             ORDER BY lb.BundleID;";
 
+        public static readonly string SELECT_ACCOUNT_HOLDER_ID_BY_STUDENT_QRY =
+            "SELECT AccountHolderID FROM Student WHERE StudentID = @StudentID";
+
         public LessonBundleAggregateDataAccessObject(
             IDbConnection connection,
             ILessonBundleDataAccessObject lessonBundleService,
@@ -103,7 +106,7 @@ namespace Tutor.Data.Implementations
 
                 // 2. Resolve AccountHolderID inside the transaction.
                 var accountHolderId = await _connection.ExecuteScalarAsync<int>(
-                    "SELECT AccountHolderID FROM Student WHERE StudentID = @StudentID",
+                    SELECT_ACCOUNT_HOLDER_ID_BY_STUDENT_QRY,
                     new { bundle.StudentID }, transaction);
 
                 if (accountHolderId == 0)
@@ -111,7 +114,7 @@ namespace Tutor.Data.Implementations
                         $"Student {bundle.StudentID} not found when creating bundle.");
 
                 // 3. Insert bundle
-                var bundleId = await _lessonBundleService.InsertAsync(bundle, transaction);
+                var bundleId = await _lessonBundleService.InsertAsync(bundle, _connection, transaction);
 
                 // 4. Insert quarters — pass _connection explicitly so the INSERT runs on
                 //    the same connection that owns the transaction. Without this, Dapper

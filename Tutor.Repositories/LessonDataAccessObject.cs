@@ -9,14 +9,7 @@ namespace Tutor.Data.Implementations
     {
         private readonly IDbConnection _connection;
 
-        public LessonDataAccessObject(IDbConnection connection)
-        {
-            _connection = connection;
-        }
-
-        public async Task<Lesson?> GetLessonAsync(int id)
-        {
-            const string sql = @"
+        public static readonly string GetByIdSql = @"
                 SELECT LessonID,
                        SlotID,
                        BundleID,
@@ -34,12 +27,7 @@ namespace Tutor.Data.Implementations
                 FROM Lesson
                 WHERE LessonID = @LessonID;";
 
-            return await _connection.QuerySingleOrDefaultAsync<Lesson>(sql, new { LessonID = id });
-        }
-
-        public async Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId)
-        {
-            const string sql = @"
+        public static readonly string GetByBundleSql = @"
                 SELECT LessonID,
                        SlotID,
                        BundleID,
@@ -58,12 +46,7 @@ namespace Tutor.Data.Implementations
                 WHERE BundleID = @BundleID
                 ORDER BY ScheduledDate, ScheduledTime;";
 
-            return await _connection.QueryAsync<Lesson>(sql, new { BundleID = bundleId });
-        }
-
-        public async Task<IEnumerable<Lesson>> GetByStatusAsync(string status)
-        {
-            const string sql = @"
+        public static readonly string GetByStatusSql = @"
                 SELECT LessonID,
                        SlotID,
                        BundleID,
@@ -82,15 +65,7 @@ namespace Tutor.Data.Implementations
                 WHERE Status = @Status
                 ORDER BY ScheduledDate, ScheduledTime;";
 
-            return await _connection.QueryAsync<Lesson>(sql, new { Status = status });
-        }
-
-        public async Task<int> InsertAsync(Lesson lesson)
-            => await InsertAsync(lesson, null!);
-
-        public async Task<int> InsertAsync(Lesson lesson, IDbTransaction tx)
-        {
-            const string sql = @"
+        public static readonly string InsertSql = @"
                 INSERT INTO Lesson
                     (SlotID, BundleID, QuarterID, ScheduledDate, ScheduledTime,
                      Status, CreditForfeited, CancelledBy, CancellationReason,
@@ -102,15 +77,7 @@ namespace Tutor.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(
-                new CommandDefinition(sql, lesson, tx));
-        }
-
-        public async Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
-            string? cancelledBy, string? cancellationReason, DateTime? completedAt,
-            string? note = null)
-        {
-            const string sql = @"
+        public static readonly string UpdateStatusSql = @"
                 UPDATE Lesson
                 SET Status             = @Status,
                     CreditForfeited    = @CreditForfeited,
@@ -120,7 +87,55 @@ namespace Tutor.Data.Implementations
                     Notes              = COALESCE(@Notes, Notes)
                 WHERE LessonID = @LessonID;";
 
-            var rowsAffected = await _connection.ExecuteAsync(sql, new
+        public static readonly string RescheduleSql = @"
+                UPDATE Lesson
+                SET ScheduledDate      = @ScheduledDate,
+                    ScheduledTime      = @ScheduledTime,
+                    Status             = @Status,
+                    CreditForfeited    = 0,
+                    CancelledBy        = NULL,
+                    CancellationReason = NULL,
+                    CompletedAt        = NULL
+                WHERE LessonID = @LessonID;";
+
+        public LessonDataAccessObject(IDbConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public async Task<Lesson?> GetLessonAsync(int id)
+        {
+            return await _connection.QuerySingleOrDefaultAsync<Lesson>(GetByIdSql, new { LessonID = id });
+        }
+
+        public async Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId)
+        {
+            return await _connection.QueryAsync<Lesson>(GetByBundleSql, new { BundleID = bundleId });
+        }
+
+        public async Task<IEnumerable<Lesson>> GetByStatusAsync(string status)
+        {
+            return await _connection.QueryAsync<Lesson>(GetByStatusSql, new { Status = status });
+        }
+
+        public async Task<int> InsertAsync(Lesson lesson)
+            => await InsertAsync(lesson, _connection, null!);
+
+        /// <summary>
+        /// Inserts within an existing transaction. Executes against the passed-in
+        /// connection (the one that owns the transaction), never the injected one.
+        /// </summary>
+        public async Task<int> InsertAsync(Lesson lesson, IDbConnection connection, IDbTransaction transaction)
+        {
+            return await connection.ExecuteScalarAsync<int>(
+                new CommandDefinition(InsertSql, lesson, transaction));
+        }
+
+        public async Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
+            string? cancelledBy, string? cancellationReason, DateTime? completedAt,
+            string? note = null)
+        {
+            var rowsAffected = await _connection.ExecuteAsync(UpdateStatusSql, new
             {
                 LessonID           = lessonId,
                 Status             = status,
@@ -135,18 +150,7 @@ namespace Tutor.Data.Implementations
 
         public async Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime)
         {
-            const string sql = @"
-                UPDATE Lesson
-                SET ScheduledDate      = @ScheduledDate,
-                    ScheduledTime      = @ScheduledTime,
-                    Status             = @Status,
-                    CreditForfeited    = 0,
-                    CancelledBy        = NULL,
-                    CancellationReason = NULL,
-                    CompletedAt        = NULL
-                WHERE LessonID = @LessonID;";
-
-            var rowsAffected = await _connection.ExecuteAsync(sql, new
+            var rowsAffected = await _connection.ExecuteAsync(RescheduleSql, new
             {
                 LessonID      = lessonId,
                 ScheduledDate = newDate,

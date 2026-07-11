@@ -34,26 +34,11 @@ namespace Tutor.Data.Implementations
         /// inserts the slot, then generates all future Lesson rows up to the bundle's
         /// EndDate — one per weekly occurrence matching the slot's DayOfWeek.
         /// Everything runs in a single transaction; nothing is committed if any step fails.
-        /// Returns null if the student has no usable bundle, or on any error.
+        /// Throws InvalidOperationException if the student has no usable bundle.
         /// </summary>
         public async Task<int?> AddSlotAsync(ScheduledSlot slot)
         {
-            try
-            {
-                return await _aggregateService.SaveNewSlotWithLessonsAsync(slot);
-            }
-            catch (InvalidOperationException ex)
-            {
-                // Business rule violation (no active bundle) — warn rather than error.
-                _logger.LogWarning(ex.Message);
-                return null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to insert ScheduledSlot for StudentID {StudentID}", slot.StudentID);
-                return null;
-            }
+            return await _aggregateService.SaveNewSlotWithLessonsAsync(slot);
         }
 
         /// <summary>
@@ -62,15 +47,7 @@ namespace Tutor.Data.Implementations
         /// </summary>
         public async Task<bool> CloseSlotAsync(int slotId, DateOnly effectiveTo)
         {
-            try
-            {
-                return await _slotService.CloseSlotAsync(slotId, effectiveTo);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to close SlotID {SlotID}", slotId);
-                return false;
-            }
+            return await _slotService.CloseSlotAsync(slotId, effectiveTo);
         }
     }
 }

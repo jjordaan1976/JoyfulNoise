@@ -41,30 +41,12 @@ namespace Tutor.Data.Implementations
         /// </summary>
         public async Task<int?> AddBundleAsync(LessonBundle bundle, IEnumerable<BundleQuarter> quarters, int selectedBundleLessons)
         {
-            try
-            {
-                return await _aggregateService.SaveNewBundleAsync(bundle, quarters, selectedBundleLessons);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to save LessonBundle for StudentID {StudentID}",
-                    bundle.StudentID);
-                return null;
-            }
+            return await _aggregateService.SaveNewBundleAsync(bundle, quarters, selectedBundleLessons);
         }
 
         public async Task<bool> UpdateBundleAsync(LessonBundle bundle)
         {
-            try
-            {
-                return await _lessonBundleService.UpdateAsync(bundle);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update BundleID {BundleID}", bundle.BundleID);
-                return false;
-            }
+            return await _lessonBundleService.UpdateAsync(bundle);
         }
     }
 }

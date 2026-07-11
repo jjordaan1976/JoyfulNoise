@@ -48,17 +48,7 @@ namespace Tutor.Data.Implementations
         /// </summary>
         public async Task<int?> AddExtraLessonAsync(ExtraLesson extraLesson)
         {
-            try
-            {
-                return await _aggregateService.SaveNewExtraLessonAsync(extraLesson);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to insert ExtraLesson + Invoice for StudentID {StudentID} on {ScheduledDate}",
-                    extraLesson.StudentID, extraLesson.ScheduledDate);
-                return null;
-            }
+            return await _aggregateService.SaveNewExtraLessonAsync(extraLesson);
         }
 
         /// <summary>
@@ -67,16 +57,7 @@ namespace Tutor.Data.Implementations
         /// </summary>
         public async Task<bool> UpdateExtraLessonStatusAsync(int extraLessonId, string status, string? note = null)
         {
-            try
-            {
-                return await _extraLessonService.UpdateStatusAsync(extraLessonId, status, note);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to update status for ExtraLessonID {ExtraLessonID}", extraLessonId);
-                return false;
-            }
+            return await _extraLessonService.UpdateStatusAsync(extraLessonId, status, note);
         }
     }
 }

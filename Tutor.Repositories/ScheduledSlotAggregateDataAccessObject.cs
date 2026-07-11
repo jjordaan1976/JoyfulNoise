@@ -89,7 +89,7 @@ namespace Tutor.Data.Implementations
                         ScheduledTime   = slot.SlotTime,
                         Status          = LessonStatus.Scheduled,
                         CreditForfeited = false,
-                    }, tx);
+                    }, _connection, tx);
                 }
 
                 tx.Commit();

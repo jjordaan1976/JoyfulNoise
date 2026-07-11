@@ -9,17 +9,20 @@ namespace Tutor.Data.Implementations
         private readonly ILessonAggregateDataAccessObject _aggregateService;
         private readonly ILessonDataAccessObject _lessonService;
         private readonly IBundleQuarterDataAccessObject _bundleQuarterService;
+        private readonly ILessonBundleRepository _lessonBundleRepository;
         private readonly ILogger<LessonRepository> _logger;
 
         public LessonRepository(
             ILessonAggregateDataAccessObject aggregateService,
             ILessonDataAccessObject lessonService,
             IBundleQuarterDataAccessObject bundleQuarterService,
+            ILessonBundleRepository lessonBundleRepository,
             ILogger<LessonRepository> logger)
         {
             _aggregateService = aggregateService;
             _lessonService = lessonService;
             _bundleQuarterService = bundleQuarterService;
+            _lessonBundleRepository = lessonBundleRepository;
             _logger = logger;
         }
 
@@ -33,19 +36,23 @@ namespace Tutor.Data.Implementations
         public async Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId)
             => await _lessonService.GetByBundleAsync(bundleId);
 
+        /// <summary>
+        /// Returns the lessons for a bundle, but only if the bundle belongs to the
+        /// given student. Throws InvalidOperationException otherwise.
+        /// </summary>
+        public async Task<IEnumerable<Lesson>> GetByBundleForStudentAsync(int bundleId, int studentId)
+        {
+            var bundles = await _lessonBundleRepository.GetByStudentAsync(studentId);
+
+            if (!bundles.Any(b => b.BundleID == bundleId))
+                throw new InvalidOperationException("Bundle not found for this student.");
+
+            return await _lessonService.GetByBundleAsync(bundleId);
+        }
+
         public async Task<int?> AddLessonAsync(Lesson lesson)
         {
-            try
-            {
-                return await _lessonService.InsertAsync(lesson);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to insert Lesson for BundleID {BundleID} on {ScheduledDate}",
-                    lesson.BundleID, lesson.ScheduledDate);
-                return null;
-            }
+            return await _lessonService.InsertAsync(lesson);
         }
 
         /// <summary>
@@ -59,40 +66,32 @@ namespace Tutor.Data.Implementations
             bool creditForfeited, string? cancelledBy, string? cancellationReason,
             DateTime? completedAt, string? note = null)
         {
-            try
-            {
-                // 1. Read current status so we know whether to adjust the quarter.
-                var lesson = await _lessonService.GetLessonAsync(lessonId);
-                if (lesson is null) return false;
+            // 1. Read current status so we know whether to adjust the quarter.
+            var lesson = await _lessonService.GetLessonAsync(lessonId);
+            if (lesson is null) return false;
 
-                // 2. Update the lesson row.
-                var updated = await _lessonService.UpdateStatusAsync(
-                    lessonId, status, creditForfeited,
-                    cancelledBy, cancellationReason, completedAt, note);
+            // 2. Update the lesson row.
+            var updated = await _lessonService.UpdateStatusAsync(
+                lessonId, status, creditForfeited,
+                cancelledBy, cancellationReason, completedAt, note);
 
-                if (!updated) return false;
+            if (!updated) return false;
 
-                // 3. Adjust BundleQuarter.LessonsUsed.
-                //    Credit is consumed when status moves TO Completed or Forfeited.
-                //    Credit is released when status moves FROM Completed or Forfeited
-                //    to anything that doesn't consume a credit.
-                bool previousConsumed = lesson.Status == LessonStatus.Completed
-                                     || lesson.Status == LessonStatus.Forfeited;
-                bool newConsumed = status == LessonStatus.Completed
-                                || status == LessonStatus.Forfeited;
+            // 3. Adjust BundleQuarter.LessonsUsed.
+            //    Credit is consumed when status moves TO Completed or Forfeited.
+            //    Credit is released when status moves FROM Completed or Forfeited
+            //    to anything that doesn't consume a credit.
+            bool previousConsumed = lesson.Status == LessonStatus.Completed
+                                 || lesson.Status == LessonStatus.Forfeited;
+            bool newConsumed = status == LessonStatus.Completed
+                            || status == LessonStatus.Forfeited;
 
-                int delta = (newConsumed ? 1 : 0) - (previousConsumed ? 1 : 0);
+            int delta = (newConsumed ? 1 : 0) - (previousConsumed ? 1 : 0);
 
-                if (delta != 0)
-                    await _bundleQuarterService.AdjustLessonsUsedAsync(lessonId, delta);
+            if (delta != 0)
+                await _bundleQuarterService.AdjustLessonsUsedAsync(lessonId, delta);
 
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update status for LessonID {LessonID}", lessonId);
-                return false;
-            }
+            return true;
         }
 
         /// <summary>
@@ -101,28 +100,17 @@ namespace Tutor.Data.Implementations
         /// </summary>
         public async Task<bool> RescheduleLessonAsync(int lessonId, DateTime newDate, TimeOnly newTime)
         {
-            try
-            {
-                // Guard: only allow rescheduling of cancelled lessons.
-                var lesson = await _lessonService.GetLessonAsync(lessonId);
-                if (lesson is null) return false;
+            // Guard: only allow rescheduling of cancelled lessons.
+            var lesson = await _lessonService.GetLessonAsync(lessonId)
+                ?? throw new InvalidOperationException("Lesson not found.");
 
-                if (lesson.Status != LessonStatus.CancelledTeacher
-                    && lesson.Status != LessonStatus.CancelledStudent)
-                {
-                    _logger.LogWarning(
-                        "RescheduleLessonAsync rejected: LessonID {LessonID} has status {Status}.",
-                        lessonId, lesson.Status);
-                    return false;
-                }
-
-                return await _lessonService.RescheduleLessonAsync(lessonId, newDate, newTime);
-            }
-            catch (Exception ex)
+            if (lesson.Status != LessonStatus.CancelledTeacher
+                && lesson.Status != LessonStatus.CancelledStudent)
             {
-                _logger.LogError(ex, "Failed to reschedule LessonID {LessonID}", lessonId);
-                return false;
+                throw new InvalidOperationException("Reschedule failed. Lesson may not be in a cancellable status.");
             }
+
+            return await _lessonService.RescheduleLessonAsync(lessonId, newDate, newTime);
         }
     }
 }

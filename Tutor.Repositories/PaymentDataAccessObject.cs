@@ -9,37 +9,20 @@ namespace Tutor.Data.Implementations
     {
         private readonly IDbConnection _connection;
 
-        public PaymentDataAccessObject(IDbConnection connection)
-        {
-            _connection = connection;
-        }
-
-        public async Task<Payment?> GetPaymentAsync(int id)
-        {
-            const string sql = @"
+        public static readonly string GetByIdSql = @"
                 SELECT PaymentID, AccountHolderID, Amount, UnallocatedAmount,
                        PaymentDate, Source, Reference, Notes, CreatedAt
                 FROM Payment
                 WHERE PaymentID = @PaymentID;";
 
-            return await _connection.QuerySingleOrDefaultAsync<Payment>(sql, new { PaymentID = id });
-        }
-
-        public async Task<IEnumerable<Payment>> GetByAccountHolderAsync(int accountHolderId)
-        {
-            const string sql = @"
+        public static readonly string GetByAccountHolderSql = @"
                 SELECT PaymentID, AccountHolderID, Amount, UnallocatedAmount,
                        PaymentDate, Source, Reference, Notes, CreatedAt
                 FROM Payment
                 WHERE AccountHolderID = @AccountHolderID
                 ORDER BY PaymentDate DESC, CreatedAt DESC;";
 
-            return await _connection.QueryAsync<Payment>(sql, new { AccountHolderID = accountHolderId });
-        }
-
-        public async Task<int> InsertAsync(Payment payment)
-        {
-            const string sql = @"
+        public static readonly string InsertSql = @"
                 INSERT INTO Payment
                     (AccountHolderID, Amount, UnallocatedAmount, PaymentDate,
                      Source, Reference, Notes)
@@ -49,59 +32,76 @@ namespace Tutor.Data.Implementations
 
                 SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-            return await _connection.ExecuteScalarAsync<int>(sql, payment);
-        }
-
-        public async Task<bool> UpdateUnallocatedAsync(int paymentId, decimal unallocatedAmount)
-        {
-            const string sql = @"
+        public static readonly string UpdateUnallocatedSql = @"
                 UPDATE Payment
                 SET UnallocatedAmount = @UnallocatedAmount
                 WHERE PaymentID = @PaymentID;";
 
-            var rows = await _connection.ExecuteAsync(sql,
+        public static readonly string GetAllocationsByPaymentSql = @"
+                SELECT AllocationID, PaymentID, InvoiceID, AmountApplied, CreatedAt
+                FROM PaymentAllocation
+                WHERE PaymentID = @PaymentID;";
+
+        public static readonly string GetAllocationsByInvoiceSql = @"
+                SELECT AllocationID, PaymentID, InvoiceID, AmountApplied, CreatedAt
+                FROM PaymentAllocation
+                WHERE InvoiceID = @InvoiceID;";
+
+        public static readonly string InsertAllocationSql = @"
+                INSERT INTO PaymentAllocation (PaymentID, InvoiceID, AmountApplied)
+                VALUES (@PaymentID, @InvoiceID, @AmountApplied);";
+
+        public static readonly string GetTotalUnallocatedSql = @"
+                SELECT ISNULL(SUM(UnallocatedAmount), 0)
+                FROM Payment
+                WHERE AccountHolderID = @AccountHolderID
+                  AND UnallocatedAmount > 0;";
+
+        public PaymentDataAccessObject(IDbConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public async Task<Payment?> GetPaymentAsync(int id)
+        {
+            return await _connection.QuerySingleOrDefaultAsync<Payment>(GetByIdSql, new { PaymentID = id });
+        }
+
+        public async Task<IEnumerable<Payment>> GetByAccountHolderAsync(int accountHolderId)
+        {
+            return await _connection.QueryAsync<Payment>(GetByAccountHolderSql, new { AccountHolderID = accountHolderId });
+        }
+
+        public async Task<int> InsertAsync(Payment payment)
+        {
+            return await _connection.ExecuteScalarAsync<int>(InsertSql, payment);
+        }
+
+        public async Task<bool> UpdateUnallocatedAsync(int paymentId, decimal unallocatedAmount)
+        {
+            var rows = await _connection.ExecuteAsync(UpdateUnallocatedSql,
                 new { PaymentID = paymentId, UnallocatedAmount = unallocatedAmount });
             return rows > 0;
         }
 
         public async Task<IEnumerable<PaymentAllocation>> GetAllocationsByPaymentAsync(int paymentId)
         {
-            const string sql = @"
-                SELECT AllocationID, PaymentID, InvoiceID, AmountApplied, CreatedAt
-                FROM PaymentAllocation
-                WHERE PaymentID = @PaymentID;";
-
-            return await _connection.QueryAsync<PaymentAllocation>(sql, new { PaymentID = paymentId });
+            return await _connection.QueryAsync<PaymentAllocation>(GetAllocationsByPaymentSql, new { PaymentID = paymentId });
         }
 
         public async Task<IEnumerable<PaymentAllocation>> GetAllocationsByInvoiceAsync(int invoiceId)
         {
-            const string sql = @"
-                SELECT AllocationID, PaymentID, InvoiceID, AmountApplied, CreatedAt
-                FROM PaymentAllocation
-                WHERE InvoiceID = @InvoiceID;";
-
-            return await _connection.QueryAsync<PaymentAllocation>(sql, new { InvoiceID = invoiceId });
+            return await _connection.QueryAsync<PaymentAllocation>(GetAllocationsByInvoiceSql, new { InvoiceID = invoiceId });
         }
 
         public async Task InsertAllocationAsync(PaymentAllocation allocation)
         {
-            const string sql = @"
-                INSERT INTO PaymentAllocation (PaymentID, InvoiceID, AmountApplied)
-                VALUES (@PaymentID, @InvoiceID, @AmountApplied);";
-
-            await _connection.ExecuteAsync(sql, allocation);
+            await _connection.ExecuteAsync(InsertAllocationSql, allocation);
         }
 
         public async Task<decimal> GetTotalUnallocatedAsync(int accountHolderId)
         {
-            const string sql = @"
-                SELECT ISNULL(SUM(UnallocatedAmount), 0)
-                FROM Payment
-                WHERE AccountHolderID = @AccountHolderID
-                  AND UnallocatedAmount > 0;";
-
-            return await _connection.ExecuteScalarAsync<decimal>(sql,
+            return await _connection.ExecuteScalarAsync<decimal>(GetTotalUnallocatedSql,
                 new { AccountHolderID = accountHolderId });
         }
     }

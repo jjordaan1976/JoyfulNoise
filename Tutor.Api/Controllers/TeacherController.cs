@@ -19,47 +19,19 @@ namespace Tutor.Controllers
         }
 
         [HttpGet("GetTeacher")]
-        public async Task<ResponseBase<Teacher>> GetTeacher([FromQuery] int id)
-        {
-            ResponseBase<Teacher> response = new ResponseBase<Teacher>() { ReturnCode = -1 };
-            var result = await _teacherRepository.GetTeacherAsync(id);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<Teacher?>> GetTeacher([FromQuery] int id)
+            => Execute(() => _teacherRepository.GetTeacherAsync(id), _logger, "Error getting teacher");
 
         [HttpGet("GetAllActive")]
-        public async Task<ResponseBase<IEnumerable<Teacher>>> GetAllActive()
-        {
-            ResponseBase<IEnumerable<Teacher>> response = new ResponseBase<IEnumerable<Teacher>>() { ReturnCode = -1 };
-            var result = await _teacherRepository.GetAllActiveAsync();
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<Teacher>>> GetAllActive()
+            => Execute(() => _teacherRepository.GetAllActiveAsync(), _logger, "Error getting active teachers");
 
         [HttpPost("AddTeacher")]
-        public async Task<ResponseBase<int?>> AddTeacher([FromBody] Teacher req)
-        {
-            ResponseBase<int?> response = new ResponseBase<int?>() { ReturnCode = -1 };
-            var result = await _teacherRepository.AddTeacherAsync(req);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<int?>> AddTeacher([FromBody] Teacher req)
+            => Execute(() => _teacherRepository.AddTeacherAsync(req), _logger, "Error adding teacher");
 
         [HttpPut("UpdateTeacher")]
-        public async Task<ResponseBase<bool>> UpdateTeacher([FromBody] Teacher req)
-        {
-            ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
-            var result = await _teacherRepository.UpdateTeacherAsync(req);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<bool>> UpdateTeacher([FromBody] Teacher req)
+            => Execute(() => _teacherRepository.UpdateTeacherAsync(req), _logger, "Error updating teacher");
     }
 }

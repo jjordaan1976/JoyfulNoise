@@ -7,87 +7,40 @@ namespace Tutor.Api
     [Route("AccountHolderPortal")]
     public class AccountHolderPortalController : BaseController
     {
-
         private readonly IAccountHolderRepository _accountHolderRepository;
         private readonly IInvoiceRepository _invoiceRepository;
         private readonly IPaymentRepository _paymentRepository;
+        private readonly ICurrentUserService _currentUser;
+        private readonly ILogger<AccountHolderPortalController> _logger;
 
         public AccountHolderPortalController(
             IAccountHolderRepository accountHolderRepository,
             IInvoiceRepository invoiceRepository,
-            IPaymentRepository paymentRepository)
+            IPaymentRepository paymentRepository,
+            ICurrentUserService currentUser,
+            ILogger<AccountHolderPortalController> logger)
         {
             _accountHolderRepository = accountHolderRepository;
             _invoiceRepository = invoiceRepository;
             _paymentRepository = paymentRepository;
+            _currentUser = currentUser;
+            _logger = logger;
         }
 
         [HttpGet("GetAccountHolder")]
-        public async Task<ResponseBase<Tutor.Data.Models.AccountHolder>> GetAccountHolder()
-        {
-            var response = new ResponseBase<Tutor.Data.Models.AccountHolder> { ReturnCode = -1 };
-            var accountHolderId = int.TryParse(GetClaimValue("accountHolderId"), out var id) ? id : 0;
-            if (accountHolderId == 0)
-            {
-                response.ReturnMessage = "Account holder not found in token claims.";
-                return response;
-            }
-            var result = await _accountHolderRepository.GetAccountHolderAsync(accountHolderId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<Tutor.Data.Models.AccountHolder?>> GetAccountHolder()
+            => Execute(() => _accountHolderRepository.GetAccountHolderAsync(_currentUser.RequireAccountHolderId()), _logger, "Error getting account holder");
 
         [HttpGet("GetAllInvoices")]
-        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>>> GetAllInvoices()
-        {
-            var response = new ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>> { ReturnCode = -1 };
-            var accountHolderId = int.TryParse(GetClaimValue("accountHolderId"), out var id) ? id : 0;
-            if (accountHolderId == 0)
-            {
-                response.ReturnMessage = "Account holder not found in token claims.";
-                return response;
-            }
-            var result = await _invoiceRepository.GetByAccountHolderAsync(accountHolderId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>>> GetAllInvoices()
+            => Execute(() => _invoiceRepository.GetByAccountHolderAsync(_currentUser.RequireAccountHolderId()), _logger, "Error getting invoices");
 
         [HttpGet("GetOutstandingInvoices")]
-        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>>> GetOutstandingInvoices()
-        {
-            var response = new ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>> { ReturnCode = -1 };
-            var accountHolderId = int.TryParse(GetClaimValue("accountHolderId"), out var id) ? id : 0;
-            if (accountHolderId == 0)
-            {
-                response.ReturnMessage = "Account holder not found in token claims.";
-                return response;
-            }
-            var result = await _invoiceRepository.GetOutstandingByAccountHolderAsync(accountHolderId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<Tutor.Data.Models.Invoice>>> GetOutstandingInvoices()
+            => Execute(() => _invoiceRepository.GetOutstandingByAccountHolderAsync(_currentUser.RequireAccountHolderId()), _logger, "Error getting outstanding invoices");
 
         [HttpGet("GetPayments")]
-        public async Task<ResponseBase<IEnumerable<Tutor.Data.Models.Payment>>> GetPayments()
-        {
-            var response = new ResponseBase<IEnumerable<Tutor.Data.Models.Payment>> { ReturnCode = -1 };
-            var accountHolderId = int.TryParse(GetClaimValue("accountHolderId"), out var id) ? id : 0;
-            if (accountHolderId == 0)
-            {
-                response.ReturnMessage = "Account holder not found in token claims.";
-                return response;
-            }
-            var result = await _paymentRepository.GetByAccountHolderAsync(accountHolderId);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<Tutor.Data.Models.Payment>>> GetPayments()
+            => Execute(() => _paymentRepository.GetByAccountHolderAsync(_currentUser.RequireAccountHolderId()), _logger, "Error getting payments");
     }
 }

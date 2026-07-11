@@ -7,6 +7,12 @@ namespace Tutor.Data.Interfaces
         Task<LessonDetail?> GetLessonAsync(int lessonId);
         Task<IEnumerable<LessonDetail>> GetByTeacherAndDateAsync(int teacherId, DateTime scheduledDate);
         Task<IEnumerable<Lesson>> GetByBundleAsync(int bundleId);
+
+        /// <summary>
+        /// Returns the lessons for a bundle, but only if the bundle belongs to the
+        /// given student. Throws InvalidOperationException otherwise.
+        /// </summary>
+        Task<IEnumerable<Lesson>> GetByBundleForStudentAsync(int bundleId, int studentId);
         Task<int?> AddLessonAsync(Lesson lesson);
 
         Task<bool> UpdateLessonStatusAsync(int lessonId, string status, bool creditForfeited,

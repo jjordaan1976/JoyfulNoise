@@ -19,47 +19,19 @@ namespace Tutor.Controllers
         }
 
         [HttpGet("GetLessonType")]
-        public async Task<ResponseBase<LessonType>> GetLessonType([FromQuery] int id)
-        {
-            ResponseBase<LessonType> response = new ResponseBase<LessonType>() { ReturnCode = -1 };
-            var result = await _lessonTypeRepository.GetLessonTypeAsync(id);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<LessonType?>> GetLessonType([FromQuery] int id)
+            => Execute(() => _lessonTypeRepository.GetLessonTypeAsync(id), _logger, "Error getting lesson type");
 
         [HttpGet("GetAllActive")]
-        public async Task<ResponseBase<IEnumerable<LessonType>>> GetAllActive()
-        {
-            ResponseBase<IEnumerable<LessonType>> response = new ResponseBase<IEnumerable<LessonType>>() { ReturnCode = -1 };
-            var result = await _lessonTypeRepository.GetAllActiveAsync();
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<IEnumerable<LessonType>>> GetAllActive()
+            => Execute(() => _lessonTypeRepository.GetAllActiveAsync(), _logger, "Error getting active lesson types");
 
         [HttpPost("AddLessonType")]
-        public async Task<ResponseBase<int?>> AddLessonType([FromBody] LessonType req)
-        {
-            ResponseBase<int?> response = new ResponseBase<int?>() { ReturnCode = -1 };
-            var result = await _lessonTypeRepository.AddLessonTypeAsync(req);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<int?>> AddLessonType([FromBody] LessonType req)
+            => Execute(() => _lessonTypeRepository.AddLessonTypeAsync(req), _logger, "Error adding lesson type");
 
         [HttpPut("UpdateLessonType")]
-        public async Task<ResponseBase<bool>> UpdateLessonType([FromBody] LessonType req)
-        {
-            ResponseBase<bool> response = new ResponseBase<bool>() { ReturnCode = -1 };
-            var result = await _lessonTypeRepository.UpdateLessonTypeAsync(req);
-            response.Data = result;
-            response.ReturnCode = 0;
-            response.ReturnMessage = "Success";
-            return response;
-        }
+        public Task<ResponseBase<bool>> UpdateLessonType([FromBody] LessonType req)
+            => Execute(() => _lessonTypeRepository.UpdateLessonTypeAsync(req), _logger, "Error updating lesson type");
     }
 }

@@ -12,8 +12,11 @@ namespace Tutor.Data.Interfaces
         /// <summary>Inserts outside of a transaction (existing callers).</summary>
         Task<int> InsertAsync(Lesson lesson);
 
-        /// <summary>Inserts within an existing transaction.</summary>
-        Task<int> InsertAsync(Lesson lesson, IDbTransaction tx);
+        /// <summary>
+        /// Inserts within an existing transaction. Executes against the passed-in
+        /// connection (the one that owns the transaction).
+        /// </summary>
+        Task<int> InsertAsync(Lesson lesson, IDbConnection connection, IDbTransaction transaction);
 
         Task<bool> UpdateStatusAsync(int lessonId, string status, bool creditForfeited,
             string? cancelledBy, string? cancellationReason, DateTime? completedAt,

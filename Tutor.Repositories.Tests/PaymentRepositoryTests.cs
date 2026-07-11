@@ -134,27 +134,24 @@ public class PaymentRepositoryTests
     // ── QuickPayInvoiceAsync ──────────────────────────────────────────────────
 
     [Fact]
-    public async Task QuickPayInvoiceAsync_WhenInvoiceNotFound_ReturnsNull()
+    public async Task QuickPayInvoiceAsync_WhenInvoiceNotFound_Throws()
     {
         _invoiceDaoMock.Setup(d => d.GetInvoiceAsync(99)).ReturnsAsync((Invoice?)null);
 
-        var result = await _sut.QuickPayInvoiceAsync(99, DateTime.Today);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.QuickPayInvoiceAsync(99, DateTime.Today));
     }
 
     // ── AddPaymentAsync — error path ──────────────────────────────────────────
 
     [Fact]
-    public async Task AddPaymentAsync_WhenConnectionThrowsOnBeginTransaction_ReturnsNull()
+    public async Task AddPaymentAsync_WhenConnectionThrowsOnBeginTransaction_Throws()
     {
         _connectionMock.Setup(c => c.BeginTransaction())
                        .Throws(new InvalidOperationException("Cannot open transaction"));
 
         var payment = new Payment { AccountHolderID = 1, Amount = 500m };
 
-        var result = await _sut.AddPaymentAsync(payment);
-
-        Assert.Null(result);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.AddPaymentAsync(payment));
     }
 }

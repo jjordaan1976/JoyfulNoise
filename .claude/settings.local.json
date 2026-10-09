@@ -1,4 +1,8 @@
 {
+  "claudeMdExcludes": [
+    "C:/Code/za.co.leanshift/CLAUDE.md",
+    "C:/Code/za.co.leanshift/claude.md"
+  ],
   "permissions": {
     "allow": [
       "Bash(xargs ls:*)",
@@ -13,8 +17,6 @@
       "Bash(grep -v \"\\\\\\\\obj\\\\\\\\\")",
       "Bash(xargs -I {} grep -l \"AssemblyName\\\\|RootNamespace\" \"{}\")",
       "Bash(git add *)",
-      "Bash(git commit -m 'Remove Gmail Authentication and replace with Magic Link auth *)",
-      "Bash(git commit -m 'Add Brevo transactional email service for Magic Link authentication *)",
       "Bash(dotnet new *)",
       "Bash(dotnet sln *)",
       "Bash(dotnet add *)",
@@ -33,7 +35,8 @@
       "PowerShell(dotnet build Tutor.Repositories.Tests/Tutor.Repositories.Tests.csproj -v quiet)",
       "PowerShell(Get-Process | Where-Object { $_.ProcessName -match 'dotnet|Tutor|iisexpress|MSBuild|VBCSCompiler' } | Select-Object Id, ProcessName, Path | Format-Table -AutoSize)",
       "PowerShell(dotnet build-server shutdown)",
-      "PowerShell(dotnet test C:\\\\Code\\\\za.co.leanshift\\\\JoyfulNoise\\\\Tutor.Repositories.Tests\\\\Tutor.Repositories.Tests.csproj -v quiet --nologo --filter \"FullyQualifiedName~GetByBundleForStudentAsync\")"
+      "PowerShell(dotnet test C:\\\\Code\\\\za.co.leanshift\\\\JoyfulNoise\\\\Tutor.Repositories.Tests\\\\Tutor.Repositories.Tests.csproj -v quiet --nologo --filter \"FullyQualifiedName~GetByBundleForStudentAsync\")",
+      "Bash(git diff *)"
     ]
   }
 }

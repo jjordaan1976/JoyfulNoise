@@ -12,8 +12,7 @@
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 
 <MudPaper Elevation="4" Class="pa-8" Style="width:360px; text-align:center;">
-    <MudIcon Icon="@Icons.Material.Filled.School" Style="font-size:3rem; color:#1976D2;" Class="mb-2" />
-    <MudText Typo="Typo.h5" Style="font-weight:600; color:#3A3A3A;" Class="mb-1">Tutor</MudText>
+    <img class="login-logo" src="@ThemeAssets.LogoFull" alt="Joyful Noise Music Room" />
     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">Student Portal</MudText>
 
     @if (!_showOtpInput)

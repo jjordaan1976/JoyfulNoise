@@ -1,6 +1,6 @@
 ## Blazor UI Style Guide
 
-> **Purpose:** Drop this file into your project context when asking Claude to build, edit, or review any Blazor page or component for the Stride Sales application. It encodes the exact patterns, tokens, and conventions used throughout the codebase so Claude can generate consistent, on-brand UI without guessing.
+> **Purpose:** Drop this file into your project context when asking Claude to build, edit, or review any Blazor page or component for the Tutor application. It encodes the exact patterns, tokens, and conventions used across the codebase so Claude can generate consistent, on-brand UI without guessing.
 
 ---
 
@@ -10,6 +10,7 @@
 |---|---|
 | Framework | Blazor WebAssembly (.NET 9) |
 | Component library | **MudBlazor** |
+| Font | **Inter** (loaded from Google Fonts in each app's `index.html`; set as the font family of every MudBlazor typography group in `TutorTheme`) |
 | Icons | **Material Icons** (via `<span class="material-icons">icon_name</span>`) |
 | Auth | Microsoft Entra ID / MSAL (`[Authorize]` on every page) |
 | HTTP | Injected `HttpClient` via typed service classes |
@@ -21,28 +22,53 @@
 
 All colours are CSS custom properties. **Never hardcode hex values for UI colour.** Always reference these tokens.
 
+### Brand palette (taken from the Joyful Noise logo)
+
+The logo is **pure black type on white** with a **six-colour pastel wave** running mint → sage → amber → coral → pink → orchid. Black and white are the base of the UI; the pastels are the accent. Hex values were sampled from the logo artwork.
+
+| Logo element | Token | Hex |
+|---|---|---|
+| Wordmark, "Music Room", piano keys | `--c-text` | `#000000` |
+| Logo background | `--c-bg-card` / `--c-surface` | `#ffffff` |
+| Wave — mint | `--c-brand-mint` | `#93d4c7` |
+| Wave — sage | `--c-brand-sage` | `#b9cda4` |
+| Wave — amber | `--c-brand-amber` | `#f6b669` |
+| Wave — coral | `--c-brand-coral` | `#f79b83` |
+| Wave — pink (**main brand colour**) | `--c-brand-pink` = `--c-accent` | `#ef6ba3` |
+| Wave — orchid | `--c-brand-orchid` | `#aa77b8` |
+
 ### Semantic tokens (always use these)
 
 ```css
 /* Backgrounds */
---c-bg            /* page background: #f0f2f5 */
---c-bg-card       /* card/panel surface */
---c-bg-raised     /* slightly elevated surface (tag pills, etc.) */
---c-surface       /* white inner surface */
+--c-bg            /* page background: #f7f7f7 */
+--c-bg-card       /* card/panel surface: #ffffff */
+--c-bg-raised     /* slightly elevated surface (tag pills, etc.): #f0f0f0 */
+--c-surface       /* white inner surface: #ffffff */
 
 /* Text */
---c-text          /* primary body text: #3a3a3a */
---c-text-muted    /* secondary / label text: #78797a */
---c-text-dim      /* de-emphasised / placeholder text */
+--c-text          /* primary body text: #000000 (the logo's black) */
+--c-text-muted    /* secondary / label text: #5f5f5f */
+--c-text-dim      /* de-emphasised / placeholder text: #8a8a8a (placeholders only, not for readable text) */
 
 /* Structure */
---c-border        /* dividers, card outlines: #dfe1e3 */
+--c-border        /* dividers, card outlines: #e4e4e4 */
 
-/* Brand / Semantic */
---c-accent        /* gold primary brand: #c9a84c */
---c-success       /* green: confirmed / complete states */
---c-warn          /* amber: caution / no price set */
---c-danger        /* red: errors / rejected */
+/* Brand */
+--c-accent        /* logo pink, the primary brand colour: #ef6ba3 — always carries black text/icons */
+--c-accent-deep   /* pink darkened for text, icons and links: #c03276 (5.3:1 on white, 4.7:1 on the grey panel) — derived, not in the logo */
+--c-brand-mint    /* #93d4c7 */
+--c-brand-sage    /* #b9cda4 */
+--c-brand-amber   /* #f6b669 */
+--c-brand-coral   /* #f79b83 */
+--c-brand-pink    /* #ef6ba3 (same as --c-accent) */
+--c-brand-orchid  /* #aa77b8 */
+--c-brand-gradient /* linear-gradient(90deg, mint, sage, amber, coral, pink, orchid) — the logo wave */
+
+/* Semantic status (not brand colours — see rules below). Each is 4.5:1 or better on white, the page and the grey panel */
+--c-success       /* green: confirmed / complete states: #2b7a2f */
+--c-warn          /* amber: caution / outstanding / no price set: #a65700 */
+--c-danger        /* red: errors / overdue / rejected: #c62828 */
 
 /* Border radius */
 --radius-sm       /* tight corners (pills, tags) */
@@ -51,33 +77,61 @@ All colours are CSS custom properties. **Never hardcode hex values for UI colour
 --radius          /* default (same as radius-lg) */
 ```
 
+### Brand colour rules
+
+1. **Pastels are fills, never text.** Put black (`--c-text`) on pastel fills: black on pink is 7.3:1, on amber 11.8:1, on mint 12.5:1, on orchid 6.0:1. White on any of them fails contrast (white on pink is only 2.9:1, on orchid 3.5:1). For pink text or links on a white surface or the page background use `--c-accent-deep`.
+2. **Primary actions are pink**: `--c-accent` fill with a black label. One primary button per view. Secondary actions are outlined with `--c-text-muted`. MudBlazor's Secondary stays a **neutral grey** because the apps use `Color.Secondary` for muted captions and labels; a coloured Secondary would recolour every caption. Orchid is a category colour only.
+3. **The spectrum is for identity and categories**: the logo strip, avatars, lesson-type tags, chart series, quarter markers. Use `--c-brand-gradient` at most once per screen (for example a 4px strip under the app bar, or on the login card).
+4. **Never use the spectrum for status.** Success, warning and error stay `--c-success` / `--c-warn` / `--c-danger` (green / amber / red), so a pink or amber chip never reads as an alert. The graded score tiers in section 10 are the only exception.
+5. **Contrast minimum**: text and icons need 4.5:1 against the surface they sit on (3:1 for text at 18px bold or larger).
+
 ### Status chip tokens
 
-Used for lead/proposal/task status badges (small coloured pills):
+Status chips (pastel background + coloured text) are defined once in `theme.css` as `--chip-<status>-bg` and `--chip-<status>-fg` for: `scheduled`, `completed`, `forfeited`, `cancelled`, `rescheduled`, `pending`, `paid`, `overdue`, `void`. The `<StatusChip>` components pick the matching `.status-<status>` class. Each pair must stay at 4.5:1 or better (enforced by `ThemeChipContrastTests`).
 
-```css
---chip-qualified       /* bg */   --chip-qualified-text
---chip-escalated       /* bg */   --chip-escalated-text
---chip-rejected        /* bg */   --chip-rejected-text
---chip-scoring         /* bg */   --chip-scoring-text
-```
+### Where the theme lives (single source of truth)
 
-### MudBlazor theme (defined in `MainLayout.razor`)
+All three apps (`Tutor.Web`, `Tutor.StudentPortal`, `Tutor.AccountHolderPortal`) share the `Tutor.Client.Theme` project. **Never define a colour inside an app.**
+
+| File | Purpose |
+|---|---|
+| `BrandColors.cs` | The palette as constants |
+| `TutorTheme.cs` | The MudBlazor theme (`TutorTheme.Light`), used by each `App.razor`, plus `ThemeAssets` logo paths |
+| `wwwroot/theme.css` | The CSS tokens above, MudBlazor overrides, shared classes (`stats-card`, `quarter-card`, `aging-card*`, `countdown-badge`, `status-*`) |
+| `wwwroot/images/` | `logo-full.png` (login cards), `logo-wave.png` (app bar mark) |
+
+Each app's `index.html` links `_content/Tutor.Client.Theme/theme.css`. Tests in `Tutor.Client.Tests` keep the C# palette and the CSS tokens identical and enforce the contrast rules, so changing a colour means changing it in `BrandColors.cs` and `theme.css` together.
+
+Quarter and stat-card colours follow the spectrum: Q1 mint, Q2 amber, Q3 coral, Q4 pink (`quarter-card--1..4`); dashboard tiles mint, amber, coral, pink (`stats-card`, `stats-card--2..4`).
+
+### MudBlazor theme (`TutorTheme.Light`)
 
 ```csharp
 PaletteLight = new PaletteLight
 {
-    Primary              = "#c9a84c",   // gold — buttons, progress, checkboxes
-    PrimaryContrastText  = "#ffffff",
-    Secondary            = "#78797a",
-    Background           = "#f0f2f5",
-    Surface              = "#ffffff",
-    TextPrimary          = "#3a3a3a",
-    TextSecondary        = "#78797a",
-    Divider              = "#dfe1e3",
-    TableLines           = "#dfe1e3",
+    Primary               = "#ef6ba3",   // logo pink — buttons, progress, checkboxes
+    PrimaryContrastText   = "#000000",   // black on pink is 7.3:1; white on pink fails (2.9:1)
+    Secondary             = "#5f5f5f",   // neutral grey — used for muted captions/labels (Color.Secondary)
+    SecondaryContrastText = "#ffffff",
+    Background            = "#f7f7f7",
+    Surface               = "#ffffff",
+    AppbarBackground      = "#ffffff",   // the logo sits on white
+    AppbarText            = "#000000",
+    TextPrimary           = "#000000",
+    TextSecondary         = "#5f5f5f",
+    Divider               = "#e4e4e4",
+    TableLines            = "#e4e4e4",
+    Success               = "#2b7a2f",
+    Warning               = "#a65700",
+    Error                 = "#c62828",
 };
+
+// Typography: Inter, applied to every MudBlazor typography group (Default, H1-H6, Subtitle1/2,
+// Body1/2, Button, Caption, Overline) with FontFamily = ["Inter", "Segoe UI", "system-ui", "Roboto", "sans-serif"].
+// Inter is loaded from Google Fonts in each app's index.html.
 ```
+
+Because pink is too light to read as text, `theme.css` also remaps any MudBlazor `Color.Primary` used as **text, an icon, a text or outlined button, or the active tab** to `--c-accent-deep`. Filled buttons keep the pink fill with a black label.
 
 ---
 
@@ -112,9 +166,9 @@ PaletteLight = new PaletteLight
 
 ```
 ┌─────────────────────────────────────────────┐
-│  stride-topbar  (logo + LoginDisplay)        │
+│  hc-topbar  (logo + LoginDisplay)            │
 ├──────────────┬──────────────────────────────┤
-│  stride-nav  │  stride-body                 │
+│  hc-nav      │  hc-body                     │
 │  (sidebar)   │  (@Body — page content)      │
 └──────────────┴──────────────────────────────┘
 ```
@@ -128,7 +182,7 @@ CSS class names:
 - `.hc-nav__item` — nav link item (with `.active` modifier)
 - `.hc-nav__icon` — material icon inside nav item
 
-All pages begin with a `<PageTitle>` tag: `<PageTitle>Page Name — Stride Sales</PageTitle>`
+All pages begin with a `<PageTitle>` tag: `<PageTitle>Page Name — Tutor</PageTitle>`
 
 ---
 
@@ -382,7 +436,7 @@ Renders a coloured pill for proposal/lead status. Uses `--chip-*` tokens.
 Score-to-colour mapping (also used in `LeadScoreHelpers.cs`):
 ```
 ≥ 80%  → --c-success (green)
-≥ 60%  → --c-accent  (gold)
+≥ 60%  → --c-brand-mint (teal)
 ≥ 40%  → --c-warn    (amber)
 < 40%  → --c-danger  (red)
 ```
@@ -574,7 +628,7 @@ Nav.NavigateTo($"/leads/{leadId}");
 |---|---|
 | `<StatusChip Status="@s" />` | Coloured proposal/lead/task status pill |
 | `<RecommendationChip Score="@n" Max="@m" />` | Score percentage chip |
-| `<ScoreBadge Score="@n" />` | Numeric score indicator (gold/red) |
+| `<ScoreBadge Score="@n" />` | Numeric score indicator (mint/red) |
 | `<LeadScoreSummaryCard Title="@t" Score="@n" Max="@m" CompletedAt="@dt" />` | Score card with progress bar |
 | `<LeadScoreRow Label="@l" Score="@n" Max="@m" />` | Single key-score row |
 | `<LeadCompletionBadge Done="@bool" Score="@n" Max="@m" />` | Tab completion indicator |
@@ -624,3 +678,69 @@ DRY Dialogs: If multiple dialogs share 80% of the same fields (e.g., Employee Ru
 Labels over Help Text: Use clear, technical labels. Avoid excessive gray sub-text; use Adornment icons with Tooltips for context where space is at a premium.
 
 Empty States: Never show an empty table without a MudAlert or a descriptive "No records found" state.
+
+---
+
+## UX & UI Architecture Guidelines
+
+### Core Philosophy: Progressive Disclosure
+- **Design for the 95% Path:** The default UI state must present only the mandatory elements required to complete the primary intent (e.g., Select Cost Centre → Execute Action).
+- **Hide 5% Complexity via M3 Patterns:** Secondary or edge-case actions (e.g., historical overrides, ad-hoc adjustments) must be accessible within 1-2 interactions but never occupy primary screen real estate.
+- **Zero Cognition Overhead:** Default selections must be smart and context-aware (e.g., pre-selecting the active pay period by default).
+
+---
+
+### Material Design 3 (M3) Component Standards
+
+1. **Primary Actions & Main Views:**
+   - Use M3 `FilledButton` for the main call to action (e.g., "Run Payroll").
+   - Use M3 `Card` (Outlined or Elevated) to group primary controls.
+   - Defaults must be pre-populated (e.g., current period pre-selected).
+
+2. **Secondary Controls (5% Features):**
+   - **Inline Progressive Disclosure:** Use M3 `ExpansionPanel` or collapsible sections titled "Advanced Options" or "Adjustments" for inline edge cases.
+   - **Transient Context:** Use M3 `BottomSheet` (mobile) or `Dialog` (desktop) for transactional edge-case captures (e.g., "Add Ad-Hoc Payment").
+   - **Overrides:** Use M3 `FilterChip` or inline `SegmentedButton` to switch contexts (e.g., changing pay period from "Current" to "Historical") rather than displaying persistent date inputs.
+
+3. **Information Hierarchy & Visual Density:**
+   - **Primary Surface:** High emphasis text, clear primary CTA, key status metrics.
+   - **Secondary Surface:** Low-emphasis icons, subtle text buttons ("Change period...", "Add ad-hoc item"), and muted borders.
+   - Do not display empty states or zero-value fields for edge cases unless explicitly opened by the user.
+
+---
+
+### Specific Domain Pattern: "Action with Overrides"
+When generating views or components for operational workflows (e.g., Payroll, Invoicing, Data Processing), adhere to this exact structural hierarchy:
+
+---
+
+## UX Preview Mockups (used in Workflow Step 2)
+
+Before any UI is built, Claude produces a static HTML mockup per screen or dialog for the developer to approve (see `claude.md`, Step 2).
+
+- Self-contained single HTML file per screen, dummy data, no dependencies on the solution.
+- Define the colour tokens from section 2 as CSS variables and use only `var(--c-*)`; no other hex values.
+- Reproduce the shell (`hc-shell`, `hc-topbar`, `hc-nav`, `hc-body`), `page-header`, `detail-card`, dense tables, chips, and the loading/empty states exactly as described in this guide, using Inter and the typography scale in section 3.
+- Follow the date, number, and null (`—`) formats in section 4.
+- Include a simple state switcher (for example buttons or a dropdown) covering loading, empty, populated, error, and validation states, plus open/closed for dialogs.
+- Show dialog widths, input density (`Variant.Outlined`, `Margin.Dense`), and row-level action menus as they will be built.
+- Save to `docs/ux-previews/<feature>/`. Reference only: never referenced by the app and never treated as production code.
+- The mockup only approximates MudBlazor; final visual verification happens on the real build in Workflow Step 7.
+
+---
+
+## Build Checklist (used in Workflow Step 3)
+
+Claude self-checks UI work against this list while building. The independent review in Step 5 is limited to the Architectural Guide and does not cover UI.
+
+- [ ] UI matches the mockups approved in Step 2; any deviation was raised with the developer
+- [ ] Page has `@page`, `@attribute [Authorize]`, and `<PageTitle>`
+- [ ] Standard page header; loading, empty, and error states handled
+- [ ] No hardcoded hex colours; `var(--c-*)` tokens only
+- [ ] Dates `yyyy/MM/dd`, timestamps `yyyy/MM/dd HH:mm`, null shown as `—`
+- [ ] Tables `Dense Hover Elevation="0"`; inputs `Variant.Outlined`
+- [ ] Dialogs use `@ref` + `ShowAsync/CloseAsync`; no `IsVisible`
+- [ ] `@bind-Value:after`, never `ValueChanged` alongside `@bind-Value`
+- [ ] Delete actions use `Color.Error` with confirmation
+- [ ] No business logic in pages; services call the API
+- [ ] Blazor services TDD'd where they do not call external APIs

@@ -56,7 +56,7 @@ else
                 {
                     @foreach (var inv in _outstandingInvoices)
                     {
-                        <MudPaper Class="pa-2 mb-2" Elevation="0" Style="background:#F0F2F5;">
+                        <MudPaper Class="pa-2 mb-2" Elevation="0" Style="background:var(--c-bg-raised);">
                             <MudStack Row="true" Justify="Justify.SpaceBetween">
                                 <MudText Typo="Typo.body2">Instalment #@inv.InstallmentNumber — R@(inv.Amount.ToString("N2"))</MudText>
                                 <StatusChip Status="@inv.Status" />

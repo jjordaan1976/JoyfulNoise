@@ -1,6 +1,8 @@
 <Solution>
   <Project Path="Tutor.AccountHolderPortal/Tutor.AccountHolderPortal.csproj" />
   <Project Path="Tutor.Api/Tutor.Api.csproj" />
+  <Project Path="Tutor.Client.Tests/Tutor.Client.Tests.csproj" />
+  <Project Path="Tutor.Client.Theme/Tutor.Client.Theme.csproj" />
   <Project Path="Tutor.Interfaces/Tutor.Interfaces.csproj" Id="c24cd138-4512-451b-8000-81fc32f0792b" />
   <Project Path="Tutor.JwtService.Tests/Tutor.JwtService.Tests.csproj" />
   <Project Path="Tutor.JwtService/Tutor.JwtService.csproj" />

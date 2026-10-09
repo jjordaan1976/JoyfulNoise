@@ -13,6 +13,8 @@ Controller → Repository → Aggregate DAO → Single-table DAO
 |---|---|
 | `*.Api` | ASP.NET Core Web API — HTTP entry points, auth, DI wiring |
 | `*.Web` | Blazor WebAssembly client (MudBlazor UI) |
+| `*.Client.Theme` | Razor class library shared by the Blazor apps: brand colours, MudBlazor theme, stylesheet, logo assets |
+| `*.Client.Tests` | xUnit + Moq tests for client-side code (auth state providers, theme contrast and parity) |
 | `*.Models` | Domain models, transfer models, static constants |
 | `*.Interfaces` | All interfaces (repositories, DAOs, services) |
 | `*.Repositories` | Orchestration layer — business logic lives here |
@@ -91,30 +93,6 @@ public async Task InsertAsync(AuditLog entry, IDbConnection conn, IDbTransaction
 
 ---
 
-### Layer 4 — External API DAOs (HTTP)
-
-When data lives in an external system (e.g. an HR platform), the DAO uses `HttpClient` instead of Dapper. The same interface-and-implementation pattern applies; the calling repository and controller are unaware of whether the DAO is SQL or HTTP.
-
-**Rules:**
-* Register as a **typed `HttpClient`** via `AddHttpClient<IDao, Dao>()` in `Program.cs`.
-* Base URL is stored in `appsettings.json` under `ExternalApis:<ServiceName>`.
-* In development, point the URL at the `*.WireMock` project (runs on a fixed local port).
-* DAOs deserialise the response directly to models — no business logic.
-* No transactions, no `IDbConnection` parameters.
-
-```csharp
-// Program.cs
-builder.Services.AddHttpClient<IEmployeeDao, EmployeeDao>(client =>
-    client.BaseAddress = new Uri(builder.Configuration["ExternalApis:EmployeeApi"]!));
-
-// appsettings.json
-"ExternalApis": {
-  "EmployeeApi": "http://localhost:9090/"
-}
-```
-
-The `*.WireMock` console project uses **WireMock.Net** to stub the external API with realistic seed data. Run it alongside the API during development. It accepts an optional port argument: `dotnet run -- 9090`.
-
 ---
 
 ## Transaction Rules
@@ -165,12 +143,6 @@ public class ResponseBase<T>
 * Status fields are `NVARCHAR` in SQL, backed by `const string` values in static C# classes (e.g. `LeadStatus`, `ProposalStatus`).
 * All timestamps are stored as **UTC `DATETIME`**.
 * **Nullable reference types are enabled** across all projects.
-
-## Primary Key & Identity Constraints (Enforced)
-* Mandatory Key Structure: Every table in the database must have a single primary key column named exactly Id.
-* Data Type: The Id field must be of type int.
-* Identity Configuration: The field must use identity specification starting at 0 with an increment of 1: IDENTITY(0,1).
-* No Compound Keys: Composite or multi-field primary keys are strictly forbidden. All tables must rely solely on the single-column auto-incrementing integer Id field as their primary key.
 
 ### Database Migrations
 
@@ -278,27 +250,11 @@ Registration order in `Program.cs`:
 * Mock all DAO dependencies — repositories must be testable without a database.
 * Naming convention: `{RepositoryName}Tests` (e.g. `LeadRepositoryTests`).
 
-Testing Standards: Data Access Layer (DAO & Aggregates)
-You are strictly forbidden from writing tests that assert string contents (e.g., checking if a raw SQL string contains a specific word or column name). This provides false coverage. Implement the following two tiers of testing for the data access layer using standard xUnit assertions only (do not use FluentAssertions):
+### Aggregate DAO Tests
 
-### Base Data Access Objects (SQL Verification)
-Goal: Verify SQL correctness, table existence, and schema validity.
-Pattern: Execute queries against a real database instance using connection strings provided by a test fixture.
-Scope: Use SET FMTONLY ON; or execute with default parameters against empty tables. The test passes if it executes without throwing a SqlException. If tables or columns are renamed or dropped, these tests must fail.
-Assertion Style: Use native xUnit execution blocks. For example:
-
-C#
-// Ensure query executes without throwing SqlException
-var exception = await Record.ExceptionAsync(() => db.ExecuteAsync(MyDao.SomeSql, new { Id = 0 }));
-Assert.Null(exception);
-
-### Aggregated Data Access Objects (Transaction & Coordination)
-Goal: Verify that units of work safely orchestrate transactions, loop logic, and status mappings.
-Pattern: Mock all underlying base DAOs injected into the Aggregate DAO constructor using Moq.
-Transaction Invariance:
-Every mutation method utilizing an explicit transaction must have a success test verifying Commit() is called on the transaction mock.
-Every mutation method must have a failure test where an underlying dependency throws an exception. Use Assert.ThrowsAsync<T> to verify the exception is rethrown, and verify that Rollback() is called on the transaction mock exactly once.
-Connection & Transaction Passing: Assert that the active IDbConnection and IDbTransaction instances are passed down into the underlying DAO mock calls to maintain atomic operations within the connection scope.
+* All methods must be tested.
+* Frameworks: **xUnit** + **Moq**.
+* Naming convention: `{AggregateDaoName}Tests` (e.g. `LeadAggregateDataAccessObjectTests`).
 
 ### Coverage Reports
 
@@ -342,16 +298,7 @@ When building or reviewing any UI component, consult `UI_SKILL.md` first.
 * All dates displayed in the UI use `yyyy/MM/dd`.
 * All `MudDatePicker` components include `DateFormat="yyyy/MM/dd"`.
 * Timestamps (date + time) use `yyyy/MM/dd HH:mm`.
-* The app culture is set globally to `en-ZA` in `*.Web/Program.cs` — required for MudDatePicker formatting. Do not remove it.
-
-------
-
-## Section: Type Safety & Domain Constraints
-* Rule: No Magic Strings for State.
-* State Management: All entity states, statuses, and categories must be implemented as Enumerations (enums).
-* Implementation: Properties named Status, Type, or Category must never be string types in the domain model.
-* Conversion: Use EF Core Value Converters to persist Enums. Do not use integer-based logic in business services; always refer to the Enum member name.
-* Validation: Use Enum.IsDefined or FluentValidation IsInEnum() to ensure incoming API data matches valid domain states.
+* The app culture is set globally to `en-ZA` in `Tutor.Web/Program.cs` — required for MudDatePicker formatting. Do not remove it.
 
 ---
 
@@ -365,142 +312,3 @@ When building or reviewing any UI component, consult `UI_SKILL.md` first.
 * **Throw on failure** — silent returns mask errors; exceptions preserve context.
 * **Prefer C# over SQL** for any computation or conditional logic.
 * **Test coverage is mandatory** at repository and aggregate DAO layers.
-
-
----
-
-## Web UI Architecture & Testing Standards (Blazor / Razor Components)
-
-### Code-Behind Requirement
-
-* All non-trivial Razor pages/components must use a separate code-behind class (`.razor.cs`).
-* Razor markup files are responsible only for presentation and binding.
-* Business rules, decision logic, state transitions, validation, orchestration, and UI behaviour must reside in the code-behind class.
-* The code-behind class becomes the primary unit under test.
-* Avoid placing logic directly inside `@code { }` blocks except for trivial UI-only concerns.
-
-Example:
-
-```
-CustomerPage.razor
-CustomerPage.razor.cs
-```
-
-### Page Model Responsibility
-
-The code-behind class is the behavioural model for the page.
-
-Responsibilities include:
-
-* Loading data from APIs.
-* Managing page state.
-* Executing commands.
-* Validation and decision logic.
-* Coordinating user interactions.
-* Determining UI visibility and enabled/disabled states.
-
-The Razor file should bind to properties and invoke methods exposed by the code-behind model.
-
-### Web Test Project
-
-Every solution must contain a dedicated web testing project:
-
-```
-*.Web.Tests
-```
-
-Frameworks:
-
-* xUnit
-* Moq
-* ASP.NET Core Test Host (`WebApplicationFactory`)
-* Optional: bUnit for component rendering tests where required
-
-Purpose:
-
-* Execute real HTTP requests against actual API endpoints.
-* Validate end-to-end request processing through Controllers, Repositories, and application services.
-* Replace DAO implementations with mocks so that tests remain deterministic and database-independent.
-
-### API Integration Test Rules
-
-Tests must:
-
-* Host the actual API application in memory.
-* Call real HTTP endpoints using `HttpClient`.
-* Exercise real controller routing.
-* Exercise real repository logic.
-* Exercise real validation paths.
-* Mock all DAO dependencies.
-
-The objective is to verify application behaviour while avoiding database dependencies.
-
-Example execution path:
-
-```
-Test
-  -> HttpClient
-      -> Controller
-          -> Repository
-              -> Mock DAO
-```
-
-### Decision Coverage Requirement
-
-Every decision point that influences page behaviour must have test coverage.
-
-Examples:
-
-* Success path.
-* Failure path.
-* Validation failures.
-* Conditional visibility.
-* Conditional enable/disable behaviour.
-* Empty data scenarios.
-* Permission-based behaviour.
-* Status-based behaviour.
-* Error handling paths.
-
-If a page contains five independent behavioural decisions, there must be tests covering all possible outcomes of those decisions.
-
-### Minimum Coverage Standard
-
-For each page model:
-
-* Every public method must be tested.
-* Every conditional branch must be tested.
-* Every error path must be tested.
-* Every state transition must be tested.
-
-Coverage should focus on behavioural correctness rather than line-count metrics.
-
-### Mocking Rules
-
-Web tests must mock:
-
-* Single-table DAOs
-* Aggregate DAOs
-* External API DAOs
-
-Web tests must NOT mock:
-
-* Controllers
-* Repositories
-* Application services under test
-* Authentication abstractions (unless explicitly testing authentication scenarios)
-
-The goal is to validate as much real application behaviour as possible while isolating infrastructure concerns.
-
-### Architectural Principle
-
-The UI layer must be designed as testable software, not as markup containing embedded logic.
-
-A developer should be able to:
-
-1. Instantiate a page model.
-2. Provide mocked dependencies.
-3. Execute behaviour.
-4. Assert state changes.
-5. Verify all decision paths.
-
-without requiring a browser, database, or external service.

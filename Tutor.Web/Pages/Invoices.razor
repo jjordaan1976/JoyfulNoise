@@ -66,7 +66,7 @@
                         Invoices
                         @if (!string.IsNullOrEmpty(_statusFilter))
                         {
-                            <span style="font-weight:400; font-size:0.85rem; color:#78797A;">
+                            <span style="font-weight:400; font-size:0.85rem; color:var(--c-text-muted);">
                                 &nbsp;— @_statusFilter
                             </span>
                         }
@@ -135,12 +135,12 @@
     <!-- ── Unallocated payments ───────────────────────────────────────── -->
     @if (UnallocatedPayments.Count > 0)
     {
-        <MudPaper Elevation="1" Class="mb-4" Style="border-left: 4px solid #F3D395;">
+        <MudPaper Elevation="1" Class="mb-4" Style="border-left: 4px solid var(--c-accent);">
             <MudTable Items="UnallocatedPayments" Hover="true" Dense="true" Elevation="0">
                 <ToolBarContent>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                         <MudIcon Icon="@Icons.Material.Filled.Pending"
-                                 Style="color:#F3D395;" Size="Size.Small" />
+                                 Style="color:var(--c-accent-deep);" Size="Size.Small" />
                         <MudText Typo="Typo.h6">Unallocated Payments</MudText>
                         <MudChip T="string" Size="Size.Small" Color="Color.Warning">
                             R @TotalUnallocated.ToString("N2") pending allocation
@@ -158,7 +158,7 @@
                     <MudTd>@context.PaymentDate.ToString("yyyy MMM dd")</MudTd>
                     <MudTd>R @context.Amount.ToString("N2")</MudTd>
                     <MudTd>
-                        <MudText Style="font-weight:600; color:#E65100;">
+                        <MudText Style="font-weight:600; color:var(--c-warn);">
                             R @context.UnallocatedAmount.ToString("N2")
                         </MudText>
                     </MudTd>
@@ -195,7 +195,7 @@
                     <MudTd>
                         @if (context.UnallocatedAmount > 0)
                         {
-                            <MudText Style="color:#E65100;">R @context.UnallocatedAmount.ToString("N2")</MudText>
+                            <MudText Style="color:var(--c-warn);">R @context.UnallocatedAmount.ToString("N2")</MudText>
                         }
                         else
                         {
@@ -231,7 +231,7 @@ else if (!_loading)
 <MudDialog @ref="_recordPaymentDialog" Options="_dialogOptions">
     <TitleContent>
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudIcon Icon="@Icons.Material.Filled.AddCard" Style="color:#F3D395;" />
+            <MudIcon Icon="@Icons.Material.Filled.AddCard" Style="color:var(--c-accent-deep);" />
             <MudText Typo="Typo.h6">Record Payment</MudText>
         </MudStack>
     </TitleContent>

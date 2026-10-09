@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tutor.Client.Theme\Tutor.Client.Theme.csproj" />
+    <ProjectReference Include="..\Tutor.Web\Tutor.Web.csproj" />
+    <ProjectReference Include="..\Tutor.StudentPortal\Tutor.StudentPortal.csproj" />
+    <ProjectReference Include="..\Tutor.AccountHolderPortal\Tutor.AccountHolderPortal.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The stylesheet is read by ThemeParityTests to keep the C# palette and the CSS tokens in step. -->
+    <Content Include="..\Tutor.Client.Theme\wwwroot\theme.css" Link="theme.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

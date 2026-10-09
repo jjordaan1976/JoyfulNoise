@@ -86,7 +86,7 @@ else
                                 {
                                     var pct = q.LessonsAllocated > 0 ? (double)q.LessonsUsed / q.LessonsAllocated * 100 : 0;
                                     <MudItem xs="12" sm="6" md="3">
-                                        <MudPaper Class="pa-3 quarter-card" Elevation="0" Style="background:#F0F2F5;">
+                                        <MudPaper Class="@($"pa-3 quarter-card quarter-card--{q.QuarterNumber}")" Elevation="0" Style="background:var(--c-bg-raised);">
                                             <MudText Typo="Typo.subtitle2">Quarter @q.QuarterNumber</MudText>
                                             <MudText Typo="Typo.caption" Color="Color.Secondary">
                                                 @q.QuarterStartDate.ToString("dd MMM") – @q.QuarterEndDate.ToString("yyyy MMM dd")
@@ -207,7 +207,7 @@ else
                     {
                         var q = _quarters[i];
                         <MudItem xs="12" sm="6" md="3">
-                            <MudPaper Class="pa-2" Elevation="0" Style="background:#F0F2F5;border-top:3px solid #F3D395;">
+                            <MudPaper Class="@($"pa-2 quarter-card quarter-card--{q.QuarterNumber}")" Elevation="0" Style="background:var(--c-bg-raised);">
                                 <MudText Typo="Typo.subtitle2">Q@(q.QuarterNumber)</MudText>
                                 <MudText Typo="Typo.caption">@q.LessonsAllocated lessons</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">

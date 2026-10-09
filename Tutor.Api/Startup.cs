@@ -2,6 +2,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
+using Tutor.Api.Auth;
 using Tutor.Data.Implementations;
 using Tutor.Data.Interfaces;
 using Tutor.JwtService;
@@ -76,35 +77,12 @@ namespace Tutor.Api
             services.AddSingleton<IJwtTokenService>(new JwtTokenService(jwtSecret, jwtIssuer, jwtAudience));
             services.AddSingleton<IOtpService, OtpService>();
 
-            // JWT Authentication
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-                        ValidateIssuer = true,
-                        ValidIssuer = jwtIssuer,
-                        ValidateAudience = true,
-                        ValidAudience = jwtAudience,
-                        ValidateLifetime = true,
-                        ClockSkew = TimeSpan.Zero
-                    };
-                    options.Events = new JwtBearerEvents
-                    {
-                        OnAuthenticationFailed = context =>
-                        {
-                            Log.Warning(context.Exception, "JWT authentication failed");
-                            return Task.CompletedTask;
-                        },
-                        OnMessageReceived = context =>
-                        {
-                            Log.Information("JWT token received: {HasToken}", !string.IsNullOrEmpty(context.Token));
-                            return Task.CompletedTask;
-                        }
-                    };
-                });
+            // Authentication: JWT bearer, or — while Auth:Enabled is false — a bypass that treats
+            // every request as the configured user. Enabled unless explicitly switched off.
+            if (Configuration.GetValue("Auth:Enabled", true))
+                AddJwtAuthentication(services, jwtSecret, jwtIssuer, jwtAudience);
+            else
+                AddBypassAuthentication(services);
 
             services.AddAuthorization();
             services.AddControllers();
@@ -134,6 +112,54 @@ namespace Tutor.Api
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
+        }
+
+        private static void AddJwtAuthentication(
+            IServiceCollection services, string jwtSecret, string jwtIssuer, string jwtAudience)
+        {
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                        ValidateIssuer = true,
+                        ValidIssuer = jwtIssuer,
+                        ValidateAudience = true,
+                        ValidAudience = jwtAudience,
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.Zero
+                    };
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnAuthenticationFailed = context =>
+                        {
+                            Log.Warning(context.Exception, "JWT authentication failed");
+                            return Task.CompletedTask;
+                        },
+                        OnMessageReceived = context =>
+                        {
+                            Log.Information("JWT token received: {HasToken}", !string.IsNullOrEmpty(context.Token));
+                            return Task.CompletedTask;
+                        }
+                    };
+                });
+        }
+
+        private void AddBypassAuthentication(IServiceCollection services)
+        {
+            var bypassEmail = Configuration["Auth:BypassEmail"];
+            if (string.IsNullOrWhiteSpace(bypassEmail))
+                throw new InvalidOperationException("Auth:BypassEmail must be set while Auth:Enabled is false.");
+
+            services.AddAuthentication(BypassAuthenticationDefaults.Scheme)
+                .AddScheme<BypassAuthenticationOptions, BypassAuthenticationHandler>(
+                    BypassAuthenticationDefaults.Scheme,
+                    options => options.BypassEmail = bypassEmail);
+
+            Log.Warning("AUTHENTICATION IS DISABLED: every request is treated as {Email}. " +
+                        "Set Auth:Enabled to true to restore login.", bypassEmail);
         }
     }
 }

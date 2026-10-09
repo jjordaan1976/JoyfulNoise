@@ -52,9 +52,17 @@ namespace Tutor.Data.Implementations
             if (!_otpService.ValidateOtp(email, otp))
                 throw new InvalidOperationException("Invalid or expired OTP.");
 
-            // The token identifies the logged-in user. One email can hold several
-            // roles (e.g. Student + AccountHolder); the token carries them all and
-            // each portal reads the claim relevant to it.
+            return _jwtService.GenerateToken(email, await GetUserClaimsAsync(email));
+        }
+
+        // The token identifies the logged-in user. One email can hold several
+        // roles (e.g. Student + AccountHolder); the claims carry them all and
+        // each portal reads the claim relevant to it.
+        public async Task<Dictionary<string, string>> GetUserClaimsAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                throw new InvalidOperationException("Email is required.");
+
             var users = (await _userRepository.GetByEmailAsync(email)).ToList();
             if (users.Count == 0)
                 throw new InvalidOperationException("No user is registered for this email address.");
@@ -72,7 +80,7 @@ namespace Tutor.Data.Implementations
                 if (user.AccountHolderID.HasValue) claims["accountHolderId"] = user.AccountHolderID.Value.ToString();
             }
 
-            return _jwtService.GenerateToken(email, claims);
+            return claims;
         }
     }
 }

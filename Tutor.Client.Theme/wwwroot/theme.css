@@ -1,0 +1,153 @@
+/* ==========================================================================
+   Tutor brand theme — the single source of colour for Tutor.Web,
+   Tutor.StudentPortal and Tutor.AccountHolderPortal.
+   Palette sampled from the Joyful Noise logo; rules are in UI_SKILL.md section 2.
+
+   Hex values appear ONLY in the token block below. Everything after it uses
+   var(--c-*). ThemeParityTests keeps these tokens in step with BrandColors.cs,
+   and ThemeContrastTests / ThemeChipContrastTests guard the contrast rules.
+   ========================================================================== */
+
+:root {
+  /* Neutrals */
+  --c-bg: #f7f7f7;
+  --c-bg-card: #ffffff;
+  --c-bg-raised: #f0f0f0;
+  --c-surface: #ffffff;
+  --c-text: #000000;
+  --c-text-muted: #5f5f5f;
+  --c-text-dim: #8a8a8a;
+  --c-border: #e4e4e4;
+
+  /* Brand: logo pink is the primary colour and always carries black text */
+  --c-accent: #ef6ba3;
+  --c-accent-deep: #c03276;   /* pink for text/icons/links on any surface */
+  --c-on-accent: #000000;
+
+  /* Brand spectrum (the logo wave) — identity and categories only, never status */
+  --c-brand-mint: #93d4c7;
+  --c-brand-sage: #b9cda4;
+  --c-brand-amber: #f6b669;
+  --c-brand-coral: #f79b83;
+  --c-brand-pink: #ef6ba3;
+  --c-brand-orchid: #aa77b8;
+  --c-brand-gradient: linear-gradient(90deg, var(--c-brand-mint), var(--c-brand-sage), var(--c-brand-amber), var(--c-brand-coral), var(--c-brand-pink), var(--c-brand-orchid));
+
+  /* Status */
+  --c-success: #2b7a2f;
+  --c-warn: #a65700;
+  --c-danger: #c62828;
+  --c-success-soft: #81c784;
+  --c-danger-soft: #ef9a9a;
+
+  /* Status chips: pastel background + coloured text */
+  --chip-scheduled-bg: #e3f2fd;   --chip-scheduled-fg: #1565c0;
+  --chip-completed-bg: #e8f5e9;   --chip-completed-fg: #2b7a2f;
+  --chip-forfeited-bg: #ffebee;   --chip-forfeited-fg: #c62828;
+  --chip-cancelled-bg: #fff8e1;   --chip-cancelled-fg: #a65700;
+  --chip-rescheduled-bg: #f3e5f5; --chip-rescheduled-fg: #6a1b9a;
+  --chip-pending-bg: #fff8e1;     --chip-pending-fg: #a65700;
+  --chip-paid-bg: #e8f5e9;        --chip-paid-fg: #2b7a2f;
+  --chip-overdue-bg: #ffebee;     --chip-overdue-fg: #c62828;
+  --chip-void-bg: #eceff1;        --chip-void-fg: #546e7a;
+
+  /* Derived */
+  --c-nav-active-bg: rgba(239, 107, 163, .14);
+  --c-s1: var(--c-brand-mint);  --c-s2: var(--c-brand-amber);  --c-s3: var(--c-brand-coral);  --c-s4: var(--c-brand-pink);   /* stat cards */
+  --c-q1: var(--c-brand-mint);  --c-q2: var(--c-brand-amber);  --c-q3: var(--c-brand-coral);  --c-q4: var(--c-brand-pink);   /* quarters */
+
+  --font-ui: Inter, "Segoe UI", system-ui, Roboto, sans-serif;
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-ui);
+}
+
+h5, .mud-typography-h5, h6, .mud-typography-h6 { font-weight: 600; }
+.page-header { margin-bottom: 24px; }
+
+/* ── App bar: white, with the logo wave as a 3px strip along the bottom ───── */
+.mud-appbar {
+  border-bottom: 1px solid var(--c-border);
+  box-shadow: none !important;
+}
+.mud-appbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: var(--c-brand-gradient);
+  pointer-events: none;
+}
+.brand-mark { height: 28px; width: auto; margin-right: 8px; display: block; }
+.login-logo { width: 240px; max-width: 100%; height: auto; display: block; margin: 0 auto 8px; }
+
+/* ── Navigation and tables ───────────────────────────────────────────────── */
+.mud-drawer { background-color: var(--c-surface) !important; }
+.mud-nav-link.active {
+  background-color: var(--c-nav-active-bg) !important;
+  color: var(--c-text) !important;
+  font-weight: 600;
+}
+.mud-nav-link.active .mud-icon-root { color: var(--c-accent-deep) !important; }
+.mud-table-root .mud-table-head .mud-table-cell {
+  background-color: var(--c-bg);
+  font-weight: 600;
+  color: var(--c-text-muted);
+}
+
+/* ── Pink used as text, icon or outline: use the deep pink (pink on white is only 2.9:1) ── */
+.mud-primary-text { color: var(--c-accent-deep) !important; }
+.mud-button-text.mud-button-text-primary { color: var(--c-accent-deep) !important; }
+.mud-button-outlined.mud-button-outlined-primary { color: var(--c-accent-deep) !important; border-color: var(--c-accent-deep) !important; }
+.mud-tabs .mud-tab.mud-tab-active { color: var(--c-accent-deep) !important; }
+
+/* ── Status chips (one set for all three apps) ───────────────────────────── */
+.status-scheduled   { background-color: var(--chip-scheduled-bg) !important;   color: var(--chip-scheduled-fg) !important; }
+.status-completed   { background-color: var(--chip-completed-bg) !important;   color: var(--chip-completed-fg) !important; }
+.status-forfeited   { background-color: var(--chip-forfeited-bg) !important;   color: var(--chip-forfeited-fg) !important; }
+.status-cancelled   { background-color: var(--chip-cancelled-bg) !important;   color: var(--chip-cancelled-fg) !important; }
+.status-rescheduled { background-color: var(--chip-rescheduled-bg) !important; color: var(--chip-rescheduled-fg) !important; }
+.status-pending     { background-color: var(--chip-pending-bg) !important;     color: var(--chip-pending-fg) !important; }
+.status-paid        { background-color: var(--chip-paid-bg) !important;        color: var(--chip-paid-fg) !important; }
+.status-overdue     { background-color: var(--chip-overdue-bg) !important;     color: var(--chip-overdue-fg) !important; }
+.status-void        { background-color: var(--chip-void-bg) !important;        color: var(--chip-void-fg) !important; }
+
+/* ── Management dashboard stat cards and bundle quarters ─────────────────── */
+.stats-card { border-left: 4px solid var(--c-s1); }
+.stats-card--2 { border-left-color: var(--c-s2); }
+.stats-card--3 { border-left-color: var(--c-s3); }
+.stats-card--4 { border-left-color: var(--c-s4); }
+
+.quarter-card { border-top: 3px solid var(--c-q1); }
+.quarter-card--2 { border-top-color: var(--c-q2); }
+.quarter-card--3 { border-top-color: var(--c-q3); }
+.quarter-card--4 { border-top-color: var(--c-q4); }
+
+/* ── Student portal ──────────────────────────────────────────────────────── */
+.next-lesson-card { border-left: 4px solid var(--c-accent); border-radius: 4px; }
+.countdown-badge {
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+}
+.lesson-notes-card { border-left: 4px solid var(--c-accent); }
+.lesson-notes-card.completed { border-left-color: var(--c-success-soft); }
+.lesson-notes-card.cancelled { border-left-color: var(--c-danger-soft); }
+
+/* ── Account holder portal: aging bands ──────────────────────────────────── */
+.aging-card { border-left: 4px solid var(--c-success); }
+.aging-card-warn { border-left: 4px solid var(--c-warn); }
+.aging-card-alert { border-left: 4px solid var(--c-danger-soft); }
+.aging-card-crit { border-left: 4px solid var(--c-danger); }

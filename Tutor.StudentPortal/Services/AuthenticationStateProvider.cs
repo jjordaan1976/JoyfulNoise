@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Configuration;
 
 namespace Tutor.StudentPortal.Services
 {
@@ -11,14 +12,24 @@ namespace Tutor.StudentPortal.Services
             new(new ClaimsPrincipal(new ClaimsIdentity()));
 
         private readonly IAuthService _authService;
+        private readonly bool _authEnabled;
+        private readonly string? _bypassEmail;
 
-        public JwtAuthenticationStateProvider(IAuthService authService)
+        public JwtAuthenticationStateProvider(IAuthService authService, IConfiguration configuration)
         {
             _authService = authService;
+            // Authentication is on unless explicitly switched off in wwwroot/appsettings.json.
+            _authEnabled = !bool.TryParse(configuration["Auth:Enabled"], out var enabled) || enabled;
+            _bypassEmail = configuration["Auth:BypassEmail"];
         }
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
+            if (!_authEnabled)
+            {
+                return BypassState();
+            }
+
             var token = await _authService.GetTokenAsync();
             if (string.IsNullOrWhiteSpace(token))
             {
@@ -32,6 +43,22 @@ namespace Tutor.StudentPortal.Services
             }
 
             var identity = new ClaimsIdentity(claims, "jwt");
+            return new AuthenticationState(new ClaimsPrincipal(identity));
+        }
+
+        // Authentication is switched off: everyone is the configured bypass user.
+        private AuthenticationState BypassState()
+        {
+            if (string.IsNullOrWhiteSpace(_bypassEmail))
+            {
+                return Anonymous;
+            }
+
+            var identity = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.Email, _bypassEmail),
+                new Claim("name", _bypassEmail)
+            }, "bypass");
             return new AuthenticationState(new ClaimsPrincipal(identity));
         }
 

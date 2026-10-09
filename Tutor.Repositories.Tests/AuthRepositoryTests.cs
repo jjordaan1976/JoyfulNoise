@@ -108,4 +108,38 @@ public class AuthRepositoryTests
         Assert.Equal("9", capturedClaims["accountHolderId"]);
         Assert.False(capturedClaims.ContainsKey("teacherId"));
     }
+
+    // ── GetUserClaimsAsync ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetUserClaimsAsync_WithEmptyEmail_Throws()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.GetUserClaimsAsync(""));
+    }
+
+    [Fact]
+    public async Task GetUserClaimsAsync_WhenNoUserRegistered_Throws()
+    {
+        _userRepoMock.Setup(u => u.GetByEmailAsync("nobody@b.com")).ReturnsAsync(Enumerable.Empty<User>());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.GetUserClaimsAsync("nobody@b.com"));
+    }
+
+    [Fact]
+    public async Task GetUserClaimsAsync_ReturnsIdentityClaimsForEveryRole()
+    {
+        _userRepoMock.Setup(u => u.GetByEmailAsync("a@b.com")).ReturnsAsync(new List<User>
+        {
+            new() { Email = "a@b.com", DisplayName = "Amy Bell", Role = UserRole.Teacher, TeacherID = 1 },
+            new() { Email = "a@b.com", DisplayName = "Amy Bell", Role = UserRole.AccountHolder, AccountHolderID = 9 }
+        });
+
+        var claims = await _sut.GetUserClaimsAsync("a@b.com");
+
+        Assert.Equal("Amy Bell", claims["name"]);
+        Assert.Equal("Teacher,AccountHolder", claims["role"]);
+        Assert.Equal("1", claims["teacherId"]);
+        Assert.Equal("9", claims["accountHolderId"]);
+        Assert.False(claims.ContainsKey("studentId"));
+    }
 }

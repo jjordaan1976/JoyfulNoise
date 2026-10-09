@@ -5,10 +5,10 @@
 @inject NavigationManager Navigation
 
 <MudLayout>
-    <MudAppBar Elevation="1" Color="Color.Primary">
+    <MudAppBar Elevation="0" Color="Color.Default">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
                        OnClick="@ToggleDrawer" />
-        <MudIcon Icon="@Icons.Material.Filled.MusicNote" Class="mr-2" />
+        <img class="brand-mark" src="@ThemeAssets.LogoWave" alt="" />
         <MudText Typo="Typo.h6" Style="font-weight:600;">Tutor</MudText>
         <MudSpacer />
         <MudText Typo="Typo.body2" Class="mr-3">Guest User</MudText>
@@ -17,7 +17,7 @@
     <MudDrawer @bind-Open="_drawerOpen" Elevation="2" Variant="DrawerVariant.Responsive"
                ClipMode="DrawerClipMode.Always">
         <MudDrawerHeader>
-            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:#3A3A3A;">Navigation</MudText>
+            <MudText Typo="Typo.subtitle1" Style="font-weight:600; color:var(--c-text);">Navigation</MudText>
         </MudDrawerHeader>
         <MudNavMenu>
             <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">

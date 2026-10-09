@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Tutor.Client.Theme\Tutor.Client.Theme.csproj" />
     <ProjectReference Include="..\Tutor.Models\Tutor.Models.csproj" />
   </ItemGroup>
 

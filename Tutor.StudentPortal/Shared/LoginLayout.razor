@@ -1,12 +1,13 @@
 @inherits LayoutComponentBase
 
 <MudLayout>
-    <MudAppBar Elevation="0" Color="Color.Primary">
+    <MudAppBar Elevation="0" Color="Color.Default">
+        <img class="brand-mark" src="@ThemeAssets.LogoWave" alt="" />
         <MudText Typo="Typo.h6" Style="font-weight:600;">Tutor — Student Portal</MudText>
         <MudSpacer />
     </MudAppBar>
 
-    <MudMainContent Style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <MudMainContent Style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background: var(--c-bg);">
         @Body
     </MudMainContent>
 </MudLayout>
